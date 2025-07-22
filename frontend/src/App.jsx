@@ -5,7 +5,7 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import AppRoutes from "./Routes.jsx";
 
-import "./App.css";
+import "./index.css";
 
 function App() {
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -19,7 +19,7 @@ function App() {
     <GoogleOAuthProvider clientId={googleClientId}>
       <AuthProvider>
         <Router>
-          <div className="app">
+          <div className="w-full min-h-screen">
             <main className="main-content">
               <AppRoutes />
             </main>
