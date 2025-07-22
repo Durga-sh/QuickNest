@@ -1,11 +1,10 @@
 import React from "react";
 import { Route, Routes, Navigate } from "react-router-dom";
-import { useAuth } from "./hooks/useAuth";
 
 // Pages
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
-import QuickNestLanding from "./pages/landingPage";
+import QuickNestLanding from "./pages/LandingPage";
 // Protected Route Component
 
 const AppRoutes = () => {
