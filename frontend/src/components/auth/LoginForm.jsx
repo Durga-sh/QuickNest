@@ -28,7 +28,7 @@ const LoginForm = () => {
     try {
       const { user, token } = await login(formData);
       loginUser(user, token);
-      navigate("/dashboard");
+      navigate("/provider-dashboard");
     } catch (err) {
       console.error("Login error:", err);
       setFormError(err.message || "Failed to login. Please try again.");

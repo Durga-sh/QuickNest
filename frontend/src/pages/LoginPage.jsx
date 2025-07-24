@@ -1,4 +1,4 @@
-"use client";
+
 import { Link } from "react-router-dom";
 import LoginForm from "../components/auth/LoginForm";
 import GoogleAuthButton from "../components/auth/GoogleAuthButton";
