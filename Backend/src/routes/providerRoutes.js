@@ -4,7 +4,7 @@ const { isAuthenticated } = require("../middleware/auth");
 const providerController = require("../controllers/ProviderController");
 
 // Provider routes (protected)
-router.post("/register", providerController.registerProvider);
+router.post("/register", isAuthenticated, providerController.registerProvider);
 router.put(
   "/profile",
   isAuthenticated,

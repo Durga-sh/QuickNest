@@ -8,7 +8,7 @@ exports.registerProvider = async (req, res) => {
 
     // Check if user exists and has Provider role
     const user = await User.findById(userId);
-    if (!user || user.role !== "Provider") {
+    if (!user || user.role !== "provider") {
       return res
         .status(403)
         .json({ message: "User is not authorized as a provider" });
@@ -61,7 +61,7 @@ exports.updateProviderProfile = async (req, res) => {
 
     // Check if user is a provider
     const user = await User.findById(userId);
-    if (!user || user.role !== "Provider") {
+    if (!user || user.role !== "provider") {
       return res
         .status(403)
         .json({ message: "User is not authorized as a provider" });
