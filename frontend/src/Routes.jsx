@@ -4,7 +4,7 @@ import { Route, Routes, Navigate } from "react-router-dom";
 // Pages
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
-import QuickNestLanding from "./pages/LandingPage";
+import QuickNestLanding from "./pages/landingPage";
 import ProviderDashboard from "./pages/ProviderDashboardpage";
 import CreateServicePage from "./pages/CreateServicePage";
 // Protected Route Component
