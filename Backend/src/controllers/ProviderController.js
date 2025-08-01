@@ -27,6 +27,17 @@ exports.registerProvider = async (req, res) => {
       return res.status(400).json({ message: "Location details are required" });
     }
 
+    // Transform availability structure to match schema
+    const transformedAvailability = availability.map((slot) => ({
+      day: slot.day,
+      timeSlots: [
+        {
+          start: slot.from,
+          end: slot.to,
+        },
+      ],
+    }));
+
     const provider = new Provider({
       userId,
       skills,
@@ -36,7 +47,7 @@ exports.registerProvider = async (req, res) => {
         address: location.address,
       },
       pricing,
-      availability,
+      availability: transformedAvailability,
       status: "pending",
     });
 
@@ -53,6 +64,7 @@ exports.registerProvider = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 // Update provider profile
 exports.updateProviderProfile = async (req, res) => {
   try {
@@ -83,7 +95,18 @@ exports.updateProviderProfile = async (req, res) => {
       };
     }
     if (pricing) provider.pricing = pricing;
-    if (availability) provider.availability = availability;
+    if (availability) {
+      // Transform availability structure to match schema
+      provider.availability = availability.map((slot) => ({
+        day: slot.day,
+        timeSlots: [
+          {
+            start: slot.from || slot.start,
+            end: slot.to || slot.end,
+          },
+        ],
+      }));
+    }
 
     await provider.save();
 
@@ -111,9 +134,9 @@ exports.getProviderProfile = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Check if user is a provider
+    // Check if user is a provider - FIXED: changed "Provider" to "provider"
     const user = await User.findById(userId);
-    if (!user || user.role !== "Provider") {
+    if (!user || user.role !== "provider") {
       return res
         .status(403)
         .json({ message: "User is not authorized as a provider" });
@@ -183,47 +206,244 @@ exports.getProviderById = async (req, res) => {
   }
 };
 
-// Admin: Approve or reject provider
-exports.approveOrRejectProvider = async (req, res) => {
+exports.getAllProviders = async (req, res) => {
   try {
-    const { providerId, status } = req.body;
-    const userId = req.user.id;
+    const {
+      skill,
+      location,
+      radius = 50, // Default radius in km
+      minPrice,
+      maxPrice,
+      page = 1,
+      limit = 10,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+    } = req.query;
 
-    // Check if user is admin
-    const user = await User.findById(userId);
-    if (!user || user.role !== "admin") {
-      return res
-        .status(403)
-        .json({ message: "User is not authorized as admin" });
+    // Build filter object
+    const filter = {
+      status: "approved",
+      isActive: true,
+    };
+
+    // Add skill filter if provided
+    if (skill) {
+      filter.skills = { $in: [skill] };
     }
 
-    // Find provider
-    const provider = await Provider.findById(providerId);
-    if (!provider) {
-      return res.status(404).json({ message: "Provider not found" });
+    // Add price filter if provided
+    if (minPrice || maxPrice) {
+      const priceFilter = {};
+      if (minPrice) priceFilter.$gte = parseFloat(minPrice);
+      if (maxPrice) priceFilter.$lte = parseFloat(maxPrice);
+      filter["pricing.price"] = priceFilter;
     }
 
-    // Validate status
-    if (!["approved", "rejected"].includes(status)) {
-      return res
-        .status(400)
-        .json({ message: "Invalid status. Use 'approved' or 'rejected'" });
+    // Build aggregation pipeline
+    let aggregationPipeline = [{ $match: filter }];
+
+    // Add location-based filtering if coordinates provided
+    if (location) {
+      const coordinates = location
+        .split(",")
+        .map((coord) => parseFloat(coord.trim()));
+      if (coordinates.length === 2) {
+        aggregationPipeline.unshift({
+          $geoNear: {
+            near: {
+              type: "Point",
+              coordinates: coordinates, // [longitude, latitude]
+            },
+            distanceField: "distance",
+            maxDistance: radius * 1000, // Convert km to meters
+            spherical: true,
+          },
+        });
+      }
     }
 
-    provider.status = status;
-    await provider.save();
+    // Add population and projection
+    aggregationPipeline.push(
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      {
+        $unwind: "$user",
+      },
+      {
+        $project: {
+          _id: 1,
+          userId: 1,
+          skills: 1,
+          location: 1,
+          pricing: 1,
+          availability: 1,
+          rating: 1,
+          totalReviews: 1,
+          totalJobs: 1,
+          createdAt: 1,
+          distance: { $ifNull: ["$distance", null] },
+          user: {
+            name: "$user.name",
+            email: "$user.email",
+          },
+        },
+      }
+    );
+
+    // Add sorting
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
+    aggregationPipeline.push({ $sort: sortOptions });
+
+    // Execute aggregation
+    const providers = await Provider.aggregate(aggregationPipeline);
+
+    // Apply pagination
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+    const paginatedProviders = providers.slice(startIndex, endIndex);
+
+    // Get total count for pagination
+    const totalProviders = providers.length;
+    const totalPages = Math.ceil(totalProviders / limit);
 
     res.status(200).json({
       success: true,
-      message: `Provider ${status} successfully`,
-      provider: {
-        id: provider._id,
-        userId: provider.userId,
-        status: provider.status,
+      data: paginatedProviders,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalProviders,
+        hasNextPage: endIndex < totalProviders,
+        hasPrevPage: startIndex > 0,
+      },
+      filters: {
+        skill,
+        location,
+        radius,
+        minPrice,
+        maxPrice,
       },
     });
   } catch (error) {
-    console.error("Approve/reject provider error:", error);
+    console.error("Get all providers error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Get all unique skills from approved providers
+exports.getAvailableSkills = async (req, res) => {
+  try {
+    const skills = await Provider.aggregate([
+      {
+        $match: {
+          status: "approved",
+          isActive: true,
+        },
+      },
+      {
+        $unwind: "$skills",
+      },
+      {
+        $group: {
+          _id: "$skills",
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { count: -1 },
+      },
+      {
+        $project: {
+          skill: "$_id",
+          count: 1,
+          _id: 0,
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      skills,
+    });
+  } catch (error) {
+    console.error("Get available skills error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Search providers by text
+exports.searchProviders = async (req, res) => {
+  try {
+    const { query, page = 1, limit = 10 } = req.query;
+
+    if (!query) {
+      return res.status(400).json({ message: "Search query is required" });
+    }
+
+    const searchRegex = new RegExp(query, "i");
+
+    const providers = await Provider.find({
+      status: "approved",
+      isActive: true,
+      $or: [
+        { skills: { $in: [searchRegex] } },
+        { "location.address": searchRegex },
+        { "pricing.service": searchRegex },
+      ],
+    })
+      .populate("userId", "name email")
+      .sort({ rating: -1, totalReviews: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const totalProviders = await Provider.countDocuments({
+      status: "approved",
+      isActive: true,
+      $or: [
+        { skills: { $in: [searchRegex] } },
+        { "location.address": searchRegex },
+        { "pricing.service": searchRegex },
+      ],
+    });
+
+    const totalPages = Math.ceil(totalProviders / limit);
+
+    res.status(200).json({
+      success: true,
+      data: providers.map((provider) => ({
+        id: provider._id,
+        userId: provider.userId._id,
+        user: {
+          name: provider.userId.name,
+          email: provider.userId.email,
+        },
+        skills: provider.skills,
+        location: provider.location,
+        pricing: provider.pricing,
+        availability: provider.availability,
+        rating: provider.rating,
+        totalReviews: provider.totalReviews,
+        totalJobs: provider.totalJobs,
+        createdAt: provider.createdAt,
+      })),
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalProviders,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+      searchQuery: query,
+    });
+  } catch (error) {
+    console.error("Search providers error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

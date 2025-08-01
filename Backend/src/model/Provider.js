@@ -26,6 +26,18 @@ const ProviderSchema = new mongoose.Schema({
     coordinates: {
       type: [Number],
       required: true,
+      validate: {
+        validator: function (v) {
+          return (
+            v.length === 2 &&
+            v[0] >= -180 &&
+            v[0] <= 180 && // longitude
+            v[1] >= -90 &&
+            v[1] <= 90
+          ); // latitude
+        },
+        message: "Coordinates must be [longitude, latitude] with valid ranges",
+      },
     },
     address: {
       type: String,
@@ -97,15 +109,49 @@ const ProviderSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ["pending", "approved", "rejected"],
-    default: "pending",
+    default: "approved",
+  },
+  rating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5,
+  },
+  totalReviews: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
+  totalJobs: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
+  isActive: {
+    type: Boolean,
+    default: true,
   },
   createdAt: {
     type: Date,
     default: Date.now,
   },
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+// Update the updatedAt field before saving
+ProviderSchema.pre("save", function (next) {
+  this.updatedAt = Date.now();
+  next();
 });
 
 // Create 2dsphere index for geospatial queries
 ProviderSchema.index({ location: "2dsphere" });
+
+// Create compound index for common queries
+ProviderSchema.index({ status: 1, isActive: 1 });
+ProviderSchema.index({ skills: 1, status: 1 });
 
 module.exports = mongoose.model("Provider", ProviderSchema);

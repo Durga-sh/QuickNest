@@ -12,14 +12,10 @@ router.put(
 );
 router.get("/profile", isAuthenticated, providerController.getProviderProfile);
 
-// Public route to get provider by ID
+// Public routes for getting providers
+router.get("/all", providerController.getAllProviders);
+router.get("/skills", providerController.getAvailableSkills);
+router.get("/search", providerController.searchProviders);
 router.get("/:providerId", providerController.getProviderById);
-
-// Admin route to approve/reject provider
-router.post(
-  "/approve-reject",
-  isAuthenticated,
-  providerController.approveOrRejectProvider
-);
 
 module.exports = router;
