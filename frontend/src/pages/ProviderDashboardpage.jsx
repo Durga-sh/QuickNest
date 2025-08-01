@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom"; // Add useNavigate
 import {
   Plus,
   User,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 
 const ProviderDashboard = () => {
+  const navigate = useNavigate(); // Initialize useNavigate
   const [providerData] = useState({
     user: { name: "John Smith", email: "john.smith@example.com" },
     skills: ["Plumbing", "Pipe Repair", "Water Heater Installation"],
@@ -45,9 +47,7 @@ const ProviderDashboard = () => {
 
   // Function to redirect to create service page
   const redirectToCreateService = () => {
-    // In a real React Router setup, you would use navigate('/create-service')
-    // For now, we'll simulate the redirect
-    window.location.href = "/create-service";
+    navigate("/create-service"); // Use navigate instead of window.location.href
   };
 
   const StatCard = ({ title, value, icon: Icon, color }) => (

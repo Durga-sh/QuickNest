@@ -6,6 +6,7 @@ import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
+import { useNavigate } from "react-router-dom";
 import {
   Star,
   MapPin,
@@ -30,6 +31,7 @@ import {
 } from "lucide-react";
 
 const QuickNestLanding = () => {
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const services = [
@@ -157,7 +159,7 @@ const QuickNestLanding = () => {
             <div className="hidden md:block">
               <div className="ml-10 flex items-baseline space-x-8">
                 <button
-                  onClick={() => scrollToSection("services")}
+                  onClick={() => navigate("/service")}
                   className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors"
                 >
                   Services

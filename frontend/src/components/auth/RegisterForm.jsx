@@ -357,7 +357,7 @@ const RegisterForm = () => {
           >
             <option value="user">User</option>
             <option value="admin">Admin</option>
-            <option value="organizer">Organizer</option>
+            <option value="provider">Provider</option>
           </select>
         </div>
 
