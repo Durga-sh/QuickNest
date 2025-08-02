@@ -28,7 +28,7 @@ const serviceTypes = [
 ];
 
 // Replace with your actual Google Geocoding API key
-const GOOGLE_API_KEY = "AIzaSyCDm-q6ndRI_Sm40AWx8y3E7tDtMiigjxo";
+const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 const CreateServicePage = () => {
   const { user, isAuthenticated } = useAuth();

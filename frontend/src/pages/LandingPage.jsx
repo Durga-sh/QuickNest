@@ -1,12 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
 import { useNavigate } from "react-router-dom";
+import PlacesAutocomplete, {
+  geocodeByAddress,
+  getLatLng,
+} from "react-places-autocomplete";
 import {
   Star,
   MapPin,
@@ -28,11 +32,63 @@ import {
   Facebook,
   Twitter,
   Instagram,
+  Loader2,
+  Navigation,
 } from "lucide-react";
+
+// Load Google Maps API script with check for existing load
+const loadGoogleMapsScript = (callback) => {
+  if (window.google && window.google.maps) {
+    callback();
+    return;
+  }
+  const existingScript = document.querySelector(
+    `script[src*="maps.googleapis.com/maps/api/js"]`
+  );
+  if (existingScript) {
+    existingScript.remove(); // Remove any existing script to avoid conflicts
+  }
+  const script = document.createElement("script");
+  script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`;
+  script.async = true;
+  script.defer = true;
+  script.onerror = () => {
+    console.error("Failed to load Google Maps API script");
+    callback(new Error("Google Maps API script failed to load"));
+  };
+  script.onload = () => {
+    console.log("Google Maps API script loaded successfully");
+    callback();
+  };
+  document.head.appendChild(script);
+};
 
 const QuickNestLanding = () => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [locationInput, setLocationInput] = useState("");
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [locationError, setLocationError] = useState("");
+  const [isGoogleMapsLoaded, setIsGoogleMapsLoaded] = useState(false);
+  const [isScriptLoading, setIsScriptLoading] = useState(false);
+
+  // Load Google Maps API only once
+  useEffect(() => {
+    if (!isScriptLoading && !isGoogleMapsLoaded) {
+      setIsScriptLoading(true);
+      loadGoogleMapsScript((error) => {
+        if (error) {
+          setLocationError(
+            "Failed to load Google Maps API. Please check your API key or internet connection."
+          );
+          setIsScriptLoading(false);
+        } else {
+          setIsGoogleMapsLoaded(true);
+          setIsScriptLoading(false);
+        }
+      });
+    }
+  }, [isScriptLoading, isGoogleMapsLoaded]);
 
   const services = [
     {
@@ -131,6 +187,106 @@ const QuickNestLanding = () => {
     },
   ];
 
+  // Function to get current location with Google Maps reverse geocoding
+  const getCurrentLocation = () => {
+    if (!isGoogleMapsLoaded) {
+      setLocationError("Google Maps API is not loaded yet. Please try again.");
+      return;
+    }
+
+    setIsLoadingLocation(true);
+    setLocationError("");
+
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by this browser");
+      setIsLoadingLocation(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          console.log("Geolocation coordinates:", {
+            latitude,
+            longitude,
+            accuracy: position.coords.accuracy,
+          });
+
+          // Add language and region bias for better accuracy
+          const response = await fetch(
+            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&language=en&result_type=street_address|locality|country`
+          );
+          console.log("Geocode API response status:", response.status);
+
+          const data = await response.json();
+          console.log("Geocode API response data:", data);
+
+          if (
+            data.status !== "OK" ||
+            !data.results ||
+            data.results.length === 0
+          ) {
+            throw new Error(
+              `Geocoding failed: ${data.status} - ${
+                data.error_message || "No results"
+              }`
+            );
+          }
+
+          // Use the most specific result
+          const formattedAddress = data.results[0].formatted_address;
+          setLocationInput(formattedAddress);
+          setIsLoadingLocation(false);
+          console.log(`Location detected: ${formattedAddress}`);
+        } catch (error) {
+          console.error("Geocoding error:", error);
+          setLocationError(
+            `Failed to get address: ${error.message}. Please try again or enter manually.`
+          );
+          setIsLoadingLocation(false);
+
+          // Fallback: Use approximate location if geocoding fails
+          if (error.message.includes("No results")) {
+            setLocationInput(
+              `Approximate location near ${position.coords.latitude}, ${position.coords.longitude}`
+            );
+          }
+        }
+      },
+      (error) => {
+        setIsLoadingLocation(false);
+        const errorMessage =
+          {
+            1: "Location access denied. Please enable location permissions and try again.",
+            2: "Location information is unavailable. Please check your GPS settings or move to an open area.",
+            3: "Location request timed out. Please try again later.",
+            default: "An unknown error occurred while getting location.",
+          }[error.code] || "An unknown error occurred while getting location.";
+        setLocationError(errorMessage);
+        console.error("Geolocation error:", error);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 20000,
+        maximumAge: 10000,
+      }
+    );
+  };
+
+  // Handle location selection from autocomplete
+  const handleSelect = async (address) => {
+    setLocationInput(address);
+    try {
+      const results = await geocodeByAddress(address);
+      const latLng = await getLatLng(results[0]);
+      console.log(`Selected location: ${address}, Coordinates:`, latLng);
+    } catch (error) {
+      console.error("Error selecting location:", error);
+      setLocationError("Failed to process location. Please try again.");
+    }
+  };
+
   const scrollToSection = (sectionId) => {
     const element = document.getElementById(sectionId);
     if (element) {
@@ -138,6 +294,16 @@ const QuickNestLanding = () => {
     }
     setIsMenuOpen(false);
   };
+
+  // Fallback if script fails to load
+  if (!isGoogleMapsLoaded && !isScriptLoading) {
+    return (
+      <div className="p-4 text-center text-red-600">
+        Failed to load location services. Please refresh the page or check your
+        internet connection.
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white w-full">
@@ -156,37 +322,105 @@ const QuickNestLanding = () => {
               </div>
             </div>
 
-            <div className="hidden md:block">
-              <div className="ml-10 flex items-baseline space-x-8">
-                <button
-                  onClick={() => navigate("/service")}
-                  className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors"
+            <div className="hidden md:flex items-center space-x-4">
+              {isGoogleMapsLoaded ? (
+                <PlacesAutocomplete
+                  value={locationInput}
+                  onChange={setLocationInput}
+                  onSelect={handleSelect}
                 >
-                  Services
-                </button>
-                <button
-                  onClick={() => scrollToSection("how-it-works")}
-                  className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors"
-                >
-                  How it Works
-                </button>
-                <button
-                  onClick={() => scrollToSection("testimonials")}
-                  className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors"
-                >
-                  Reviews
-                </button>
-                <Link to="/login">
-                  <Button variant="outline" className="mr-2 bg-transparent">
-                    Sign In
-                  </Button>
-                </Link>
-                <Link to="/register">
-                  <Button className="bg-emerald-600 hover:bg-emerald-700">
-                    Get Started
-                  </Button>
-                </Link>
-              </div>
+                  {({
+                    getInputProps,
+                    suggestions,
+                    getSuggestionItemProps,
+                    loading,
+                  }) => (
+                    <div className="relative flex-1 max-w-xs">
+                      <Input
+                        {...getInputProps({
+                          placeholder: "Enter your location or service...",
+                          className: "h-10 text-base pr-10",
+                        })}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-1 top-1 h-8 w-8 p-0 hover:bg-emerald-50"
+                        onClick={getCurrentLocation}
+                        disabled={isLoadingLocation}
+                        title="Use current location"
+                      >
+                        {isLoadingLocation ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                        ) : (
+                          <Navigation className="w-4 h-4 text-emerald-600" />
+                        )}
+                      </Button>
+                      {suggestions.length > 0 && (
+                        <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-md shadow-lg mt-1">
+                          {loading && (
+                            <div className="p-2 text-gray-500">Loading...</div>
+                          )}
+                          {suggestions.map((suggestion, index) => {
+                            const suggestionProps = getSuggestionItemProps(
+                              suggestion,
+                              {
+                                className: `p-2 cursor-pointer hover:bg-gray-100 ${
+                                  suggestion.active ? "bg-gray-100" : ""
+                                }`,
+                              }
+                            );
+                            // Extract key and spread remaining props
+                            const { key, ...restProps } = suggestionProps;
+                            return (
+                              <div key={key || index} {...restProps}>
+                                {suggestion.description}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </PlacesAutocomplete>
+              ) : (
+                <div className="flex-1 max-w-xs">
+                  <Input
+                    placeholder="Loading location services..."
+                    className="h-10 text-base"
+                    disabled
+                  />
+                </div>
+              )}
+              <button
+                onClick={() => navigate("/service")}
+                className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors"
+              >
+                Services
+              </button>
+              <button
+                onClick={() => scrollToSection("how-it-works")}
+                className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors"
+              >
+                How it Works
+              </button>
+              <button
+                onClick={() => scrollToSection("testimonials")}
+                className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors"
+              >
+                Reviews
+              </button>
+              <Link to="/login">
+                <Button variant="outline" className="mr-2 bg-transparent">
+                  Sign In
+                </Button>
+              </Link>
+              <Link to="/register">
+                <Button className="bg-emerald-600 hover:bg-emerald-700">
+                  Get Started
+                </Button>
+              </Link>
             </div>
 
             <div className="md:hidden">
@@ -209,6 +443,83 @@ const QuickNestLanding = () => {
         {isMenuOpen && (
           <div className="md:hidden">
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t">
+              {isGoogleMapsLoaded ? (
+                <PlacesAutocomplete
+                  value={locationInput}
+                  onChange={setLocationInput}
+                  onSelect={handleSelect}
+                >
+                  {({
+                    getInputProps,
+                    suggestions,
+                    getSuggestionItemProps,
+                    loading,
+                  }) => (
+                    <div className="px-3 py-2 relative">
+                      <Input
+                        {...getInputProps({
+                          placeholder: "Enter your location or service...",
+                          className: "h-10 text-base pr-10",
+                        })}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-4 top-3 h-8 w-8 p-0 hover:bg-emerald-50"
+                        onClick={getCurrentLocation}
+                        disabled={isLoadingLocation}
+                        title="Use current location"
+                      >
+                        {isLoadingLocation ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                        ) : (
+                          <Navigation className="w-4 h-4 text-emerald-600" />
+                        )}
+                      </Button>
+                      {suggestions.length > 0 && (
+                        <div className="absolute z-10 w-[calc(100%-24px)] bg-white border border-gray-200 rounded-md shadow-lg mt-1">
+                          {loading && (
+                            <div className="p-2 text-gray-500">Loading...</div>
+                          )}
+                          {suggestions.map((suggestion, index) => {
+                            const suggestionProps = getSuggestionItemProps(
+                              suggestion,
+                              {
+                                className: `p-2 cursor-pointer hover:bg-gray-100 ${
+                                  suggestion.active ? "bg-gray-100" : ""
+                                }`,
+                              }
+                            );
+                            // Extract key and spread remaining props
+                            const { key, ...restProps } = suggestionProps;
+                            return (
+                              <div key={key || index} {...restProps}>
+                                {suggestion.description}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </PlacesAutocomplete>
+              ) : (
+                <div className="px-3 py-2">
+                  <Input
+                    placeholder="Loading location services..."
+                    className="h-10 text-base"
+                    disabled
+                  />
+                </div>
+              )}
+              {locationError && (
+                <div className="px-3 py-2">
+                  <div className="p-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                    {locationError}
+                  </div>
+                </div>
+              )}
               <button
                 onClick={() => scrollToSection("services")}
                 className="block w-full text-left px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900"
@@ -267,19 +578,6 @@ const QuickNestLanding = () => {
                 got you covered with live tracking and secure payments.
               </p>
               <div className="mt-8 sm:max-w-lg sm:mx-auto sm:text-center lg:text-left lg:mx-0">
-                <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                  <Input
-                    placeholder="Enter your location or service needed..."
-                    className="flex-1 h-12 text-base"
-                  />
-                  <Button
-                    size="lg"
-                    className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 h-12"
-                  >
-                    Find Services
-                    <ArrowRight className="ml-2 w-4 h-4" />
-                  </Button>
-                </div>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Button
                     size="lg"
@@ -297,19 +595,19 @@ const QuickNestLanding = () => {
                     Watch Demo
                   </Button>
                 </div>
-              </div>
-              <div className="mt-8 flex flex-wrap items-center justify-center lg:justify-start gap-6 text-sm text-gray-500">
-                <div className="flex items-center">
-                  <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
-                  Verified Professionals
-                </div>
-                <div className="flex items-center">
-                  <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
-                  Secure Payments
-                </div>
-                <div className="flex items-center">
-                  <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
-                  24/7 Support
+                <div className="mt-8 flex flex-wrap items-center justify-center lg:justify-start gap-6 text-sm text-gray-500">
+                  <div className="flex items-center">
+                    <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
+                    Verified Professionals
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
+                    Secure Payments
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
+                    24/7 Support
+                  </div>
                 </div>
               </div>
             </div>
