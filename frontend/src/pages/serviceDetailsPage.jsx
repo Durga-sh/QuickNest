@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import apiService from "../api/provider";
 import ProviderDetailsModal from "../components/ProvideDetails";
+import BookingModal from "../components/BookimgModal";
 
 const AllServicesPage = () => {
   const [providers, setProviders] = useState([]);
@@ -29,7 +30,9 @@ const AllServicesPage = () => {
   const [pagination, setPagination] = useState({});
   const [selectedProviderId, setSelectedProviderId] = useState(null);
   const [showModal, setShowModal] = useState(false);
- useState(null); // Store selected provider for booking
+  const [showBookingModal, setShowBookingModal] = useState(false); // New state for BookingModal
+  const [selectedProviderForBooking, setSelectedProviderForBooking] =
+    useState(null); // Store selected provider for booking
   const [filters, setFilters] = useState({
     skill: "",
     minPrice: "",
@@ -158,6 +161,12 @@ const AllServicesPage = () => {
       provider.user?.email
     }?subject=Service Inquiry&body=${encodeURIComponent(message)}`;
     window.open(mailtoLink, "_blank");
+  };
+
+  // Handle book now
+  const handleBookNow = (provider) => {
+    setSelectedProviderForBooking(provider);
+    setShowBookingModal(true);
   };
 
   useEffect(() => {
@@ -495,6 +504,7 @@ const AllServicesPage = () => {
                         Contact
                       </button>
                       <button
+                        onClick={() => handleBookNow(provider)}
                         className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 font-medium text-sm transition-colors"
                       >
                         Book Now
@@ -599,6 +609,18 @@ const AllServicesPage = () => {
           onClose={() => {
             setShowModal(false);
             setSelectedProviderId(null);
+          }}
+        />
+
+        {/* Booking Modal */}
+        <BookingModal
+          provider={selectedProviderForBooking}
+          isOpen={showBookingModal}
+          onClose={() => setShowBookingModal(false)}
+          onBookingSuccess={(booking) => {
+            console.log("Booking successful:", booking);
+            setShowBookingModal(false); // Close modal on success
+            // Optionally refresh providers or show a success message
           }}
         />
       </div>

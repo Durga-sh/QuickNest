@@ -9,6 +9,7 @@ import QuickNestLanding from "./pages/LandingPage";
 import ProviderDashboard from "./pages/ProviderDashboardpage";
 import CreateServicePage from "./pages/CreateServicePage";
 import AllServicesPage from "./pages/serviceDetailsPage";
+import UserBookings from "./pages/UserBooking";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -36,9 +37,17 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/my-bookings"
+        element={
+          <ProtectedRoute>
+           <UserBookings/>
+          </ProtectedRoute>
+        }
+      />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      <Route path="/service" element={<AllServicesPage/>} />
+      <Route path="/service" element={<AllServicesPage />} />
     </Routes>
   );
 };
