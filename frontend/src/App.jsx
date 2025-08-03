@@ -4,6 +4,8 @@ import { BrowserRouter as Router } from "react-router-dom";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import AppRoutes from "./Routes.jsx";
+import Header from "./components/Header.jsx";
+import Footer from "./components/Footer.jsx";
 
 import "./index.css";
 
@@ -20,9 +22,11 @@ function App() {
       <AuthProvider>
         <Router>
           <div className="w-full min-h-screen">
+            <Header />
             <main className="main-content">
               <AppRoutes />
             </main>
+            <Footer />
           </div>
         </Router>
       </AuthProvider>
