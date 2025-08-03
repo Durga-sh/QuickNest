@@ -226,9 +226,14 @@ exports.getAllProviders = async (req, res) => {
       isActive: true,
     };
 
-    // Add skill filter if provided
+    // Enhanced skill filter - support partial matches and case-insensitive search
     if (skill) {
-      filter.skills = { $in: [skill] };
+      // Create a case-insensitive regex for partial matching
+      const skillRegex = new RegExp(
+        skill.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "i"
+      );
+      filter.skills = { $in: [skillRegex] };
     }
 
     // Add price filter if provided
@@ -247,7 +252,11 @@ exports.getAllProviders = async (req, res) => {
       const coordinates = location
         .split(",")
         .map((coord) => parseFloat(coord.trim()));
-      if (coordinates.length === 2) {
+      if (
+        coordinates.length === 2 &&
+        !isNaN(coordinates[0]) &&
+        !isNaN(coordinates[1])
+      ) {
         aggregationPipeline.unshift({
           $geoNear: {
             near: {
@@ -287,6 +296,7 @@ exports.getAllProviders = async (req, res) => {
           totalReviews: 1,
           totalJobs: 1,
           createdAt: 1,
+          status: 1,
           distance: { $ifNull: ["$distance", null] },
           user: {
             name: "$user.name",
@@ -378,7 +388,7 @@ exports.getAvailableSkills = async (req, res) => {
   }
 };
 
-// Search providers by text
+// Enhanced search providers by text with better matching
 exports.searchProviders = async (req, res) => {
   try {
     const { query, page = 1, limit = 10 } = req.query;
@@ -387,7 +397,11 @@ exports.searchProviders = async (req, res) => {
       return res.status(400).json({ message: "Search query is required" });
     }
 
-    const searchRegex = new RegExp(query, "i");
+    // Create case-insensitive regex for search
+    const searchRegex = new RegExp(
+      query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+      "i"
+    );
 
     const providers = await Provider.find({
       status: "approved",
@@ -444,6 +458,140 @@ exports.searchProviders = async (req, res) => {
     });
   } catch (error) {
     console.error("Search providers error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Get providers by specific skill/service type (new method for better service type filtering)
+exports.getProvidersBySkill = async (req, res) => {
+  try {
+    const { skill } = req.params;
+    const {
+      location,
+      radius = 50,
+      minPrice,
+      maxPrice,
+      page = 1,
+      limit = 10,
+      sortBy = "rating",
+      sortOrder = "desc",
+    } = req.query;
+
+    if (!skill) {
+      return res.status(400).json({ message: "Skill parameter is required" });
+    }
+
+    // Build filter for exact skill match (case-insensitive)
+    const filter = {
+      status: "approved",
+      isActive: true,
+      skills: { $regex: new RegExp(`^${skill}$`, "i") }, // Exact match, case-insensitive
+    };
+
+    // Add price filter if provided
+    if (minPrice || maxPrice) {
+      const priceFilter = {};
+      if (minPrice) priceFilter.$gte = parseFloat(minPrice);
+      if (maxPrice) priceFilter.$lte = parseFloat(maxPrice);
+      filter["pricing.price"] = priceFilter;
+    }
+
+    let aggregationPipeline = [{ $match: filter }];
+
+    // Add location-based filtering if coordinates provided
+    if (location) {
+      const coordinates = location
+        .split(",")
+        .map((coord) => parseFloat(coord.trim()));
+      if (
+        coordinates.length === 2 &&
+        !isNaN(coordinates[0]) &&
+        !isNaN(coordinates[1])
+      ) {
+        aggregationPipeline.unshift({
+          $geoNear: {
+            near: {
+              type: "Point",
+              coordinates: coordinates,
+            },
+            distanceField: "distance",
+            maxDistance: radius * 1000,
+            spherical: true,
+          },
+        });
+      }
+    }
+
+    // Add population and projection
+    aggregationPipeline.push(
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      {
+        $unwind: "$user",
+      },
+      {
+        $project: {
+          _id: 1,
+          userId: 1,
+          skills: 1,
+          location: 1,
+          pricing: 1,
+          availability: 1,
+          rating: 1,
+          totalReviews: 1,
+          totalJobs: 1,
+          createdAt: 1,
+          distance: { $ifNull: ["$distance", null] },
+          user: {
+            name: "$user.name",
+            email: "$user.email",
+          },
+        },
+      }
+    );
+
+    // Add sorting
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
+    aggregationPipeline.push({ $sort: sortOptions });
+
+    // Execute aggregation
+    const providers = await Provider.aggregate(aggregationPipeline);
+
+    // Apply pagination
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+    const paginatedProviders = providers.slice(startIndex, endIndex);
+
+    const totalProviders = providers.length;
+    const totalPages = Math.ceil(totalProviders / limit);
+
+    res.status(200).json({
+      success: true,
+      data: paginatedProviders,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalProviders,
+        hasNextPage: endIndex < totalProviders,
+        hasPrevPage: startIndex > 0,
+      },
+      skill: skill,
+      filters: {
+        location,
+        radius,
+        minPrice,
+        maxPrice,
+      },
+    });
+  } catch (error) {
+    console.error("Get providers by skill error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

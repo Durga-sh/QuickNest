@@ -10,6 +10,7 @@ import ProviderDashboard from "./pages/ProviderDashboardpage";
 import CreateServicePage from "./pages/CreateServicePage";
 import AllServicesPage from "./pages/serviceDetailsPage";
 import UserBookings from "./pages/UserBooking";
+import ServicesPage from "./pages/servicesPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -41,13 +42,14 @@ const AppRoutes = () => {
         path="/my-bookings"
         element={
           <ProtectedRoute>
-           <UserBookings/>
+            <UserBookings />
           </ProtectedRoute>
         }
       />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/service" element={<AllServicesPage />} />
+      <Route path="/services" element={<ServicesPage />} />
     </Routes>
   );
 };

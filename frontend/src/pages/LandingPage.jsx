@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
@@ -22,44 +22,62 @@ import {
 } from "lucide-react";
 
 const QuickNestLanding = () => {
+  const navigate = useNavigate();
+
   const services = [
     {
       icon: Wrench,
       name: "Plumbing",
       description: "Expert plumbers for all your needs",
       color: "bg-blue-500",
+      serviceType: "plumbing", // Added service type for filtering
     },
     {
       icon: Zap,
       name: "Electrical",
       description: "Licensed electricians available 24/7",
       color: "bg-yellow-500",
+      serviceType: "electrical",
     },
     {
       icon: Scissors,
       name: "Beauty & Salon",
       description: "Professional beauticians at your doorstep",
       color: "bg-pink-500",
+      serviceType: "beauty",
     },
     {
       icon: Paintbrush,
       name: "Painting",
       description: "Transform your space with skilled painters",
       color: "bg-green-500",
+      serviceType: "painting",
     },
     {
       icon: Car,
       name: "Auto Repair",
       description: "Mobile mechanics for your vehicle",
       color: "bg-red-500",
+      serviceType: "auto repair",
     },
     {
       icon: Home,
       name: "Home Cleaning",
       description: "Thorough cleaning services",
       color: "bg-purple-500",
+      serviceType: "cleaning",
     },
   ];
+
+  // Handle service booking navigation
+  const handleBookService = (serviceType, serviceName) => {
+    // Navigate to services page with the selected service type as a filter
+    navigate(
+      `/services?skill=${encodeURIComponent(
+        serviceType
+      )}&category=${encodeURIComponent(serviceName)}`
+    );
+  };
 
   const features = [
     {
@@ -148,6 +166,7 @@ const QuickNestLanding = () => {
                   <Button
                     size="lg"
                     className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"
+                    onClick={() => navigate("/services")}
                   >
                     Book a Service
                     <ArrowRight className="ml-2 w-4 h-4" />
@@ -239,6 +258,9 @@ const QuickNestLanding = () => {
                   <Button
                     variant="ghost"
                     className="text-emerald-600 hover:text-emerald-700 p-0"
+                    onClick={() =>
+                      handleBookService(service.serviceType, service.name)
+                    }
                   >
                     Book Now <ArrowRight className="ml-1 w-4 h-4" />
                   </Button>

@@ -16,6 +16,11 @@ router.get("/profile", isAuthenticated, providerController.getProviderProfile);
 router.get("/all", providerController.getAllProviders);
 router.get("/skills", providerController.getAvailableSkills);
 router.get("/search", providerController.searchProviders);
+
+// New route for getting providers by specific skill
+router.get("/skill/:skill", providerController.getProvidersBySkill);
+
+// Keep this last to avoid conflicts with other routes
 router.get("/:providerId", providerController.getProviderById);
 
 module.exports = router;
