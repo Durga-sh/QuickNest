@@ -91,6 +91,18 @@ export const login = async (credentials) => {
   }
 };
 
+// Logout user
+export const logout = async () => {
+  try {
+    // Remove token from localStorage
+    localStorage.removeItem("token");
+    return { success: true, message: "Logged out successfully" };
+  } catch (error) {
+    console.error("Logout error:", error);
+    throw new Error("Failed to logout");
+  }
+};
+
 // Forgot Password - Send reset OTP
 export const forgotPassword = async (email) => {
   const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {

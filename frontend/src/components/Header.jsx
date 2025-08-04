@@ -7,6 +7,7 @@ import PlacesAutocomplete, {
   getLatLng,
 } from "react-places-autocomplete";
 import { Home, Menu, X, Navigation, Loader2, Search } from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
 
 const loadGoogleMapsScript = (callback) => {
   if (window.google && window.google.maps) {
@@ -38,6 +39,7 @@ const loadGoogleMapsScript = (callback) => {
 
 const Header = () => {
   const navigate = useNavigate();
+  const { user, logoutUser } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [locationInput, setLocationInput] = useState("");
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
@@ -103,6 +105,8 @@ const Header = () => {
           const formattedAddress = data.results[0].formatted_address;
           setLocationInput(formattedAddress);
           setIsLoadingLocation(false);
+          // Navigate to services page with location coordinates
+          navigate(`/service?location=${latitude},${longitude}`);
         } catch (error) {
           console.error("Geocoding error:", error);
           setLocationError(
@@ -134,8 +138,10 @@ const Header = () => {
     setLocationInput(address);
     try {
       const results = await geocodeByAddress(address);
-      const latLng = await getLatLng(results[0]);
-      console.log(`Selected location: ${address}, Coordinates:`, latLng);
+      const { lat, lng } = await getLatLng(results[0]);
+      console.log(`Selected location: ${address}, Coordinates:`, { lat, lng });
+      // Navigate to services page with location coordinates
+      navigate(`/service?location=${lat},${lng}`);
     } catch (error) {
       console.error("Error selecting location:", error);
       setLocationError("Failed to process location. Please try again.");
@@ -148,6 +154,15 @@ const Header = () => {
       element.scrollIntoView({ behavior: "smooth" });
     }
     setIsMenuOpen(false);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      navigate("/"); // Redirect to home page after logout
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   return (
@@ -242,31 +257,41 @@ const Header = () => {
             >
               Services
             </button>
-            <button
-              onClick={() => scrollToSection("how-it-works")}
-              className="text-white hover:text-gray-200 font-medium transition-colors"
-            >
-              How it Works
-            </button>
-            <button
-              onClick={() => scrollToSection("testimonials")}
-              className="text-white hover:text-gray-200 font-medium transition-colors"
-            >
-              Reviews
-            </button>
-            <Link to="/login">
-              <Button
-                variant="outline"
-                className="border-white/20 text-white hover:bg-white/10"
-              >
-                Sign In
-              </Button>
-            </Link>
-            <Link to="/register">
-              <Button className="bg-white text-emerald-700 hover:bg-gray-100">
-                Get Started
-              </Button>
-            </Link>
+            {user ? (
+              <>
+                <Link to="/my-bookings">
+                  <Button
+                    variant="outline"
+                    className="border-white/20 text-white hover:bg-white/10"
+                  >
+                    My Bookings
+                  </Button>
+                </Link>
+                <Button
+                  variant="outline"
+                  className="border-white/20 text-white hover:bg-white/10"
+                  onClick={handleLogout}
+                >
+                  Log Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link to="/login">
+                  <Button
+                    variant="outline"
+                    className="border-white/20 text-white hover:bg-white/10"
+                  >
+                    Sign In
+                  </Button>
+                </Link>
+                <Link to="/register">
+                  <Button className="bg-white text-emerald-700 hover:bg-gray-100">
+                    Get Started
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           <div className="md:hidden">
@@ -381,21 +406,41 @@ const Header = () => {
               >
                 Reviews
               </button>
-              <div className="space-y-2">
-                <Link to="/login" className="block w-full">
+              {user ? (
+                <div className="space-y-2">
+                  <Link to="/my-bookings" className="block w-full">
+                    <Button
+                      variant="outline"
+                      className="w-full border-white/20 text-white hover:bg-white/10"
+                    >
+                      My Bookings
+                    </Button>
+                  </Link>
                   <Button
                     variant="outline"
                     className="w-full border-white/20 text-white hover:bg-white/10"
+                    onClick={handleLogout}
                   >
-                    Sign In
+                    Log Out
                   </Button>
-                </Link>
-                <Link to="/register" className="block w-full">
-                  <Button className="w-full bg-white text-emerald-700 hover:bg-gray-100">
-                    Get Started
-                  </Button>
-                </Link>
-              </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Link to="/login" className="block w-full">
+                    <Button
+                      variant="outline"
+                      className="w-full border-white/20 text-white hover:bg-white/10"
+                    >
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link to="/register" className="block w-full">
+                    <Button className="w-full bg-white text-emerald-700 hover:bg-gray-100">
+                      Get Started
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </Fragment>
           </div>
         </div>

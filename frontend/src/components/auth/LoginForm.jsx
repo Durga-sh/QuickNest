@@ -28,7 +28,12 @@ const LoginForm = () => {
     try {
       const { user, token } = await login(formData);
       loginUser(user, token);
-      navigate("/provider-dashboard");
+      // Check if user is a provider and redirect accordingly
+      if (user.role === "provider") {
+        navigate("/provider-dashboard");
+      } else {
+        navigate("/");
+      }
     } catch (err) {
       console.error("Login error:", err);
       setFormError(err.message || "Failed to login. Please try again.");

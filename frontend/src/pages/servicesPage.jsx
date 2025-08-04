@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
+import BookingModal from "../components/BookimgModal";
 import { Input } from "../components/ui/input";
 import {
   Star,
@@ -30,6 +31,9 @@ const ServicesPage = () => {
   const [providers, setProviders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+    const [showBookingModal, setShowBookingModal] = useState(false); // New state for BookingModal
+    const [selectedProviderForBooking, setSelectedProviderForBooking] =
+      useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
     skill: selectedSkill,
@@ -70,6 +74,11 @@ const ServicesPage = () => {
       setLoading(false);
     }
   };
+
+  const handleBookNow = (provider) => {
+      setSelectedProviderForBooking(provider);
+      setShowBookingModal(true);
+    };
 
   // Fetch available skills for filter dropdown
   const fetchAvailableSkills = async () => {
@@ -145,10 +154,7 @@ const ServicesPage = () => {
     return `${(distance / 1000).toFixed(1)} km away`;
   };
 
-  // Handle provider booking
-  const handleBookProvider = (providerId) => {
-    navigate(`/booking/${providerId}`);
-  };
+  // Handle provider bookin
 
   useEffect(() => {
     fetchProviders();
@@ -469,7 +475,7 @@ const ServicesPage = () => {
                         {/* Action Buttons */}
                         <div className="lg:ml-6 mt-4 lg:mt-0 flex flex-col space-y-2 lg:w-48">
                           <Button
-                            onClick={() => handleBookProvider(provider._id)}
+                            onClick={() => handleBookNow(provider)}
                             className="bg-emerald-600 hover:bg-emerald-700"
                           >
                             <Calendar className="w-4 h-4 mr-2" />
@@ -495,6 +501,17 @@ const ServicesPage = () => {
                 ))}
               </div>
             )}
+
+            <BookingModal
+              provider={selectedProviderForBooking}
+              isOpen={showBookingModal}
+              onClose={() => setShowBookingModal(false)}
+              onBookingSuccess={(booking) => {
+                console.log("Booking successful:", booking);
+                setShowBookingModal(false); // Close modal on success
+                // Optionally refresh providers or show a success message
+              }}
+            />
           </div>
         </div>
       </div>
