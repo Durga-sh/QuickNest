@@ -1,7 +1,7 @@
 const Provider = require("../model/Provider");
 const User = require("../model/User");
 
-// Register a new provider profile
+// Register a new provider profile OR add services to existing provider
 exports.registerProvider = async (req, res) => {
   try {
     const { userId, skills, location, pricing, availability } = req.body;
@@ -16,13 +16,13 @@ exports.registerProvider = async (req, res) => {
 
     // Check if provider profile already exists
     const existingProvider = await Provider.findOne({ userId });
+
     if (existingProvider) {
-      return res
-        .status(400)
-        .json({ message: "Provider profile already exists" });
+      // If provider exists, add new services instead of creating new profile
+      return this.addServicesToProvider(req, res, existingProvider);
     }
 
-    // Validate location
+    // Validate location for new provider
     if (!location || !location.coordinates || !location.address) {
       return res.status(400).json({ message: "Location details are required" });
     }
@@ -65,7 +65,202 @@ exports.registerProvider = async (req, res) => {
   }
 };
 
-// Update provider profile
+// Add services to existing provider
+exports.addServicesToProvider = async (req, res, existingProvider = null) => {
+  try {
+    const { userId, skills, pricing, availability } = req.body;
+
+    let provider = existingProvider;
+
+    if (!provider) {
+      // If not called from registerProvider, find the provider
+      const user = await User.findById(userId);
+      if (!user || user.role !== "provider") {
+        return res
+          .status(403)
+          .json({ message: "User is not authorized as a provider" });
+      }
+
+      provider = await Provider.findOne({ userId });
+      if (!provider) {
+        return res.status(404).json({
+          message:
+            "Provider profile not found. Please create a provider profile first.",
+        });
+      }
+    }
+
+    // Add new skills (avoid duplicates)
+    if (skills && Array.isArray(skills)) {
+      const newSkills = skills.filter(
+        (skill) => !provider.skills.includes(skill)
+      );
+      provider.skills = [...provider.skills, ...newSkills];
+    }
+
+    // Add new pricing services
+    if (pricing && Array.isArray(pricing)) {
+      const newPricingServices = pricing.filter(
+        (newService) =>
+          !provider.pricing.some(
+            (existingService) =>
+              existingService.service.toLowerCase() ===
+              newService.service.toLowerCase()
+          )
+      );
+      provider.pricing = [...provider.pricing, ...newPricingServices];
+    }
+
+    // Merge availability (avoid duplicate days, merge time slots for same day)
+    if (availability && Array.isArray(availability)) {
+      const transformedNewAvailability = availability.map((slot) => ({
+        day: slot.day,
+        timeSlots: [
+          {
+            start: slot.from,
+            end: slot.to,
+          },
+        ],
+      }));
+
+      transformedNewAvailability.forEach((newAvail) => {
+        const existingDayIndex = provider.availability.findIndex(
+          (existing) => existing.day === newAvail.day
+        );
+
+        if (existingDayIndex !== -1) {
+          // Day exists, add new time slots
+          provider.availability[existingDayIndex].timeSlots = [
+            ...provider.availability[existingDayIndex].timeSlots,
+            ...newAvail.timeSlots,
+          ];
+        } else {
+          // New day, add it
+          provider.availability.push(newAvail);
+        }
+      });
+    }
+
+    await provider.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Services added to provider profile successfully.",
+      provider: {
+        id: provider._id,
+        userId: provider.userId,
+        skills: provider.skills,
+        location: provider.location,
+        pricing: provider.pricing,
+        availability: provider.availability,
+        status: provider.status,
+      },
+    });
+  } catch (error) {
+    console.error("Add services error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// New endpoint specifically for adding services to existing provider
+exports.addServices = async (req, res) => {
+  try {
+    const userId = req.user.id; // Get from authenticated user
+    const { skills, pricing, availability } = req.body;
+
+    // Check if user is a provider
+    const user = await User.findById(userId);
+    if (!user || user.role !== "provider") {
+      return res
+        .status(403)
+        .json({ message: "User is not authorized as a provider" });
+    }
+
+    // Find provider profile
+    const provider = await Provider.findOne({ userId });
+    if (!provider) {
+      return res.status(404).json({
+        message:
+          "Provider profile not found. Please create a provider profile first.",
+      });
+    }
+
+    // Prepare request body for addServicesToProvider
+    req.body.userId = userId;
+
+    // Call addServicesToProvider
+    return this.addServicesToProvider(req, res, provider);
+  } catch (error) {
+    console.error("Add services endpoint error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Remove a specific service from provider
+exports.removeService = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { serviceName } = req.params;
+
+    // Check if user is a provider
+    const user = await User.findById(userId);
+    if (!user || user.role !== "provider") {
+      return res
+        .status(403)
+        .json({ message: "User is not authorized as a provider" });
+    }
+
+    // Find provider profile
+    const provider = await Provider.findOne({ userId });
+    if (!provider) {
+      return res.status(404).json({ message: "Provider profile not found" });
+    }
+
+    // Remove the service from pricing
+    const serviceIndex = provider.pricing.findIndex(
+      (service) => service.service.toLowerCase() === serviceName.toLowerCase()
+    );
+
+    if (serviceIndex === -1) {
+      return res.status(404).json({ message: "Service not found" });
+    }
+
+    provider.pricing.splice(serviceIndex, 1);
+
+    // Remove skill if no other services use it
+    const serviceSkill = provider.pricing.find(
+      (service) => service.service.toLowerCase() === serviceName.toLowerCase()
+    );
+
+    if (!serviceSkill) {
+      const skillIndex = provider.skills.findIndex(
+        (skill) => skill.toLowerCase() === serviceName.toLowerCase()
+      );
+      if (skillIndex !== -1) {
+        provider.skills.splice(skillIndex, 1);
+      }
+    }
+
+    await provider.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Service removed successfully",
+      provider: {
+        id: provider._id,
+        userId: provider.userId,
+        skills: provider.skills,
+        pricing: provider.pricing,
+        availability: provider.availability,
+      },
+    });
+  } catch (error) {
+    console.error("Remove service error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Update provider profile (keep existing functionality)
 exports.updateProviderProfile = async (req, res) => {
   try {
     const { skills, location, pricing, availability } = req.body;
@@ -220,20 +415,17 @@ exports.getAllProviders = async (req, res) => {
       sortOrder = "desc",
     } = req.query;
 
+
     // Build filter object
     const filter = {
       status: "approved",
       isActive: true,
     };
 
-    // Enhanced skill filter - support partial matches and case-insensitive search
+    // Filter by service (pricing.service) instead of skills array for exact match
     if (skill) {
-      // Create a case-insensitive regex for partial matching
-      const skillRegex = new RegExp(
-        skill.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "i"
-      );
-      filter.skills = { $in: [skillRegex] };
+      const skillRegex = new RegExp(`^${skill}$`, "i"); // Exact match, case-insensitive
+      filter["pricing.service"] = skillRegex;
     }
 
     // Add price filter if provided
@@ -311,8 +503,11 @@ exports.getAllProviders = async (req, res) => {
     sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
     aggregationPipeline.push({ $sort: sortOptions });
 
+
     // Execute aggregation
     const providers = await Provider.aggregate(aggregationPipeline);
+
+;
 
     // Apply pagination
     const startIndex = (page - 1) * limit;
@@ -377,6 +572,7 @@ exports.getAvailableSkills = async (req, res) => {
         },
       },
     ]);
+
 
     res.status(200).json({
       success: true,
@@ -561,8 +757,11 @@ exports.getProvidersBySkill = async (req, res) => {
     sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
     aggregationPipeline.push({ $sort: sortOptions });
 
+
+
     // Execute aggregation
     const providers = await Provider.aggregate(aggregationPipeline);
+
 
     // Apply pagination
     const startIndex = (page - 1) * limit;

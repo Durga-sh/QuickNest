@@ -8,11 +8,13 @@ import {
   DollarSign,
   User,
   Navigation,
+  AlertCircle,
+  CheckCircle,
+  Info,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import apiService from "../api/provider";
 import { useNavigate } from "react-router-dom";
-
 // Define available service types for dropdowns
 const serviceTypes = [
   "Plumbing",
@@ -28,11 +30,14 @@ const serviceTypes = [
 ];
 
 // Replace with your actual Google Geocoding API key
-const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+const GOOGLE_API_KEY = "YOUR_GOOGLE_API_KEY";
 
 const CreateServicePage = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const [existingProvider, setExistingProvider] = useState(null);
+  const [isAddingToExisting, setIsAddingToExisting] = useState(false);
+  const [demoMode, setDemoMode] = useState(true); // Toggle for demonstration
   const [formData, setFormData] = useState({
     skills: [""],
     location: {
@@ -46,21 +51,78 @@ const CreateServicePage = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [geolocationError, setGeolocationError] = useState("");
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const autocompleteRef = useRef(null);
+
+  // Check for existing provider profile on component mount
+  useEffect(() => {
+    const checkExistingProvider = async () => {
+      if (!isAuthenticated) return;
+
+      setIsLoadingProfile(true);
+      try {
+        const response = await apiService.getProviderProfile();
+        if (response.success && response.provider) {
+          setExistingProvider(response.provider);
+          setIsAddingToExisting(true);
+          // Pre-fill location data from existing profile
+          setFormData((prev) => ({
+            ...prev,
+            location: response.provider.location,
+          }));
+        }
+      } catch (error) {
+        // Provider profile doesn't exist, which is fine for new registrations
+        console.log("No existing provider profile found");
+        setExistingProvider(null);
+        setIsAddingToExisting(false);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+
+    if (demoMode) {
+      checkExistingProvider();
+    } else {
+      setIsLoadingProfile(false);
+    }
+  }, [isAuthenticated, demoMode]);
 
   // Initialize Google Places Autocomplete
   useEffect(() => {
+    // Mock Google Maps functionality for demonstration
+    if (!GOOGLE_API_KEY || GOOGLE_API_KEY === "YOUR_GOOGLE_API_KEY") {
+      console.log(
+        "Google Maps API key not configured - using mock functionality"
+      );
+      return;
+    }
+
     const loadGoogleScript = () => {
+      // Check if script already exists
+      if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+        initAutocomplete();
+        return;
+      }
+
       const script = document.createElement("script");
       script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_API_KEY}&libraries=places`;
       script.async = true;
       script.defer = true;
       script.onload = initAutocomplete;
+      script.onerror = () => {
+        setError("Google Maps API failed to load. Please try again later.");
+      };
       document.head.appendChild(script);
     };
 
     const initAutocomplete = () => {
-      if (window.google && window.google.maps && window.google.maps.places) {
+      if (
+        window.google &&
+        window.google.maps &&
+        window.google.maps.places &&
+        autocompleteRef.current
+      ) {
         const autocomplete = new window.google.maps.places.Autocomplete(
           autocompleteRef.current,
           { types: ["address"] }
@@ -83,21 +145,21 @@ const CreateServicePage = () => {
             setError("Please select a valid address from the suggestions");
           }
         });
-      } else {
-        setError("Google Maps API failed to load. Please try again later.");
       }
     };
 
-    loadGoogleScript();
+    if (!isLoadingProfile) {
+      loadGoogleScript();
+    }
 
     return () => {
-      // Clean up script
+      // Clean up script on unmount
       const scripts = document.querySelectorAll(
         'script[src*="maps.googleapis.com"]'
       );
       scripts.forEach((script) => script.remove());
     };
-  }, []);
+  }, [isLoadingProfile]);
 
   // Check if user is authenticated
   if (!isAuthenticated) {
@@ -121,9 +183,22 @@ const CreateServicePage = () => {
     );
   }
 
+  // Show loading state while checking for existing profile
+  if (isLoadingProfile) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your profile...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Handle getting current location
   const handleGetCurrentLocation = () => {
     if (navigator.geolocation) {
+      setGeolocationError("Getting your location...");
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
@@ -153,6 +228,11 @@ const CreateServicePage = () => {
               setGeolocationError("An unknown error occurred.");
               break;
           }
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000, // 5 minutes
         }
       );
     } else {
@@ -160,8 +240,24 @@ const CreateServicePage = () => {
     }
   };
 
-  // Fetch address using reverse geocoding with Geocoding API
+  // Fetch address using reverse geocoding
   const fetchAddressFromCoordinates = async (lat, lng) => {
+    if (!GOOGLE_API_KEY || GOOGLE_API_KEY === "YOUR_GOOGLE_API_KEY") {
+      // Mock address for demonstration
+      const mockAddress = `${lat.toFixed(4)}, ${lng.toFixed(
+        4
+      )} (Mock Address - Configure Google API Key)`;
+      setFormData((prev) => ({
+        ...prev,
+        location: {
+          ...prev.location,
+          address: mockAddress,
+        },
+      }));
+      setGeolocationError("");
+      return;
+    }
+
     try {
       const response = await fetch(
         `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_API_KEY}`
@@ -175,11 +271,13 @@ const CreateServicePage = () => {
             address: data.results[0].formatted_address,
           },
         }));
+        setGeolocationError("");
       } else {
         setGeolocationError("Unable to fetch address for the location.");
       }
     } catch (err) {
       setGeolocationError("Error fetching address. Please try again.");
+      console.error("Geocoding error:", err);
     }
   };
 
@@ -253,54 +351,95 @@ const CreateServicePage = () => {
 
   const validateForm = () => {
     setError("");
+    const errors = [];
+
+    // Validate skills
     const hasValidSkills = formData.skills.some((skill) => skill.trim() !== "");
     if (!hasValidSkills) {
-      setError("Please select at least one skill");
-      return false;
+      errors.push("Please select at least one skill");
     }
-    if (!formData.location.address.trim()) {
-      setError("Please enter or select an address");
-      return false;
+
+    // For existing providers, location validation is optional
+    if (!isAddingToExisting) {
+      if (!formData.location.address.trim()) {
+        errors.push("Please enter or select an address");
+      }
+      if (
+        !formData.location.coordinates[0] ||
+        !formData.location.coordinates[1]
+      ) {
+        errors.push(
+          "Please enter or fetch both longitude and latitude coordinates"
+        );
+      }
+
+      // Validate coordinate ranges
+      const lng = parseFloat(formData.location.coordinates[0]);
+      const lat = parseFloat(formData.location.coordinates[1]);
+      if (lng < -180 || lng > 180) {
+        errors.push("Longitude must be between -180 and 180");
+      }
+      if (lat < -90 || lat > 90) {
+        errors.push("Latitude must be between -90 and 90");
+      }
     }
-    if (
-      !formData.location.coordinates[0] ||
-      !formData.location.coordinates[1]
-    ) {
-      setError("Please enter or fetch both longitude and latitude coordinates");
-      return false;
-    }
+
+    // Validate pricing
     const hasValidPricing = formData.pricing.some(
       (p) => p.service.trim() && p.price
     );
     if (!hasValidPricing) {
-      setError("Please select at least one service with pricing");
-      return false;
+      errors.push("Please select at least one service with pricing");
     }
+
+    // Validate price values
+    const invalidPrices = formData.pricing.filter(
+      (p) => p.price && (isNaN(p.price) || parseFloat(p.price) <= 0)
+    );
+    if (invalidPrices.length > 0) {
+      errors.push("All prices must be positive numbers");
+    }
+
+    // Validate availability
     const hasValidAvailability = formData.availability.some(
       (a) => a.from && a.to
     );
     if (!hasValidAvailability) {
-      setError("Please add at least one availability time slot");
+      errors.push("Please add at least one availability time slot");
+    }
+
+    // Validate time format and logic
+    const invalidTimes = formData.availability.filter((a) => {
+      if (!a.from || !a.to) return false;
+      const fromTime = new Date(`2000-01-01T${a.from}:00`);
+      const toTime = new Date(`2000-01-01T${a.to}:00`);
+      return fromTime >= toTime;
+    });
+    if (invalidTimes.length > 0) {
+      errors.push(
+        "End time must be after start time for all availability slots"
+      );
+    }
+
+    if (errors.length > 0) {
+      setError(errors.join(". "));
       return false;
     }
+
     return true;
   };
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
+
     setIsSubmitting(true);
     setError("");
+    setSuccess("");
+
     try {
       const serviceData = {
         userId: user.id,
         skills: formData.skills.filter((skill) => skill.trim() !== ""),
-        location: {
-          coordinates: [
-            parseFloat(formData.location.coordinates[0]),
-            parseFloat(formData.location.coordinates[1]),
-          ],
-          address: formData.location.address,
-        },
         pricing: formData.pricing
           .filter((p) => p.service.trim() && p.price)
           .map((p) => ({
@@ -315,20 +454,57 @@ const CreateServicePage = () => {
             to: a.to,
           })),
       };
+
+      // Only include location for new provider registration
+      if (!isAddingToExisting) {
+        serviceData.location = {
+          coordinates: [
+            parseFloat(formData.location.coordinates[0]),
+            parseFloat(formData.location.coordinates[1]),
+          ],
+          address: formData.location.address.trim(),
+        };
+      }
+
       console.log("Service data being sent:", serviceData);
-      const response = await apiService.registerProvider(serviceData);
-      console.log("Provider registration response:", response);
-      if (response.success) {
+
+      let response;
+      if (isAddingToExisting) {
+        // Add services to existing provider
+        response = await apiService.addServicesToProvider(serviceData);
+        setSuccess("✅ Services added to your provider profile successfully!");
+      } else {
+        // Create new provider profile
+        response = await apiService.registerProvider(serviceData);
         setSuccess(
-          "Provider profile created successfully! Awaiting admin approval."
+          "✅ Provider profile created successfully! Awaiting admin approval."
         );
+      }
+
+      console.log("Provider operation response:", response);
+
+      if (response.success) {
+        // Clear form on success
+        setFormData({
+          skills: [""],
+          location: {
+            coordinates: ["", ""],
+            address: "",
+          },
+          pricing: [{ service: "", price: "" }],
+          availability: [{ day: "Monday", from: "", to: "" }],
+        });
+
+        // Navigate after delay to show success message
         setTimeout(() => {
           navigate("/provider-dashboard");
-        }, 2000);
+        }, 3000);
       }
     } catch (error) {
-      console.error("Error creating service:", error);
-      setError(error.message || "Error creating service. Please try again.");
+      console.error("Error with provider operation:", error);
+      setError(
+        `❌ ${error.message || "Error processing request. Please try again."}`
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -337,6 +513,13 @@ const CreateServicePage = () => {
   const goBack = () => {
     navigate(-1);
   };
+
+  const pageTitle = isAddingToExisting
+    ? "Add New Services"
+    : "Create Provider Service";
+  const submitButtonText = isAddingToExisting
+    ? "Add Services"
+    : "Create Provider Profile";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -354,7 +537,7 @@ const CreateServicePage = () => {
               </button>
               <div className="h-6 w-px bg-gray-300"></div>
               <h1 className="text-xl font-semibold text-gray-900">
-                Create Provider Service
+                {pageTitle}
               </h1>
             </div>
             <div className="flex items-center space-x-2 text-sm text-gray-600">
@@ -365,33 +548,113 @@ const CreateServicePage = () => {
         </div>
       </div>
 
+      {/* Demo Mode Toggle */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-blue-800">Demo Mode</h3>
+              <p className="text-xs text-blue-600 mt-1">
+                Toggle to simulate different provider scenarios
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setDemoMode(!demoMode);
+                // Reset form when toggling demo mode
+                setError("");
+                setSuccess("");
+                setIsLoadingProfile(true);
+                // Simulate checking for existing provider
+                setTimeout(() => {
+                  if (demoMode) {
+                    // Switching to real mode - no existing provider
+                    setExistingProvider(null);
+                    setIsAddingToExisting(false);
+                  } else {
+                    // Switching to demo mode - simulate existing provider
+                    setExistingProvider({
+                      user: { name: "John Doe", email: "john@example.com" },
+                      skills: ["Plumbing", "Electrical Work"],
+                      pricing: [
+                        { service: "Plumbing", price: 50 },
+                        { service: "Electrical Work", price: 75 },
+                      ],
+                    });
+                    setIsAddingToExisting(true);
+                  }
+                  setIsLoadingProfile(false);
+                }, 1000);
+              }}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                demoMode
+                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
+            >
+              {demoMode ? "Demo Mode ON" : "Demo Mode OFF"}
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           {/* Form Header */}
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
             <h2 className="text-2xl font-bold text-white">
-              Register as a Service Provider
+              {isAddingToExisting
+                ? "Add New Services to Your Profile"
+                : "Register as a Service Provider"}
             </h2>
             <p className="text-blue-100 mt-2">
-              Fill out the form below to create your provider profile
+              {isAddingToExisting
+                ? "Add more services and skills to expand your offerings"
+                : "Fill out the form below to create your provider profile"}
             </p>
+            {isAddingToExisting && existingProvider && (
+              <div className="mt-4 bg-blue-500 bg-opacity-20 rounded-lg p-4">
+                <div className="flex items-center space-x-2 text-blue-100">
+                  <CheckCircle className="h-5 w-5" />
+                  <span className="font-medium">
+                    Existing Provider Profile Found
+                  </span>
+                </div>
+                <div className="mt-2 text-sm text-blue-100">
+                  <p>Current Skills: {existingProvider.skills.join(", ")}</p>
+                  <p>
+                    Current Services:{" "}
+                    {existingProvider.pricing.map((p) => p.service).join(", ")}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Error/Success Messages */}
           {error && (
             <div className="mx-8 mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-700 text-sm">{error}</p>
+              <div className="flex items-center space-x-2">
+                <AlertCircle className="h-5 w-5 text-red-500" />
+                <p className="text-red-700 text-sm">{error}</p>
+              </div>
             </div>
           )}
           {success && (
             <div className="mx-8 mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-green-700 text-sm">{success}</p>
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="h-5 w-5 text-green-500" />
+                <p className="text-green-700 text-sm">{success}</p>
+              </div>
             </div>
           )}
           {geolocationError && (
             <div className="mx-8 mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-yellow-700 text-sm">{geolocationError}</p>
+              <div className="flex items-center space-x-2">
+                <Info className="h-5 w-5 text-yellow-500" />
+                <p className="text-yellow-700 text-sm">{geolocationError}</p>
+              </div>
             </div>
           )}
 
@@ -404,12 +667,16 @@ const CreateServicePage = () => {
                   <span className="text-blue-600 font-semibold text-sm">1</span>
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  Skills & Expertise
+                  {isAddingToExisting
+                    ? "Additional Skills & Expertise"
+                    : "Skills & Expertise"}
                 </h3>
                 <span className="text-red-500 text-sm">*</span>
               </div>
               <p className="text-gray-600 text-sm ml-10">
-                Select your professional skills and areas of expertise
+                {isAddingToExisting
+                  ? "Select additional skills to add to your existing profile"
+                  : "Select your professional skills and areas of expertise"}
               </p>
               <div className="ml-10 space-y-3">
                 {formData.skills.map((skill, index) => (
@@ -449,111 +716,117 @@ const CreateServicePage = () => {
               </div>
             </div>
 
-            {/* Location Section */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                  <span className="text-green-600 font-semibold text-sm">
-                    2
-                  </span>
+            {/* Location Section - Only show for new providers */}
+            {!isAddingToExisting && (
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                    <span className="text-green-600 font-semibold text-sm">
+                      2
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Service Location
+                  </h3>
+                  <span className="text-red-500 text-sm">*</span>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Service Location
-                </h3>
-                <span className="text-red-500 text-sm">*</span>
-              </div>
-              <p className="text-gray-600 text-sm ml-10">
-                Specify your service area and location coordinates
-              </p>
-              <div className="ml-10 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <MapPin className="h-4 w-4 inline mr-1" />
-                    Service Address
-                  </label>
-                  <input
-                    type="text"
-                    ref={autocompleteRef}
-                    value={formData.location.address}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "location",
-                        e.target.value,
-                        null,
-                        "address"
-                      )
-                    }
-                    placeholder="123 Main Street, City, State, ZIP Code"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <button
-                    onClick={handleGetCurrentLocation}
-                    className="mt-2 flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    <Navigation className="h-4 w-4" />
-                    <span>Use Current Location</span>
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+                <p className="text-gray-600 text-sm ml-10">
+                  Specify your service area and location coordinates
+                </p>
+                <div className="ml-10 space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Longitude
+                      <MapPin className="h-4 w-4 inline mr-1" />
+                      Service Address
                     </label>
                     <input
-                      type="number"
-                      step="any"
-                      value={formData.location.coordinates[0]}
+                      type="text"
+                      ref={autocompleteRef}
+                      value={formData.location.address}
                       onChange={(e) =>
                         handleInputChange(
                           "location",
                           e.target.value,
-                          0,
-                          "coordinates"
+                          null,
+                          "address"
                         )
                       }
-                      placeholder="72.8777"
+                      placeholder="123 Main Street, City, State, ZIP Code"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
+                    <button
+                      onClick={handleGetCurrentLocation}
+                      className="mt-2 flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      <Navigation className="h-4 w-4" />
+                      <span>Use Current Location</span>
+                    </button>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Latitude
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={formData.location.coordinates[1]}
-                      onChange={(e) =>
-                        handleInputChange(
-                          "location",
-                          e.target.value,
-                          1,
-                          "coordinates"
-                        )
-                      }
-                      placeholder="19.0760"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Longitude
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={formData.location.coordinates[0]}
+                        onChange={(e) =>
+                          handleInputChange(
+                            "location",
+                            e.target.value,
+                            0,
+                            "coordinates"
+                          )
+                        }
+                        placeholder="72.8777"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Latitude
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={formData.location.coordinates[1]}
+                        onChange={(e) =>
+                          handleInputChange(
+                            "location",
+                            e.target.value,
+                            1,
+                            "coordinates"
+                          )
+                        }
+                        placeholder="19.0760"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Pricing Section */}
             <div className="space-y-4">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
                   <span className="text-purple-600 font-semibold text-sm">
-                    3
+                    {isAddingToExisting ? "2" : "3"}
                   </span>
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  Services & Pricing
+                  {isAddingToExisting
+                    ? "Additional Services & Pricing"
+                    : "Services & Pricing"}
                 </h3>
                 <span className="text-red-500 text-sm">*</span>
               </div>
               <p className="text-gray-600 text-sm ml-10">
-                Select your services and their respective prices
+                {isAddingToExisting
+                  ? "Add new services and their respective prices"
+                  : "Select your services and their respective prices"}
               </p>
               <div className="ml-10 space-y-4">
                 {formData.pricing.map((pricing, index) => (
@@ -588,7 +861,7 @@ const CreateServicePage = () => {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           <DollarSign className="h-4 w-4 inline mr-1" />
-                          Price
+                          Price (per hour/service)
                         </label>
                         <div className="flex items-center space-x-2">
                           <input
@@ -604,7 +877,7 @@ const CreateServicePage = () => {
                                 "price"
                               )
                             }
-                            placeholder="400"
+                            placeholder="50.00"
                             className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                           <button
@@ -634,16 +907,20 @@ const CreateServicePage = () => {
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
                   <span className="text-orange-600 font-semibold text-sm">
-                    4
+                    {isAddingToExisting ? "3" : "4"}
                   </span>
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  Availability Schedule
+                  {isAddingToExisting
+                    ? "Additional Availability"
+                    : "Availability Schedule"}
                 </h3>
                 <span className="text-red-500 text-sm">*</span>
               </div>
               <p className="text-gray-600 text-sm ml-10">
-                Set your working hours for each day
+                {isAddingToExisting
+                  ? "Add additional working hours (will be merged with existing schedule)"
+                  : "Set your working hours for each day"}
               </p>
               <div className="ml-10 space-y-4">
                 {formData.availability.map((avail, index) => (
@@ -739,6 +1016,107 @@ const CreateServicePage = () => {
               </div>
             </div>
 
+            {/* Form Summary */}
+            <div className="bg-gray-50 rounded-lg p-6 space-y-4">
+              <h4 className="font-medium text-gray-900 flex items-center">
+                <Info className="h-5 w-5 mr-2 text-blue-500" />
+                Form Summary
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-600 font-medium">
+                    Selected Skills:
+                  </span>
+                  <div className="mt-1">
+                    {formData.skills.filter((s) => s.trim()).length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {formData.skills
+                          .filter((s) => s.trim())
+                          .map((skill, index) => (
+                            <span
+                              key={index}
+                              className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 italic">
+                        None selected
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-gray-600 font-medium">
+                    Services & Pricing:
+                  </span>
+                  <div className="mt-1">
+                    {formData.pricing.filter((p) => p.service.trim() && p.price)
+                      .length > 0 ? (
+                      <div className="space-y-1">
+                        {formData.pricing
+                          .filter((p) => p.service.trim() && p.price)
+                          .map((service, index) => (
+                            <div key={index} className="text-xs">
+                              <span className="font-medium">
+                                {service.service}:
+                              </span>{" "}
+                              ${service.price}
+                            </div>
+                          ))}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 italic">
+                        None configured
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-gray-600 font-medium">
+                    Availability:
+                  </span>
+                  <div className="mt-1">
+                    {formData.availability.filter((a) => a.from && a.to)
+                      .length > 0 ? (
+                      <div className="space-y-1">
+                        {formData.availability
+                          .filter((a) => a.from && a.to)
+                          .map((avail, index) => (
+                            <div key={index} className="text-xs">
+                              <span className="font-medium">{avail.day}:</span>{" "}
+                              {avail.from} - {avail.to}
+                            </div>
+                          ))}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 italic">
+                        No schedule set
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {!isAddingToExisting && (
+                  <div>
+                    <span className="text-gray-600 font-medium">Location:</span>
+                    <div className="mt-1">
+                      {formData.location.address ? (
+                        <span className="text-xs">
+                          {formData.location.address}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 italic">
+                          No address set
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Submit Section */}
             <div className="border-t pt-8">
               <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
@@ -750,23 +1128,94 @@ const CreateServicePage = () => {
                   {isSubmitting ? (
                     <>
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                      Creating Profile...
+                      {isAddingToExisting
+                        ? "Adding Services..."
+                        : "Creating Profile..."}
                     </>
                   ) : (
-                    "Create Provider Profile"
+                    <>
+                      {isAddingToExisting ? (
+                        <Plus className="h-5 w-5 mr-2" />
+                      ) : (
+                        <User className="h-5 w-5 mr-2" />
+                      )}
+                      {submitButtonText}
+                    </>
                   )}
                 </button>
                 <button
                   onClick={goBack}
                   disabled={isSubmitting}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 disabled:bg-gray-200 text-gray-700 py-3 px-6 rounded-lg font-medium transition-colors"
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 disabled:bg-gray-200 text-gray-700 py-3 px-6 rounded-lg font-medium transition-colors flex items-center justify-center"
                 >
+                  <ArrowLeft className="h-5 w-5 mr-2" />
                   Cancel
                 </button>
               </div>
-              <p className="text-sm text-gray-500 mt-3 text-center">
-                Your profile will be reviewed by our admin team before approval.
-              </p>
+              <div className="mt-4 text-center">
+                <p className="text-sm text-gray-500">
+                  {isAddingToExisting
+                    ? "New services will be added to your existing provider profile."
+                    : "Your profile will be reviewed by our admin team before approval."}
+                </p>
+                {success && (
+                  <p className="text-sm text-green-600 mt-2">
+                    Redirecting to dashboard in 3 seconds...
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Help Section */}
+        <div className="mt-8 bg-white rounded-xl shadow-lg overflow-hidden">
+          <div className="px-8 py-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <Info className="h-5 w-5 mr-2 text-blue-500" />
+              Need Help?
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-gray-600">
+              <div>
+                <h4 className="font-medium text-gray-900 mb-2">
+                  Skills & Services
+                </h4>
+                <ul className="space-y-1">
+                  <li>• Select skills that match your expertise</li>
+                  <li>• Price your services competitively</li>
+                  <li>• You can add more services later</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-900 mb-2">Availability</h4>
+                <ul className="space-y-1">
+                  <li>• Set realistic working hours</li>
+                  <li>• You can update your schedule anytime</li>
+                  <li>• Multiple time slots per day are supported</li>
+                </ul>
+              </div>
+              {!isAddingToExisting && (
+                <>
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-2">Location</h4>
+                    <ul className="space-y-1">
+                      <li>• Use "Current Location" for accuracy</li>
+                      <li>• Address helps customers find you</li>
+                      <li>• Coordinates enable distance-based search</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-2">
+                      Approval Process
+                    </h4>
+                    <ul className="space-y-1">
+                      <li>• Admin review typically takes 24-48 hours</li>
+                      <li>• You'll be notified via email</li>
+                      <li>• Complete profiles are approved faster</li>
+                    </ul>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

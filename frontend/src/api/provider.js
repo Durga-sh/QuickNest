@@ -82,6 +82,25 @@ class ApiService {
     });
   }
 
+  // New method for adding services to existing provider
+  async addServicesToProvider(serviceData) {
+    console.log("Adding services to provider with data:", serviceData);
+    return this.request("/provider/add-services", {
+      method: "POST",
+      body: serviceData,
+    });
+  }
+
+  // New method for removing a service
+  async removeService(serviceName) {
+    return this.request(
+      `/provider/service/${encodeURIComponent(serviceName)}`,
+      {
+        method: "DELETE",
+      }
+    );
+  }
+
   async updateProviderProfile(providerData) {
     return this.request("/provider/profile", {
       method: "PUT",

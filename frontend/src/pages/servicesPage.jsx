@@ -14,7 +14,6 @@ import {
   Search,
   ArrowLeft,
   Phone,
-  Mail,
   Calendar,
 } from "lucide-react";
 import apiService from "../api/provider";
@@ -31,9 +30,9 @@ const ServicesPage = () => {
   const [providers, setProviders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-    const [showBookingModal, setShowBookingModal] = useState(false); // New state for BookingModal
-    const [selectedProviderForBooking, setSelectedProviderForBooking] =
-      useState(null);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [selectedProviderForBooking, setSelectedProviderForBooking] =
+    useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
     skill: selectedSkill,
@@ -65,8 +64,14 @@ const ServicesPage = () => {
         }
       });
 
+      console.log("Fetching providers with params:", filterParams); // Debug log
       const response = await apiService.getAllProviders(filterParams);
-      setProviders(response.data || []);
+      console.log("Fetched providers data:", response.data); // Debug log
+      if (Array.isArray(response.data)) {
+        setProviders(response.data);
+      } else {
+        setProviders(response.data || []);
+      }
     } catch (err) {
       console.error("Error fetching providers:", err);
       setError(err.message || "Failed to fetch providers");
@@ -75,15 +80,16 @@ const ServicesPage = () => {
     }
   };
 
-  const handleBookNow = (provider) => {
-      setSelectedProviderForBooking(provider);
-      setShowBookingModal(true);
-    };
+  const handleBookNow = (provider, service) => {
+    setSelectedProviderForBooking({ ...provider, selectedService: service });
+    setShowBookingModal(true);
+  };
 
   // Fetch available skills for filter dropdown
   const fetchAvailableSkills = async () => {
     try {
       const response = await apiService.getAvailableSkills();
+      console.log("Fetched available skills:", response.skills); // Debug log
       setAvailableSkills(response.skills || []);
     } catch (err) {
       console.error("Error fetching skills:", err);
@@ -153,8 +159,6 @@ const ServicesPage = () => {
     if (!distance) return "";
     return `${(distance / 1000).toFixed(1)} km away`;
   };
-
-  // Handle provider bookin
 
   useEffect(() => {
     fetchProviders();
@@ -359,7 +363,8 @@ const ServicesPage = () => {
               <Card>
                 <CardContent className="p-8 text-center">
                   <p className="text-gray-600">
-                    No providers found matching your criteria.
+                    No providers found matching your criteria. Check the console
+                    for debug logs.
                   </p>
                   <Button onClick={clearFilters} className="mt-4">
                     Clear Filters
@@ -368,137 +373,138 @@ const ServicesPage = () => {
               </Card>
             ) : (
               <div className="space-y-6">
-                {providers.map((provider) => (
-                  <Card
-                    key={provider._id}
-                    className="hover:shadow-lg transition-shadow"
-                  >
-                    <CardContent className="p-6">
-                      <div className="lg:flex lg:items-start lg:justify-between">
-                        <div className="flex-1">
-                          {/* Provider Header */}
-                          <div className="flex items-start justify-between mb-4">
-                            <div>
-                              <h3 className="text-lg font-semibold text-gray-900">
-                                {provider.user?.name || "Professional"}
-                              </h3>
-                              <div className="flex items-center mt-1">
-                                <div className="flex items-center">
-                                  {[...Array(5)].map((_, i) => (
-                                    <Star
-                                      key={i}
-                                      className={`w-4 h-4 ${
-                                        i < Math.floor(provider.rating)
-                                          ? "text-yellow-400 fill-current"
-                                          : "text-gray-300"
-                                      }`}
-                                    />
-                                  ))}
-                                  <span className="ml-2 text-sm text-gray-600">
-                                    {provider.rating?.toFixed(1) || "0.0"} (
-                                    {provider.totalReviews || 0} reviews)
-                                  </span>
-                                </div>
-                                {provider.distance && (
-                                  <span className="ml-4 text-sm text-gray-500">
-                                    {formatDistance(provider.distance)}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <Badge variant="secondary">
-                              {provider.totalJobs || 0} jobs completed
-                            </Badge>
-                          </div>
+                {providers.map((provider) => {
+                  const filteredServices = filters.skill
+                    ? provider.pricing?.filter(
+                        (service) =>
+                          service?.service.toLowerCase() ===
+                          filters.skill.toLowerCase()
+                      ) || []
+                    : provider.pricing || [];
 
-                          {/* Skills */}
-                          <div className="mb-4">
-                            <div className="flex flex-wrap gap-2">
-                              {provider.skills?.map((skill, index) => (
-                                <Badge key={index} variant="outline">
-                                  {skill}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
+                  console.log(
+                    `Provider ${provider._id} filtered services:`,
+                    filteredServices
+                  ); // Debug log
 
-                          {/* Location */}
-                          <div className="flex items-center mb-3">
-                            <MapPin className="w-4 h-4 text-gray-400 mr-2" />
-                            <span className="text-sm text-gray-600">
-                              {provider.location?.address ||
-                                "Location not specified"}
-                            </span>
-                          </div>
+                  if (filteredServices.length === 0) {
+                    console.log(
+                      `No services found for provider ${provider.user?.name} with skill ${filters.skill}`
+                    ); // Debug log
+                    return null;
+                  }
 
-                          {/* Availability */}
-                          <div className="flex items-center mb-3">
-                            <Clock className="w-4 h-4 text-gray-400 mr-2" />
-                            <span className="text-sm text-gray-600">
-                              {formatAvailability(provider.availability)}
-                            </span>
-                          </div>
-
-                          {/* Pricing */}
-                          <div className="mb-4">
-                            <div className="flex items-center mb-2">
-                              <DollarSign className="w-4 h-4 text-gray-400 mr-1" />
-                              <span className="text-sm font-medium text-gray-700">
-                                Services & Pricing:
-                              </span>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              {provider.pricing
-                                ?.slice(0, 4)
-                                .map((service, index) => (
-                                  <div
-                                    key={index}
-                                    className="flex justify-between text-sm"
-                                  >
-                                    <span className="text-gray-600">
-                                      {service.service}
-                                    </span>
-                                    <span className="font-medium">
-                                      ₹{service.price}
+                  return filteredServices.map((service, index) => (
+                    <Card
+                      key={`${provider._id}-${service.service}-${index}`}
+                      className="hover:shadow-lg transition-shadow"
+                    >
+                      <CardContent className="p-6">
+                        <div className="lg:flex lg:items-start lg:justify-between">
+                          <div className="flex-1">
+                            {/* Provider Header */}
+                            <div className="flex items-start justify-between mb-4">
+                              <div>
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                  {provider.user?.name || "Professional"}
+                                </h3>
+                                <div className="flex items-center mt-1">
+                                  <div className="flex items-center">
+                                    {[...Array(5)].map((_, i) => (
+                                      <Star
+                                        key={i}
+                                        className={`w-4 h-4 ${
+                                          i < Math.floor(provider.rating || 0)
+                                            ? "text-yellow-400 fill-current"
+                                            : "text-gray-300"
+                                        }`}
+                                      />
+                                    ))}
+                                    <span className="ml-2 text-sm text-gray-600">
+                                      {(provider.rating || 0).toFixed(1)} (
+                                      {provider.totalReviews || 0} reviews)
                                     </span>
                                   </div>
-                                ))}
-                              {provider.pricing?.length > 4 && (
-                                <div className="text-sm text-gray-500">
-                                  +{provider.pricing.length - 4} more services
+                                  {provider.distance && (
+                                    <span className="ml-4 text-sm text-gray-500">
+                                      {formatDistance(provider.distance)}
+                                    </span>
+                                  )}
                                 </div>
-                              )}
+                              </div>
+                              <Badge variant="secondary">
+                                {provider.totalJobs || 0} jobs completed
+                              </Badge>
+                            </div>
+
+                            {/* Service Name */}
+                            <div className="mb-4">
+                              <Badge variant="outline" className="text-lg">
+                                {service.service}
+                              </Badge>
+                            </div>
+
+                            {/* Location */}
+                            <div className="flex items-center mb-3">
+                              <MapPin className="w-4 h-4 text-gray-400 mr-2" />
+                              <span className="text-sm text-gray-600">
+                                {provider.location?.address ||
+                                  "Location not specified"}
+                              </span>
+                            </div>
+
+                            {/* Availability */}
+                            <div className="flex items-center mb-3">
+                              <Clock className="w-4 h-4 text-gray-400 mr-2" />
+                              <span className="text-sm text-gray-600">
+                                {formatAvailability(provider.availability)}
+                              </span>
+                            </div>
+
+                            {/* Pricing */}
+                            <div className="mb-4">
+                              <div className="flex items-center mb-2">
+                                <DollarSign className="w-4 h-4 text-gray-400 mr-1" />
+                                <span className="text-sm font-medium text-gray-700">
+                                  Price:
+                                </span>
+                              </div>
+                              <div className="text-sm">
+                                <span className="font-medium">
+                                  ₹{service.price || "N/A"}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Action Buttons */}
-                        <div className="lg:ml-6 mt-4 lg:mt-0 flex flex-col space-y-2 lg:w-48">
-                          <Button
-                            onClick={() => handleBookNow(provider)}
-                            className="bg-emerald-600 hover:bg-emerald-700"
-                          >
-                            <Calendar className="w-4 h-4 mr-2" />
-                            Book Now
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            <Phone className="w-4 h-4 mr-2" />
-                            Contact
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              navigate(`/provider/${provider._id}`)
-                            }
-                          >
-                            View Profile
-                          </Button>
+                          {/* Action Buttons */}
+                          <div className="lg:ml-6 mt-4 lg:mt-0 flex flex-col space-y-2 lg:w-48">
+                            <Button
+                              onClick={() => handleBookNow(provider, service)}
+                              className="bg-emerald-600 hover:bg-emerald-700"
+                            >
+                              <Calendar className="w-4 h-4 mr-2" />
+                              Book Now
+                            </Button>
+                            <Button variant="outline" size="sm">
+                              <Phone className="w-4 h-4 mr-2" />
+                              Contact
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                navigate(`/provider/${provider._id}`)
+                              }
+                            >
+                              View Profile
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  ));
+                })}
               </div>
             )}
 
@@ -508,8 +514,7 @@ const ServicesPage = () => {
               onClose={() => setShowBookingModal(false)}
               onBookingSuccess={(booking) => {
                 console.log("Booking successful:", booking);
-                setShowBookingModal(false); // Close modal on success
-                // Optionally refresh providers or show a success message
+                setShowBookingModal(false);
               }}
             />
           </div>

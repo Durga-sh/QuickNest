@@ -1,6 +1,5 @@
-"use client";
 
-import { useState } from "react";
+
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
@@ -30,7 +29,7 @@ const QuickNestLanding = () => {
       name: "Plumbing",
       description: "Expert plumbers for all your needs",
       color: "bg-blue-500",
-      serviceType: "plumbing", // Added service type for filtering
+      serviceType: "plumbing",
     },
     {
       icon: Zap,

@@ -5,6 +5,17 @@ const providerController = require("../controllers/ProviderController");
 
 // Provider routes (protected)
 router.post("/register", isAuthenticated, providerController.registerProvider);
+
+// New route for adding services to existing provider
+router.post("/add-services", isAuthenticated, providerController.addServices);
+
+// Route for removing a specific service
+router.delete(
+  "/service/:serviceName",
+  isAuthenticated,
+  providerController.removeService
+);
+
 router.put(
   "/profile",
   isAuthenticated,
