@@ -1,7 +1,18 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+// eslint-disable-next-line no-unused-vars
+import { motion } from "framer-motion";
 import { register, verifyOTP, resendOTP } from "../../api/auth";
 import { useAuth } from "../../hooks/useAuth";
+import {
+  User,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Shield,
+  CheckCircle,
+} from "lucide-react";
 
 const RegisterForm = () => {
   const [step, setStep] = useState(1); // 1: Registration Form, 2: OTP Verification
@@ -20,6 +31,8 @@ const RegisterForm = () => {
   const [formError, setFormError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [countdown, setCountdown] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
   const { loginUser } = useAuth();
 
@@ -166,30 +179,55 @@ const RegisterForm = () => {
   if (step === 2) {
     return (
       <div className="w-full">
-        <h2 className="text-2xl font-bold text-white mb-6 text-center">
+        <motion.h2
+          className="text-2xl font-bold text-gray-900 mb-6 text-center"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
           Verify Your Email
-        </h2>
-        <p className="text-gray-300 text-center mb-6">
+        </motion.h2>
+        <motion.p
+          className="text-gray-600 text-center mb-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
           We've sent a 6-digit OTP to <strong>{formData.email}</strong>
-        </p>
+        </motion.p>
 
         {formError && (
-          <div className="bg-red-900/30 border border-red-500 text-red-200 p-4 rounded-md mb-6">
+          <motion.div
+            className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-6"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+          >
             {formError}
-          </div>
+          </motion.div>
         )}
 
         {successMessage && (
-          <div className="bg-green-900/30 border border-green-500 text-green-200 p-4 rounded-md mb-6">
+          <motion.div
+            className="bg-green-50 border border-green-200 text-green-700 p-4 rounded-lg mb-6"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+          >
             {successMessage}
-          </div>
+          </motion.div>
         )}
 
         <form onSubmit={handleOTPSubmit} className="space-y-6">
-          <div className="form-group">
+          <motion.div
+            className="form-group"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.4 }}
+          >
             <label
               htmlFor="otp"
-              className="block text-gray-300 mb-2 text-center"
+              className="block text-gray-700 font-medium mb-2 text-center"
             >
               Enter OTP
             </label>
@@ -201,15 +239,20 @@ const RegisterForm = () => {
               onChange={handleOTPChange}
               required
               maxLength="6"
-              className="w-full bg-slate-700 border border-slate-600 rounded-md px-4 py-3 text-white text-center text-2xl font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-gray-900 text-center text-2xl font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200"
               placeholder="000000"
             />
-          </div>
+          </motion.div>
 
-          <button
+          <motion.button
             type="submit"
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-md transition-colors flex items-center justify-center"
+            className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white py-3 rounded-lg transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={isLoading || otpData.otp.length !== 6}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
             {isLoading ? (
               <>
@@ -238,133 +281,235 @@ const RegisterForm = () => {
             ) : (
               "Verify OTP"
             )}
-          </button>
+          </motion.button>
         </form>
 
-        <div className="mt-6 text-center">
-          <p className="text-gray-400 mb-2">Didn't receive the OTP?</p>
+        <motion.div
+          className="mt-6 text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+        >
+          <p className="text-gray-600 mb-2">Didn't receive the OTP?</p>
           <button
             onClick={handleResendOTP}
             disabled={countdown > 0 || isLoading}
-            className={`text-purple-400 hover:text-purple-300 transition-colors ${
+            className={`text-emerald-600 hover:text-emerald-700 transition-colors duration-200 ${
               countdown > 0 || isLoading ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
             {countdown > 0 ? `Resend in ${countdown}s` : "Resend OTP"}
           </button>
-        </div>
+        </motion.div>
 
-        <div className="mt-6 text-center">
+        <motion.div
+          className="mt-6 text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7 }}
+        >
           <button
             onClick={() => setStep(1)}
-            className="text-gray-400 hover:text-gray-300 transition-colors"
+            className="text-gray-600 hover:text-gray-700 transition-colors duration-200"
           >
             ← Back to registration
           </button>
-        </div>
+        </motion.div>
       </div>
     );
   }
 
   return (
     <div className="w-full">
-      <h2 className="text-2xl font-bold text-white mb-6 text-center">
+      <motion.h2
+        className="text-2xl font-bold text-gray-900 mb-6 text-center"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
         Create an Account
-      </h2>
+      </motion.h2>
 
       {formError && (
-        <div className="bg-red-900/30 border border-red-500 text-red-200 p-4 rounded-md mb-6">
+        <motion.div
+          className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-6"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+        >
           {formError}
-        </div>
+        </motion.div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="form-group">
-          <label htmlFor="name" className="block text-gray-300 mb-2">
+        <motion.div
+          className="form-group"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <label
+            htmlFor="name"
+            className="block text-gray-700 font-medium mb-2"
+          >
             Full Name
           </label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            required
-            className="w-full bg-slate-700 border border-slate-600 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            placeholder="John Doe"
-          />
-        </div>
+          <div className="relative">
+            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              required
+              className="w-full bg-gray-50 border border-gray-300 rounded-lg px-12 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200"
+              placeholder="John Doe"
+            />
+          </div>
+        </motion.div>
 
-        <div className="form-group">
-          <label htmlFor="email" className="block text-gray-300 mb-2">
+        <motion.div
+          className="form-group"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <label
+            htmlFor="email"
+            className="block text-gray-700 font-medium mb-2"
+          >
             Email
           </label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-            className="w-full bg-slate-700 border border-slate-600 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            placeholder="your.email@example.com"
-          />
-        </div>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+              className="w-full bg-gray-50 border border-gray-300 rounded-lg px-12 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200"
+              placeholder="your.email@example.com"
+            />
+          </div>
+        </motion.div>
 
-        <div className="form-group">
-          <label htmlFor="password" className="block text-gray-300 mb-2">
+        <motion.div
+          className="form-group"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          <label
+            htmlFor="password"
+            className="block text-gray-700 font-medium mb-2"
+          >
             Password
           </label>
-          <input
-            type="password"
-            id="password"
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-            required
-            minLength="6"
-            className="w-full bg-slate-700 border border-slate-600 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            placeholder="••••••••"
-          />
-        </div>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type={showPassword ? "text" : "password"}
+              id="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+              minLength="6"
+              className="w-full bg-gray-50 border border-gray-300 rounded-lg px-12 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200"
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+            >
+              {showPassword ? (
+                <EyeOff className="w-5 h-5" />
+              ) : (
+                <Eye className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+        </motion.div>
 
-        <div className="form-group">
-          <label htmlFor="confirmPassword" className="block text-gray-300 mb-2">
+        <motion.div
+          className="form-group"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.6 }}
+        >
+          <label
+            htmlFor="confirmPassword"
+            className="block text-gray-700 font-medium mb-2"
+          >
             Confirm Password
           </label>
-          <input
-            type="password"
-            id="confirmPassword"
-            name="confirmPassword"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            required
-            className="w-full bg-slate-700 border border-slate-600 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            placeholder="••••••••"
-          />
-        </div>
+          <div className="relative">
+            <Shield className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              id="confirmPassword"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              required
+              className="w-full bg-gray-50 border border-gray-300 rounded-lg px-12 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200"
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+            >
+              {showConfirmPassword ? (
+                <EyeOff className="w-5 h-5" />
+              ) : (
+                <Eye className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+        </motion.div>
 
-        <div className="form-group">
-          <label htmlFor="role" className="block text-gray-300 mb-2">
+        <motion.div
+          className="form-group"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.7 }}
+        >
+          <label
+            htmlFor="role"
+            className="block text-gray-700 font-medium mb-2"
+          >
             Role
           </label>
-          <select
-            id="role"
-            name="role"
-            value={formData.role}
-            onChange={handleChange}
-            className="w-full bg-slate-700 border border-slate-600 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-          >
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
-            <option value="provider">Provider</option>
-          </select>
-        </div>
+          <div className="relative">
+            <CheckCircle className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <select
+              id="role"
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              className="w-full bg-gray-50 border border-gray-300 rounded-lg px-12 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200"
+            >
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+              <option value="provider">Provider</option>
+            </select>
+          </div>
+        </motion.div>
 
-        <button
+        <motion.button
           type="submit"
-          className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-md transition-colors flex items-center justify-center"
+          className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white py-3 rounded-lg transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={isLoading}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
         >
           {isLoading ? (
             <>
@@ -393,18 +538,23 @@ const RegisterForm = () => {
           ) : (
             "Send OTP"
           )}
-        </button>
+        </motion.button>
       </form>
 
-      <div className="mt-6 text-center text-gray-400">
+      <motion.div
+        className="mt-6 text-center text-gray-600"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.9 }}
+      >
         Already have an account?{" "}
         <Link
           to="/login"
-          className="text-purple-400 hover:text-purple-300 transition-colors"
+          className="text-emerald-600 hover:text-emerald-700 font-medium transition-colors duration-200"
         >
           Login
         </Link>
-      </div>
+      </motion.div>
     </div>
   );
 };

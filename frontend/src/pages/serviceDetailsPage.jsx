@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+// eslint-disable-next-line no-unused-vars
+import { motion } from "framer-motion";
 import {
   Search,
   Filter,
@@ -13,6 +15,11 @@ import {
   Phone,
   Mail,
   Briefcase,
+  ArrowLeft,
+  Sparkles,
+  TrendingUp,
+  Award,
+  Users,
 } from "lucide-react";
 import apiService from "../api/provider";
 import ProviderDetailsModal from "../components/ProvideDetails";
@@ -30,9 +37,9 @@ const AllServicesPage = () => {
   const [pagination, setPagination] = useState({});
   const [selectedProviderId, setSelectedProviderId] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [showBookingModal, setShowBookingModal] = useState(false); // New state for BookingModal
+  const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedProviderForBooking, setSelectedProviderForBooking] =
-    useState(null); // Store selected provider for booking
+    useState(null);
   const [filters, setFilters] = useState({
     skill: "",
     minPrice: "",
@@ -41,6 +48,37 @@ const AllServicesPage = () => {
     sortOrder: "desc",
     limit: 12,
   });
+
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  };
+
+  const cardVariants = {
+    hidden: { opacity: 0, scale: 0.95 },
+    visible: {
+      opacity: 1,
+      scale: 1,
+      transition: {
+        duration: 0.5,
+        ease: "easeOut",
+      },
+    },
+    hover: {
+      scale: 1.02,
+      y: -4,
+      transition: {
+        duration: 0.3,
+        ease: "easeOut",
+      },
+    },
+  };
 
   // Fetch providers with current filters
   const fetchProviders = async (page = 1) => {
@@ -181,50 +219,78 @@ const AllServicesPage = () => {
   }, [selectedSkill]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <motion.div
+        className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-gray-200"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <h1 className="text-2xl font-bold text-gray-900">All Services</h1>
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <Briefcase className="h-4 w-4" />
+          <div className="flex items-center justify-between h-20">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <h1 className="text-3xl font-bold text-gray-900">All Services</h1>
+              <p className="text-gray-600 mt-1">
+                Discover professional service providers
+              </p>
+            </motion.div>
+            <motion.div
+              className="flex items-center space-x-2 text-sm text-gray-600"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <Users className="h-5 w-5 text-emerald-600" />
               <span>{pagination.totalProviders || 0} Providers Available</span>
-            </div>
+            </motion.div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Search and Filter Bar */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <div className="flex flex-col lg:flex-row gap-4">
+        <motion.div
+          className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200 p-8 mb-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <div className="flex flex-col lg:flex-row gap-6">
             {/* Search Bar */}
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                 <input
                   type="text"
                   placeholder="Search providers, services, or locations..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-12 pr-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200"
                 />
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex space-x-3">
-              <button
+            <div className="flex space-x-4">
+              <motion.button
                 onClick={handleSearch}
-                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium"
+                className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-8 py-4 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-300"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
                 Search
-              </button>
-              <button
+              </motion.button>
+              <motion.button
                 onClick={() => setShowFilters(!showFilters)}
-                className="bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 font-medium flex items-center space-x-2"
+                className="bg-gray-100 text-gray-700 px-8 py-4 rounded-xl hover:bg-gray-200 font-medium flex items-center space-x-2 transition-all duration-200"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
                 <Filter className="h-4 w-4" />
                 <span>Filters</span>
@@ -233,43 +299,58 @@ const AllServicesPage = () => {
                     showFilters ? "rotate-180" : ""
                   }`}
                 />
-              </button>
+              </motion.button>
             </div>
           </div>
 
           {/* Skill Filter Pills */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
+          <motion.div
+            className="mt-6 flex flex-wrap gap-3"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <motion.button
               onClick={() => handleSkillFilter("")}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              className={`px-6 py-3 rounded-full text-sm font-medium transition-all duration-200 ${
                 !selectedSkill
-                  ? "bg-blue-600 text-white"
+                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
               All Services
-            </button>
+            </motion.button>
             {availableSkills.slice(0, 8).map((skillData) => (
-              <button
+              <motion.button
                 key={skillData.skill}
                 onClick={() => handleSkillFilter(skillData.skill)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                className={`px-6 py-3 rounded-full text-sm font-medium transition-all duration-200 ${
                   selectedSkill === skillData.skill
-                    ? "bg-blue-600 text-white"
+                    ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
                 {skillData.skill} ({skillData.count})
-              </button>
+              </motion.button>
             ))}
-          </div>
+          </motion.div>
 
           {/* Advanced Filters */}
           {showFilters && (
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <motion.div
+              className="mt-8 p-6 bg-gray-50 rounded-xl border"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
                     Service Type
                   </label>
                   <select
@@ -277,7 +358,7 @@ const AllServicesPage = () => {
                     onChange={(e) =>
                       handleFilterChange("skill", e.target.value)
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200"
                   >
                     <option value="">All Services</option>
                     {availableSkills.map((skillData) => (
@@ -289,7 +370,7 @@ const AllServicesPage = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
                     Min Price (₹)
                   </label>
                   <input
@@ -299,12 +380,12 @@ const AllServicesPage = () => {
                       handleFilterChange("minPrice", e.target.value)
                     }
                     placeholder="0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
                     Max Price (₹)
                   </label>
                   <input
@@ -314,12 +395,12 @@ const AllServicesPage = () => {
                       handleFilterChange("maxPrice", e.target.value)
                     }
                     placeholder="10000"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
                     Sort By
                   </label>
                   <select
@@ -327,7 +408,7 @@ const AllServicesPage = () => {
                     onChange={(e) =>
                       handleFilterChange("sortBy", e.target.value)
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200"
                   >
                     <option value="rating">Rating</option>
                     <option value="totalReviews">Reviews</option>
@@ -336,66 +417,92 @@ const AllServicesPage = () => {
                   </select>
                 </div>
 
-                <div className="flex items-end space-x-2">
-                  <button
+                <div className="flex items-end space-x-3">
+                  <motion.button
                     onClick={applyFilters}
-                    className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 font-medium"
+                    className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-4 py-3 rounded-lg hover:from-emerald-700 hover:to-teal-700 font-medium shadow-lg hover:shadow-xl transition-all duration-300"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
                     Apply
-                  </button>
-                  <button
+                  </motion.button>
+                  <motion.button
                     onClick={clearFilters}
-                    className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 font-medium"
+                    className="flex-1 bg-gray-300 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-400 font-medium transition-all duration-200"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
                     Clear
-                  </button>
+                  </motion.button>
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
-        </div>
+        </motion.div>
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <p className="text-red-700">{error}</p>
-          </div>
+          <motion.div
+            className="bg-red-50 border border-red-200 rounded-xl p-6 mb-8"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <p className="text-red-700 flex items-center">
+              <Sparkles className="w-5 h-5 mr-2" />
+              {error}
+            </p>
+          </motion.div>
         )}
 
         {/* Loading State */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
             {[...Array(6)].map((_, i) => (
-              <div
+              <motion.div
                 key={i}
-                className="bg-white rounded-lg shadow-sm p-6 animate-pulse"
+                className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 animate-pulse"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
               >
                 <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
                 <div className="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
                 <div className="h-3 bg-gray-200 rounded w-2/3 mb-4"></div>
                 <div className="h-8 bg-gray-200 rounded w-full"></div>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         ) : (
           <>
             {/* Providers Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <motion.div
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
               {providers.map((provider) => (
-                <div
+                <motion.div
                   key={provider.id || provider._id}
-                  className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border"
+                  className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 overflow-hidden"
+                  variants={cardVariants}
+                  whileHover="hover"
                 >
-                  <div className="p-6">
+                  <div className="p-8">
                     {/* Provider Header */}
-                    <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-start justify-between mb-6">
                       <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <User className="h-5 w-5 text-blue-600" />
+                        <div className="flex items-center space-x-3 mb-3">
+                          <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center">
+                            <User className="h-6 w-6 text-white" />
                           </div>
                           <div>
-                            <h3 className="font-semibold text-gray-900">
+                            <h3 className="font-semibold text-gray-900 text-lg">
                               {provider.user?.name || "Unknown Provider"}
                             </h3>
                             <div className="flex items-center space-x-1">
@@ -409,27 +516,33 @@ const AllServicesPage = () => {
                         </div>
                       </div>
                       {provider.distance && (
-                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                        <motion.span
+                          className="text-xs text-gray-500 bg-gray-100 px-3 py-2 rounded-full"
+                          whileHover={{ scale: 1.05 }}
+                          transition={{ duration: 0.2 }}
+                        >
                           {formatDistance(provider.distance)}
-                        </span>
+                        </motion.span>
                       )}
                     </div>
 
                     {/* Skills */}
-                    <div className="mb-4">
-                      <div className="flex flex-wrap gap-1">
+                    <div className="mb-6">
+                      <div className="flex flex-wrap gap-2">
                         {(provider.skills || [])
                           .slice(0, 3)
                           .map((skill, index) => (
-                            <span
+                            <motion.span
                               key={index}
-                              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800"
+                              whileHover={{ scale: 1.05 }}
+                              transition={{ duration: 0.2 }}
                             >
                               {skill}
-                            </span>
+                            </motion.span>
                           ))}
                         {(provider.skills || []).length > 3 && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                             +{(provider.skills || []).length - 3} more
                           </span>
                         )}
@@ -437,30 +550,30 @@ const AllServicesPage = () => {
                     </div>
 
                     {/* Location */}
-                    <div className="flex items-center text-sm text-gray-600 mb-4">
-                      <MapPin className="h-4 w-4 mr-1" />
+                    <div className="flex items-center text-sm text-gray-600 mb-6">
+                      <MapPin className="h-4 w-4 mr-2 text-emerald-600" />
                       <span className="truncate">
                         {provider.location?.address || "Location not specified"}
                       </span>
                     </div>
 
                     {/* Services & Pricing */}
-                    <div className="mb-4">
-                      <h4 className="text-sm font-medium text-gray-900 mb-2">
+                    <div className="mb-6">
+                      <h4 className="text-sm font-medium text-gray-900 mb-3">
                         Services & Pricing
                       </h4>
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         {(provider.pricing || [])
                           .slice(0, 2)
                           .map((service, index) => (
                             <div
                               key={index}
-                              className="flex justify-between items-center text-sm"
+                              className="flex justify-between items-center text-sm bg-gray-50 p-3 rounded-lg"
                             >
                               <span className="text-gray-600">
                                 {service.service}
                               </span>
-                              <span className="font-medium text-gray-900">
+                              <span className="font-medium text-emerald-600">
                                 {formatPrice(service.price)}
                               </span>
                             </div>
@@ -474,13 +587,13 @@ const AllServicesPage = () => {
                     </div>
 
                     {/* Stats */}
-                    <div className="flex justify-between text-sm text-gray-600 mb-4">
+                    <div className="flex justify-between text-sm text-gray-600 mb-6">
                       <div className="flex items-center">
-                        <Briefcase className="h-4 w-4 mr-1" />
+                        <Award className="h-4 w-4 mr-2 text-emerald-600" />
                         <span>{provider.totalJobs || 0} jobs completed</span>
                       </div>
                       <div className="flex items-center">
-                        <Clock className="h-4 w-4 mr-1" />
+                        <Clock className="h-4 w-4 mr-2 text-emerald-600" />
                         <span>
                           Available {(provider.availability || []).length} days
                         </span>
@@ -488,60 +601,78 @@ const AllServicesPage = () => {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex space-x-2">
-                      <button
+                    <div className="flex space-x-3">
+                      <motion.button
                         onClick={() =>
                           handleViewDetails(provider.id || provider._id)
                         }
-                        className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 font-medium text-sm transition-colors"
+                        className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-4 py-3 rounded-lg hover:from-emerald-700 hover:to-teal-700 font-medium text-sm transition-all duration-300 shadow-lg hover:shadow-xl"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                       >
                         View Details
-                      </button>
-                      <button
+                      </motion.button>
+                      <motion.button
                         onClick={() => handleContactProvider(provider)}
-                        className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 font-medium text-sm transition-colors"
+                        className="flex-1 bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 font-medium text-sm transition-all duration-300 shadow-lg hover:shadow-xl"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                       >
                         Contact
-                      </button>
-                      <button
+                      </motion.button>
+                      <motion.button
                         onClick={() => handleBookNow(provider)}
-                        className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 font-medium text-sm transition-colors"
+                        className="flex-1 bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 font-medium text-sm transition-all duration-300 shadow-lg hover:shadow-xl"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                       >
                         Book Now
-                      </button>
+                      </motion.button>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
 
             {/* Empty State */}
             {providers.length === 0 && !loading && (
-              <div className="text-center py-12">
+              <motion.div
+                className="text-center py-16"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+              >
                 <div className="max-w-md mx-auto">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Search className="h-8 w-8 text-gray-400" />
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Search className="h-10 w-10 text-gray-400" />
                   </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  <h3 className="text-xl font-medium text-gray-900 mb-3">
                     No providers found
                   </h3>
-                  <p className="text-gray-600 mb-4">
+                  <p className="text-gray-600 mb-6">
                     Try adjusting your search criteria or filters to find more
                     providers.
                   </p>
-                  <button
+                  <motion.button
                     onClick={clearFilters}
-                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-medium"
+                    className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-8 py-3 rounded-xl hover:from-emerald-700 hover:to-teal-700 font-medium shadow-lg hover:shadow-xl transition-all duration-300"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
                     Clear Filters
-                  </button>
+                  </motion.button>
                 </div>
-              </div>
+              </motion.div>
             )}
 
             {/* Pagination */}
             {pagination.totalPages > 1 && (
-              <div className="mt-8 flex items-center justify-between bg-white rounded-lg shadow-sm p-4">
+              <motion.div
+                className="mt-8 flex items-center justify-between bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-gray-200"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+              >
                 <div className="flex items-center text-sm text-gray-600">
                   <span>
                     Showing {(currentPage - 1) * filters.limit + 1} to{" "}
@@ -553,17 +684,19 @@ const AllServicesPage = () => {
                   </span>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  <button
+                <div className="flex items-center space-x-3">
+                  <motion.button
                     onClick={() => fetchProviders(currentPage - 1)}
                     disabled={!pagination.hasPrevPage}
-                    className="flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
-                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    <ChevronLeft className="h-4 w-4 mr-2" />
                     Previous
-                  </button>
+                  </motion.button>
 
-                  <div className="flex items-center space-x-1">
+                  <div className="flex items-center space-x-2">
                     {[...Array(Math.min(5, pagination.totalPages))].map(
                       (_, i) => {
                         const pageNumber =
@@ -572,32 +705,36 @@ const AllServicesPage = () => {
                         if (pageNumber > pagination.totalPages) return null;
 
                         return (
-                          <button
+                          <motion.button
                             key={pageNumber}
                             onClick={() => fetchProviders(pageNumber)}
-                            className={`px-3 py-2 text-sm font-medium rounded-md ${
+                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                               pageNumber === currentPage
-                                ? "bg-blue-600 text-white"
+                                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg"
                                 : "text-gray-500 bg-white border border-gray-300 hover:bg-gray-50"
                             }`}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                           >
                             {pageNumber}
-                          </button>
+                          </motion.button>
                         );
                       }
                     )}
                   </div>
 
-                  <button
+                  <motion.button
                     onClick={() => fetchProviders(currentPage + 1)}
                     disabled={!pagination.hasNextPage}
-                    className="flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
                     Next
-                    <ChevronRight className="h-4 w-4 ml-1" />
-                  </button>
+                    <ChevronRight className="h-4 w-4 ml-2" />
+                  </motion.button>
                 </div>
-              </div>
+              </motion.div>
             )}
           </>
         )}
@@ -619,8 +756,7 @@ const AllServicesPage = () => {
           onClose={() => setShowBookingModal(false)}
           onBookingSuccess={(booking) => {
             console.log("Booking successful:", booking);
-            setShowBookingModal(false); // Close modal on success
-            // Optionally refresh providers or show a success message
+            setShowBookingModal(false);
           }}
         />
       </div>
