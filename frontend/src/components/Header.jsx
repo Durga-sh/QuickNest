@@ -1,12 +1,20 @@
 import { useState, useEffect, Fragment } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import PlacesAutocomplete, {
   geocodeByAddress,
   getLatLng,
 } from "react-places-autocomplete";
-import { Home, Menu, X, Navigation, Loader2, Search } from "lucide-react";
+import {
+  Home,
+  Menu,
+  X,
+  Navigation,
+  Loader2,
+  Search,
+  MapPin,
+} from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 
 const loadGoogleMapsScript = (callback) => {
@@ -39,6 +47,7 @@ const loadGoogleMapsScript = (callback) => {
 
 const Header = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logoutUser } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [locationInput, setLocationInput] = useState("");
@@ -46,6 +55,30 @@ const Header = () => {
   const [locationError, setLocationError] = useState("");
   const [isGoogleMapsLoaded, setIsGoogleMapsLoaded] = useState(false);
   const [isScriptLoading, setIsScriptLoading] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [hasLocationPermission, setHasLocationPermission] = useState(false);
+
+  // Check if we're on the provider dashboard page
+  const isProviderDashboard = location.pathname === "/provider-dashboard";
+
+  // Load saved location from localStorage on component mount
+  useEffect(() => {
+    const savedLocation = localStorage.getItem("selectedLocation");
+    const savedLocationInput = localStorage.getItem("locationInput");
+
+    if (savedLocation && savedLocationInput) {
+      try {
+        const parsedLocation = JSON.parse(savedLocation);
+        setSelectedLocation(parsedLocation);
+        setLocationInput(savedLocationInput);
+      } catch (error) {
+        console.error("Error parsing saved location:", error);
+        // Clear corrupted data
+        localStorage.removeItem("selectedLocation");
+        localStorage.removeItem("locationInput");
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (!isScriptLoading && !isGoogleMapsLoaded) {
@@ -103,10 +136,31 @@ const Header = () => {
           }
 
           const formattedAddress = data.results[0].formatted_address;
+          const locationData = {
+            lat: latitude,
+            lng: longitude,
+            address: formattedAddress,
+          };
+
           setLocationInput(formattedAddress);
+          setSelectedLocation(locationData);
+          setHasLocationPermission(true);
+
+          // Save to localStorage
+          localStorage.setItem(
+            "selectedLocation",
+            JSON.stringify(locationData)
+          );
+          localStorage.setItem("locationInput", formattedAddress);
+
           setIsLoadingLocation(false);
-          // Navigate to services page with location coordinates
-          navigate(`/service?location=${latitude},${longitude}`);
+
+          // Navigate to services page with location
+          navigate(
+            `/service?location=${latitude},${longitude}&address=${encodeURIComponent(
+              formattedAddress
+            )}`
+          );
         } catch (error) {
           console.error("Geocoding error:", error);
           setLocationError(
@@ -139,13 +193,44 @@ const Header = () => {
     try {
       const results = await geocodeByAddress(address);
       const { lat, lng } = await getLatLng(results[0]);
+
+      const locationData = {
+        lat,
+        lng,
+        address,
+      };
+
+      setSelectedLocation(locationData);
+
+      // Save to localStorage
+      localStorage.setItem("selectedLocation", JSON.stringify(locationData));
+      localStorage.setItem("locationInput", address);
+
       console.log(`Selected location: ${address}, Coordinates:`, { lat, lng });
-      // Navigate to services page with location coordinates
-      navigate(`/service?location=${lat},${lng}`);
+
+      // Navigate to services page with location
+      navigate(
+        `/service?location=${lat},${lng}&address=${encodeURIComponent(address)}`
+      );
     } catch (error) {
       console.error("Error selecting location:", error);
       setLocationError("Failed to process location. Please try again.");
     }
+  };
+
+  const handleServicesClick = () => {
+    if (selectedLocation) {
+      // Navigate with saved location
+      navigate(
+        `/service?location=${selectedLocation.lat},${
+          selectedLocation.lng
+        }&address=${encodeURIComponent(selectedLocation.address)}`
+      );
+    } else {
+      // Navigate without location (show all services)
+      navigate("/service");
+    }
+    setIsMenuOpen(false);
   };
 
   const scrollToSection = (sectionId) => {
@@ -159,10 +244,23 @@ const Header = () => {
   const handleLogout = async () => {
     try {
       await logoutUser();
+      // Clear location data on logout
+      localStorage.removeItem("selectedLocation");
+      localStorage.removeItem("locationInput");
+      setSelectedLocation(null);
+      setLocationInput("");
       navigate("/"); // Redirect to home page after logout
     } catch (error) {
       console.error("Logout error:", error);
     }
+  };
+
+  const clearLocation = () => {
+    setLocationInput("");
+    setSelectedLocation(null);
+    localStorage.removeItem("selectedLocation");
+    localStorage.removeItem("locationInput");
+    setLocationError("");
   };
 
   return (
@@ -179,94 +277,134 @@ const Header = () => {
           </div>
 
           <div className="hidden md:flex items-center space-x-6">
-            <div className="relative flex items-center">
-              {isGoogleMapsLoaded ? (
-                <Fragment>
-                  <PlacesAutocomplete
-                    value={locationInput}
-                    onChange={setLocationInput}
-                    onSelect={handleSelect}
-                  >
-                    {({
-                      getInputProps,
-                      suggestions,
-                      getSuggestionItemProps,
-                      loading,
-                    }) => (
-                      <div className="relative w-64">
-                        <div className="relative">
-                          <Input
-                            {...getInputProps({
-                              placeholder: "Search location or service...",
-                              className:
-                                "h-9 bg-white/10 text-white placeholder-gray-300 border-none pr-10",
-                            })}
-                          />
-                          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white opacity-70" />
-                        </div>
-                        {suggestions.length > 0 && (
-                          <div className="absolute z-20 w-full bg-white text-gray-900 rounded-md shadow-lg mt-2">
-                            {loading && (
-                              <div className="p-2 text-gray-500">
-                                Loading...
+            {/* Show location search and services only if not on provider dashboard */}
+            {!isProviderDashboard && (
+              <>
+                <div className="relative flex items-center">
+                  {isGoogleMapsLoaded ? (
+                    <Fragment>
+                      <PlacesAutocomplete
+                        value={locationInput}
+                        onChange={setLocationInput}
+                        onSelect={handleSelect}
+                        searchOptions={{
+                          types: ["(cities)", "establishment", "geocode"],
+                          componentRestrictions: { country: "in" }, // Restrict to India, change as needed
+                        }}
+                      >
+                        {({
+                          getInputProps,
+                          suggestions,
+                          getSuggestionItemProps,
+                          loading,
+                        }) => (
+                          <div className="relative w-80">
+                            <div className="relative">
+                              <Input
+                                {...getInputProps({
+                                  placeholder: selectedLocation
+                                    ? "Change location..."
+                                    : "Search location for services...",
+                                  className:
+                                    "h-9 bg-white/10 text-white placeholder-gray-300 border-none pr-20",
+                                })}
+                              />
+                              <div className="absolute right-1 top-1 flex items-center space-x-1">
+                                {selectedLocation && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0 bg-white/10 hover:bg-red-500 text-white"
+                                    onClick={clearLocation}
+                                    title="Clear location"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 bg-white/10 hover:bg-white/20 text-white"
+                                  onClick={getCurrentLocation}
+                                  disabled={isLoadingLocation}
+                                  title="Use current location"
+                                >
+                                  {isLoadingLocation ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <Navigation className="w-3 h-3" />
+                                  )}
+                                </Button>
+                              </div>
+                              {selectedLocation && (
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2">
+                                  <MapPin className="w-3 h-3 text-emerald-300" />
+                                </div>
+                              )}
+                            </div>
+                            {suggestions.length > 0 && (
+                              <div className="absolute z-20 w-full bg-white text-gray-900 rounded-md shadow-lg mt-2 max-h-60 overflow-y-auto">
+                                {loading && (
+                                  <div className="p-3 text-gray-500 flex items-center">
+                                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                    Loading...
+                                  </div>
+                                )}
+                                {suggestions.map((suggestion, index) => (
+                                  <div
+                                    key={index}
+                                    {...getSuggestionItemProps(suggestion, {
+                                      className: `p-3 cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0 ${
+                                        suggestion.active ? "bg-gray-100" : ""
+                                      }`,
+                                    })}
+                                  >
+                                    <div className="flex items-center">
+                                      <MapPin className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
+                                      <span className="text-sm">
+                                        {suggestion.description}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             )}
-                            {suggestions.map((suggestion, index) => (
-                              <div
-                                key={index}
-                                {...getSuggestionItemProps(suggestion, {
-                                  className: `p-3 cursor-pointer hover:bg-gray-100 ${
-                                    suggestion.active ? "bg-gray-100" : ""
-                                  }`,
-                                })}
-                              >
-                                {suggestion.description}
-                              </div>
-                            ))}
                           </div>
                         )}
-                      </div>
-                    )}
-                  </PlacesAutocomplete>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="ml-2 h-9 w-9 p-0 bg-white/10 hover:bg-white/20 text-white"
-                    onClick={getCurrentLocation}
-                    disabled={isLoadingLocation}
-                    title="Use current location"
-                  >
-                    {isLoadingLocation ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Navigation className="w-4 h-4" />
-                    )}
-                  </Button>
-                </Fragment>
-              ) : (
-                <Input
-                  placeholder="Loading location services..."
-                  className="h-9 bg-white/10 text-white placeholder-gray-300 border-none"
-                  disabled
-                />
-              )}
-            </div>
-            <button
-              onClick={() => navigate("/service")}
-              className="text-white hover:text-gray-200 font-medium transition-colors"
-            >
-              Services
-            </button>
+                      </PlacesAutocomplete>
+                    </Fragment>
+                  ) : (
+                    <Input
+                      placeholder="Loading location services..."
+                      className="h-9 bg-white/10 text-white placeholder-gray-300 border-none w-80"
+                      disabled
+                    />
+                  )}
+                </div>
+                <button
+                  onClick={handleServicesClick}
+                  className="text-white hover:text-gray-200 font-medium transition-colors relative"
+                >
+                  Services
+                  {selectedLocation && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-300 rounded-full"></span>
+                  )}
+                </button>
+              </>
+            )}
             {user ? (
               <>
-                <Link to="/my-bookings">
-                  <Button
-                    variant="outline"
-                    className="border-white/20 text-white hover:bg-white/10"
-                  >
-                    My Bookings
-                  </Button>
-                </Link>
+                {/* Show My Bookings only if not on provider dashboard */}
+                {!isProviderDashboard && (
+                  <Link to="/my-bookings">
+                    <Button
+                      variant="outline"
+                      className="border-white/20 text-white hover:bg-white/10"
+                    >
+                      My Bookings
+                    </Button>
+                  </Link>
+                )}
                 <Button
                   variant="outline"
                   className="border-white/20 text-white hover:bg-white/10"
@@ -315,107 +453,159 @@ const Header = () => {
         <div className="md:hidden bg-emerald-800">
           <div className="px-4 pt-4 pb-6 space-y-4">
             <Fragment>
-              {isGoogleMapsLoaded ? (
-                <div className="relative">
-                  <PlacesAutocomplete
-                    value={locationInput}
-                    onChange={setLocationInput}
-                    onSelect={handleSelect}
-                  >
-                    {({
-                      getInputProps,
-                      suggestions,
-                      getSuggestionItemProps,
-                      loading,
-                    }) => (
-                      <div className="relative">
-                        <Input
-                          {...getInputProps({
-                            placeholder: "Search location or service...",
-                            className:
-                              "h-10 bg-white/10 text-white placeholder-gray-300 border-none pr-10",
-                          })}
-                        />
-                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white opacity-70" />
-                        {suggestions.length > 0 && (
-                          <div className="absolute z-20 w-full bg-white text-gray-900 rounded-md shadow-lg mt-2">
-                            {loading && (
-                              <div className="p-2 text-gray-500">
-                                Loading...
+              {/* Show location search only if not on provider dashboard */}
+              {!isProviderDashboard && (
+                <>
+                  {isGoogleMapsLoaded ? (
+                    <div className="relative">
+                      <PlacesAutocomplete
+                        value={locationInput}
+                        onChange={setLocationInput}
+                        onSelect={handleSelect}
+                        searchOptions={{
+                          types: ["(cities)", "establishment", "geocode"],
+                          componentRestrictions: { country: "in" },
+                        }}
+                      >
+                        {({
+                          getInputProps,
+                          suggestions,
+                          getSuggestionItemProps,
+                          loading,
+                        }) => (
+                          <div className="relative">
+                            <div className="relative">
+                              <Input
+                                {...getInputProps({
+                                  placeholder: selectedLocation
+                                    ? "Change location..."
+                                    : "Search location for services...",
+                                  className:
+                                    "h-10 bg-white/10 text-white placeholder-gray-300 border-none pr-20",
+                                })}
+                              />
+                              <div className="absolute right-1 top-1 flex items-center space-x-1">
+                                {selectedLocation && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 bg-white/10 hover:bg-red-500 text-white"
+                                    onClick={clearLocation}
+                                    title="Clear location"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 bg-white/10 hover:bg-white/20 text-white"
+                                  onClick={getCurrentLocation}
+                                  disabled={isLoadingLocation}
+                                  title="Use current location"
+                                >
+                                  {isLoadingLocation ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Navigation className="w-4 h-4" />
+                                  )}
+                                </Button>
+                              </div>
+                              {selectedLocation && (
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2">
+                                  <MapPin className="w-4 h-4 text-emerald-300" />
+                                </div>
+                              )}
+                            </div>
+                            {suggestions.length > 0 && (
+                              <div className="absolute z-20 w-full bg-white text-gray-900 rounded-md shadow-lg mt-2 max-h-48 overflow-y-auto">
+                                {loading && (
+                                  <div className="p-3 text-gray-500 flex items-center">
+                                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                    Loading...
+                                  </div>
+                                )}
+                                {suggestions.map((suggestion, index) => (
+                                  <div
+                                    key={index}
+                                    {...getSuggestionItemProps(suggestion, {
+                                      className: `p-3 cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0 ${
+                                        suggestion.active ? "bg-gray-100" : ""
+                                      }`,
+                                    })}
+                                  >
+                                    <div className="flex items-center">
+                                      <MapPin className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
+                                      <span className="text-sm">
+                                        {suggestion.description}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             )}
-                            {suggestions.map((suggestion, index) => (
-                              <div
-                                key={index}
-                                {...getSuggestionItemProps(suggestion, {
-                                  className: `p-3 cursor-pointer hover:bg-gray-100 ${
-                                    suggestion.active ? "bg-gray-100" : ""
-                                  }`,
-                                })}
-                              >
-                                {suggestion.description}
-                              </div>
-                            ))}
                           </div>
                         )}
+                      </PlacesAutocomplete>
+                    </div>
+                  ) : (
+                    <Input
+                      placeholder="Loading location services..."
+                      className="h-10 bg-white/10 text-white placeholder-gray-300 border-none"
+                      disabled
+                    />
+                  )}
+                  {locationError && (
+                    <div className="p-3 bg-red-100/20 rounded-lg text-sm text-red-200">
+                      {locationError}
+                    </div>
+                  )}
+                  {selectedLocation && (
+                    <div className="p-3 bg-emerald-100/20 rounded-lg text-sm text-emerald-200">
+                      <div className="flex items-center">
+                        <MapPin className="w-4 h-4 mr-2" />
+                        <span>
+                          Services will be shown for: {selectedLocation.address}
+                        </span>
                       </div>
-                    )}
-                  </PlacesAutocomplete>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-1 top-1 h-8 w-8 p-0 bg-white/10 hover:bg-white/20 text-white"
-                    onClick={getCurrentLocation}
-                    disabled={isLoadingLocation}
-                    title="Use current location"
+                    </div>
+                  )}
+                  <button
+                    onClick={handleServicesClick}
+                    className="block w-full text-left text-white hover:text-gray-200 font-medium flex items-center justify-between"
                   >
-                    {isLoadingLocation ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Navigation className="w-4 h-4" />
+                    <span>Services</span>
+                    {selectedLocation && (
+                      <span className="w-2 h-2 bg-emerald-300 rounded-full"></span>
                     )}
-                  </Button>
-                </div>
-              ) : (
-                <Input
-                  placeholder="Loading location services..."
-                  className="h-10 bg-white/10 text-white placeholder-gray-300 border-none"
-                  disabled
-                />
+                  </button>
+                  <button
+                    onClick={() => scrollToSection("how-it-works")}
+                    className="block w-full text-left text-white hover:text-gray-200 font-medium"
+                  >
+                    How it Works
+                  </button>
+                  <button
+                    onClick={() => scrollToSection("testimonials")}
+                    className="block w-full text-left text-white hover:text-gray-200 font-medium"
+                  >
+                    Reviews
+                  </button>
+                </>
               )}
-              {locationError && (
-                <div className="p-3 bg-red-100/20 rounded-lg text-sm text-red-200">
-                  {locationError}
-                </div>
-              )}
-              <button
-                onClick={() => scrollToSection("services")}
-                className="block w-full text-left text-white hover:text-gray-200 font-medium"
-              >
-                Services
-              </button>
-              <button
-                onClick={() => scrollToSection("how-it-works")}
-                className="block w-full text-left text-white hover:text-gray-200 font-medium"
-              >
-                How it Works
-              </button>
-              <button
-                onClick={() => scrollToSection("testimonials")}
-                className="block w-full text-left text-white hover:text-gray-200 font-medium"
-              >
-                Reviews
-              </button>
               {user ? (
                 <div className="space-y-2">
-                  <Link to="/my-bookings" className="block w-full">
-                    <Button
-                      variant="outline"
-                      className="w-full border-white/20 text-white hover:bg-white/10"
-                    >
-                      My Bookings
-                    </Button>
-                  </Link>
+                  {/* Show My Bookings only if not on provider dashboard */}
+                  {!isProviderDashboard && (
+                    <Link to="/my-bookings" className="block w-full">
+                      <Button
+                        variant="outline"
+                        className="w-full border-white/20 text-white hover:bg-white/10"
+                      >
+                        My Bookings
+                      </Button>
+                    </Link>
+                  )}
                   <Button
                     variant="outline"
                     className="w-full border-white/20 text-white hover:bg-white/10"

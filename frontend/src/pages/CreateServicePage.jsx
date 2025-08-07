@@ -30,7 +30,7 @@ const serviceTypes = [
 ];
 
 // Replace with your actual Google Geocoding API key
-const GOOGLE_API_KEY = "YOUR_GOOGLE_API_KEY";
+const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 const CreateServicePage = () => {
   const { user, isAuthenticated } = useAuth();
@@ -521,26 +521,59 @@ const CreateServicePage = () => {
     ? "Add Services"
     : "Create Provider Profile";
 
+  // Calculate form completion percentage
+  const calculateFormProgress = () => {
+    let completedSections = 0;
+    const totalSections = 3; // skills, pricing, availability (location is optional for existing providers)
+
+    // Check skills section
+    if (formData.skills.some((skill) => skill.trim() !== "")) {
+      completedSections++;
+    }
+
+    // Check pricing section
+    if (formData.pricing.some((p) => p.service.trim() && p.price)) {
+      completedSections++;
+    }
+
+    // Check availability section
+    if (formData.availability.some((a) => a.from && a.to)) {
+      completedSections++;
+    }
+
+    // Check location section (only for new providers)
+    if (
+      isAddingToExisting ||
+      (formData.location.address &&
+        formData.location.coordinates[0] &&
+        formData.location.coordinates[1])
+    ) {
+      completedSections++;
+    }
+
+    return Math.round((completedSections / totalSections) * 100);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
               <button
                 onClick={goBack}
-                className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+                className="flex items-center text-gray-600 hover:text-gray-900 transition-all duration-200 hover:scale-105"
               >
                 <ArrowLeft className="h-5 w-5 mr-2" />
                 Back to Dashboard
               </button>
-              <div className="h-6 w-px bg-gray-300"></div>
-              <h1 className="text-xl font-semibold text-gray-900">
+              <div className="h-6 w-px bg-gradient-to-b from-gray-300 to-transparent"></div>
+              <h1 className="text-xl font-bold text-gray-900 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 {pageTitle}
               </h1>
             </div>
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
+            <div className="flex items-center space-x-2 text-sm text-gray-600 bg-white/50 px-3 py-1 rounded-full border border-gray-200/50">
               <User className="h-4 w-4" />
               <span>Provider Portal</span>
             </div>
@@ -549,12 +582,12 @@ const CreateServicePage = () => {
       </div>
 
       {/* Demo Mode Toggle */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="bg-white/70 backdrop-blur-sm border border-white/20 rounded-2xl p-6 mb-6 shadow-xl shadow-blue-500/5">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-medium text-blue-800">Demo Mode</h3>
-              <p className="text-xs text-blue-600 mt-1">
+              <h3 className="text-sm font-semibold text-gray-800">Demo Mode</h3>
+              <p className="text-xs text-gray-600 mt-1">
                 Toggle to simulate different provider scenarios
               </p>
             </div>
@@ -586,10 +619,10 @@ const CreateServicePage = () => {
                   setIsLoadingProfile(false);
                 }, 1000);
               }}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 transform hover:scale-105 ${
                 demoMode
-                  ? "bg-blue-600 text-white hover:bg-blue-700"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200"
               }`}
             >
               {demoMode ? "Demo Mode ON" : "Demo Mode OFF"}
@@ -600,60 +633,89 @@ const CreateServicePage = () => {
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl shadow-blue-500/10 overflow-hidden border border-white/20">
           {/* Form Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
-            <h2 className="text-2xl font-bold text-white">
-              {isAddingToExisting
-                ? "Add New Services to Your Profile"
-                : "Register as a Service Provider"}
-            </h2>
-            <p className="text-blue-100 mt-2">
-              {isAddingToExisting
-                ? "Add more services and skills to expand your offerings"
-                : "Fill out the form below to create your provider profile"}
-            </p>
-            {isAddingToExisting && existingProvider && (
-              <div className="mt-4 bg-blue-500 bg-opacity-20 rounded-lg p-4">
-                <div className="flex items-center space-x-2 text-blue-100">
-                  <CheckCircle className="h-5 w-5" />
-                  <span className="font-medium">
-                    Existing Provider Profile Found
+          <div className="bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 px-8 py-8 relative overflow-hidden">
+            <div className="absolute inset-0 bg-black/10"></div>
+            <div className="relative z-10">
+              <h2 className="text-2xl font-bold text-white">
+                {isAddingToExisting
+                  ? "Add New Services to Your Profile"
+                  : "Register as a Service Provider"}
+              </h2>
+              <p className="text-blue-100 mt-2">
+                {isAddingToExisting
+                  ? "Add more services and skills to expand your offerings"
+                  : "Fill out the form below to create your provider profile"}
+              </p>
+
+              {/* Progress Indicator */}
+              <div className="mt-6">
+                <div className="flex items-center justify-between text-sm text-white mb-3">
+                  <span className="font-medium">Form Progress</span>
+                  <span className="font-bold">
+                    {calculateFormProgress()}% Complete
                   </span>
                 </div>
-                <div className="mt-2 text-sm text-blue-100">
-                  <p>Current Skills: {existingProvider.skills.join(", ")}</p>
-                  <p>
-                    Current Services:{" "}
-                    {existingProvider.pricing.map((p) => p.service).join(", ")}
-                  </p>
+                <div className="w-full bg-white/20 backdrop-blur-sm rounded-full h-3 overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-white to-blue-100 h-3 rounded-full transition-all duration-500 ease-out shadow-lg"
+                    style={{ width: `${calculateFormProgress()}%` }}
+                  ></div>
                 </div>
               </div>
-            )}
+              {isAddingToExisting && existingProvider && (
+                <div className="mt-4 bg-white/20 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                  <div className="flex items-center space-x-2 text-white">
+                    <CheckCircle className="h-5 w-5" />
+                    <span className="font-semibold">
+                      Existing Provider Profile Found
+                    </span>
+                  </div>
+                  <div className="mt-2 text-sm text-blue-100">
+                    <p>Current Skills: {existingProvider.skills.join(", ")}</p>
+                    <p>
+                      Current Services:{" "}
+                      {existingProvider.pricing
+                        .map((p) => p.service)
+                        .join(", ")}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Error/Success Messages */}
           {error && (
-            <div className="mx-8 mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <AlertCircle className="h-5 w-5 text-red-500" />
-                <p className="text-red-700 text-sm">{error}</p>
+            <div className="mx-8 mt-6 p-6 bg-red-50/80 backdrop-blur-sm border border-red-200/50 rounded-2xl shadow-lg">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-red-100 rounded-full">
+                  <AlertCircle className="h-5 w-5 text-red-600" />
+                </div>
+                <p className="text-red-700 text-sm font-medium">{error}</p>
               </div>
             </div>
           )}
           {success && (
-            <div className="mx-8 mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <CheckCircle className="h-5 w-5 text-green-500" />
-                <p className="text-green-700 text-sm">{success}</p>
+            <div className="mx-8 mt-6 p-6 bg-green-50/80 backdrop-blur-sm border border-green-200/50 rounded-2xl shadow-lg">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-green-100 rounded-full">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                </div>
+                <p className="text-green-700 text-sm font-medium">{success}</p>
               </div>
             </div>
           )}
           {geolocationError && (
-            <div className="mx-8 mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <Info className="h-5 w-5 text-yellow-500" />
-                <p className="text-yellow-700 text-sm">{geolocationError}</p>
+            <div className="mx-8 mt-6 p-6 bg-yellow-50/80 backdrop-blur-sm border border-yellow-200/50 rounded-2xl shadow-lg">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-yellow-100 rounded-full">
+                  <Info className="h-5 w-5 text-yellow-600" />
+                </div>
+                <p className="text-yellow-700 text-sm font-medium">
+                  {geolocationError}
+                </p>
               </div>
             </div>
           )}
@@ -661,17 +723,17 @@ const CreateServicePage = () => {
           {/* Form Body */}
           <div className="px-8 py-8 space-y-8">
             {/* Skills Section */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-blue-600 font-semibold text-sm">1</span>
+            <div className="space-y-6">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
+                  <span className="text-white font-bold text-sm">1</span>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-xl font-bold text-gray-900">
                   {isAddingToExisting
                     ? "Additional Skills & Expertise"
                     : "Skills & Expertise"}
                 </h3>
-                <span className="text-red-500 text-sm">*</span>
+                <span className="text-red-500 text-lg">*</span>
               </div>
               <p className="text-gray-600 text-sm ml-10">
                 {isAddingToExisting
@@ -686,7 +748,7 @@ const CreateServicePage = () => {
                       onChange={(e) =>
                         handleInputChange("skills", e.target.value, index)
                       }
-                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 backdrop-blur-sm transition-all duration-200 hover:border-blue-300"
                     >
                       <option value="" disabled>
                         Select a skill
@@ -708,7 +770,7 @@ const CreateServicePage = () => {
                 ))}
                 <button
                   onClick={addSkill}
-                  className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-medium"
+                  className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-semibold px-4 py-2 rounded-xl hover:bg-blue-50 transition-all duration-200 hover:scale-105"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Add Another Skill</span>
@@ -1123,7 +1185,7 @@ const CreateServicePage = () => {
                 <button
                   onClick={handleSubmit}
                   disabled={isSubmitting}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-3 px-6 rounded-lg font-medium transition-colors flex items-center justify-center"
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-blue-400 disabled:to-purple-400 text-white py-4 px-8 rounded-2xl font-bold transition-all duration-300 transform hover:scale-105 hover:shadow-xl shadow-lg flex items-center justify-center"
                 >
                   {isSubmitting ? (
                     <>
@@ -1146,7 +1208,7 @@ const CreateServicePage = () => {
                 <button
                   onClick={goBack}
                   disabled={isSubmitting}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 disabled:bg-gray-200 text-gray-700 py-3 px-6 rounded-lg font-medium transition-colors flex items-center justify-center"
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 text-gray-700 py-4 px-8 rounded-2xl font-bold transition-all duration-300 transform hover:scale-105 border border-gray-200 flex items-center justify-center"
                 >
                   <ArrowLeft className="h-5 w-5 mr-2" />
                   Cancel
