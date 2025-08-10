@@ -52,7 +52,9 @@ const ServiceDetailsPage = () => {
   const [userLocation, setUserLocation] = useState(null);
   const [locationError, setLocationError] = useState("");
   const [locationInput, setLocationInput] = useState("");
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const autocompleteRef = useRef(null);
+  const locationInputRef = useRef(null);
   const [filters, setFilters] = useState({
     skill: "",
     minPrice: "",
@@ -94,59 +96,338 @@ const ServiceDetailsPage = () => {
     },
   };
 
-  // Initialize Google Maps Places Autocomplete
-  useEffect(() => {
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-    try {
-      if (
-        apiKey &&
-        window?.google?.maps?.places?.Autocomplete &&
-        !autocompleteRef.current
-      ) {
-        const input = document.getElementById("location-search");
-        if (input) {
-          autocompleteRef.current = new window.google.maps.places.Autocomplete(
-            input,
-            {
-              types: ["geocode"],
-              fields: ["formatted_address", "geometry"],
-            }
-          );
+  // Global flag to track if Google Maps is loading
+  const [isGoogleMapsLoading, setIsGoogleMapsLoading] = useState(false);
+  const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
 
-          autocompleteRef.current.addListener("place_changed", () => {
-            const place = autocompleteRef.current?.getPlace?.();
-            if (place?.geometry?.location) {
-              const locationData = {
-                lat: place.geometry.location.lat(),
-                lng: place.geometry.location.lng(),
-                address: place.formatted_address,
-              };
-              setUserLocation(locationData);
-              setLocationInput(place.formatted_address);
-              localStorage.setItem(
-                "selectedLocation",
-                JSON.stringify(locationData)
-              );
-              localStorage.setItem("locationInput", place.formatted_address);
-              setFilters((prev) => ({
-                ...prev,
-                sortBy: "distance",
-                sortOrder: "asc",
-              }));
-              setLocationError("");
-            } else {
-              setLocationError(
-                "Please select a valid location from the suggestions."
-              );
-            }
-          });
+  // Load Google Maps API if not already loaded (Singleton pattern)
+  const loadGoogleMapsAPI = () => {
+    return new Promise((resolve, reject) => {
+      // Check if Google Maps is already loaded
+      if (window.google && window.google.maps && window.google.maps.places) {
+        setGoogleMapsLoaded(true);
+        resolve(window.google);
+        return;
+      }
+
+      // Check if already loading
+      if (isGoogleMapsLoading) {
+        // Wait for the current loading to complete
+        const checkLoaded = setInterval(() => {
+          if (
+            window.google &&
+            window.google.maps &&
+            window.google.maps.places
+          ) {
+            clearInterval(checkLoaded);
+            setGoogleMapsLoaded(true);
+            resolve(window.google);
+          }
+        }, 100);
+
+        // Timeout after 10 seconds
+        setTimeout(() => {
+          clearInterval(checkLoaded);
+          if (!window.google?.maps?.places) {
+            reject(new Error("Google Maps API loading timeout"));
+          }
+        }, 10000);
+        return;
+      }
+
+      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      if (!apiKey) {
+        reject(new Error("Google Maps API key is not configured"));
+        return;
+      }
+
+      // Check if script already exists
+      const existingScript = document.querySelector(
+        `script[src*="maps.googleapis.com"]`
+      );
+      if (existingScript) {
+        // Script exists, wait for it to load
+        const checkLoaded = setInterval(() => {
+          if (
+            window.google &&
+            window.google.maps &&
+            window.google.maps.places
+          ) {
+            clearInterval(checkLoaded);
+            setGoogleMapsLoaded(true);
+            resolve(window.google);
+          }
+        }, 100);
+        return;
+      }
+
+      setIsGoogleMapsLoading(true);
+
+      // Create global callback function name
+      const callbackName = "googleMapsCallback";
+
+      // Create the callback function
+      window[callbackName] = () => {
+        setIsGoogleMapsLoading(false);
+        if (window.google && window.google.maps && window.google.maps.places) {
+          setGoogleMapsLoaded(true);
+          resolve(window.google);
+        } else {
+          reject(new Error("Google Maps API failed to load properly"));
+        }
+        // Clean up the callback
+        delete window[callbackName];
+      };
+
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=${callbackName}`;
+      script.async = true;
+      script.defer = true;
+
+      script.onerror = () => {
+        setIsGoogleMapsLoading(false);
+        delete window[callbackName];
+        reject(new Error("Failed to load Google Maps API"));
+      };
+
+      document.head.appendChild(script);
+    });
+  };
+
+  // Initialize Google Maps Places Autocomplete
+  const initializeAutocomplete = async () => {
+    try {
+      console.log("Initializing autocomplete...");
+
+      // Don't load API again if already loaded
+      if (!googleMapsLoaded) {
+        await loadGoogleMapsAPI();
+      }
+
+      // Clear existing autocomplete if it exists
+      if (autocompleteRef.current) {
+        try {
+          window.google?.maps?.event?.clearInstanceListeners?.(
+            autocompleteRef.current
+          );
+        } catch (e) {
+          console.warn("Error clearing autocomplete listeners:", e);
+        }
+        autocompleteRef.current = null;
+      }
+
+      if (
+        locationInputRef.current &&
+        window.google &&
+        window.google.maps &&
+        window.google.maps.places
+      ) {
+        console.log("Creating new autocomplete instance...");
+
+        autocompleteRef.current = new window.google.maps.places.Autocomplete(
+          locationInputRef.current,
+          {
+            types: ["geocode"],
+            fields: [
+              "formatted_address",
+              "geometry",
+              "place_id",
+              "address_components",
+            ],
+            componentRestrictions: { country: "in" },
+          }
+        );
+
+        // Add the place_changed listener
+        autocompleteRef.current.addListener("place_changed", handlePlaceSelect);
+
+        console.log("Autocomplete initialized successfully!");
+        setLocationError("");
+      }
+    } catch (error) {
+      console.error("Google Places Autocomplete failed to initialize:", error);
+      setLocationError(
+        "Location search is temporarily unavailable. You can still use current location."
+      );
+    }
+  };
+
+  // Handle place selection from autocomplete
+  const handlePlaceSelect = () => {
+    try {
+      const place = autocompleteRef.current?.getPlace();
+      if (place?.geometry?.location && place?.formatted_address) {
+        const locationData = {
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng(),
+          address: place.formatted_address,
+        };
+
+        setUserLocation(locationData);
+        setLocationInput(place.formatted_address);
+        localStorage.setItem("selectedLocation", JSON.stringify(locationData));
+        localStorage.setItem("locationInput", place.formatted_address);
+
+        setFilters((prev) => ({
+          ...prev,
+          sortBy: "distance",
+          sortOrder: "asc",
+        }));
+
+        setLocationError("");
+        console.log("Location selected successfully:", locationData);
+
+        // Don't re-initialize here - let it stay connected
+      } else {
+        setLocationError(
+          "Please select a valid location from the suggestions."
+        );
+      }
+    } catch (error) {
+      console.error("Error handling place selection:", error);
+      setLocationError("Error selecting location. Please try again.");
+    }
+  };
+
+  // Manual location search using Google Geocoding API
+  const searchLocation = async (address) => {
+    if (!address.trim()) {
+      setLocationError("Please enter a location to search");
+      return;
+    }
+
+    setIsLoadingLocation(true);
+    setLocationError("");
+
+    try {
+      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      if (!apiKey) {
+        throw new Error("Google Maps API key is not configured");
+      }
+
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
+          address
+        )}&key=${apiKey}`,
+        { method: "GET" }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Geocoding API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      if (data.status === "OK" && data.results && data.results.length > 0) {
+        const result = data.results[0];
+        const locationData = {
+          lat: result.geometry.location.lat,
+          lng: result.geometry.location.lng,
+          address: result.formatted_address,
+        };
+
+        setUserLocation(locationData);
+        setLocationInput(result.formatted_address);
+        localStorage.setItem("selectedLocation", JSON.stringify(locationData));
+        localStorage.setItem("locationInput", result.formatted_address);
+
+        setFilters((prev) => ({
+          ...prev,
+          sortBy: "distance",
+          sortOrder: "asc",
+        }));
+
+        setLocationError("");
+      } else {
+        setLocationError(
+          "Location not found. Please try a different search term."
+        );
+      }
+    } catch (error) {
+      console.error("Error searching location:", error);
+      setLocationError(`Failed to search location: ${error.message}`);
+    } finally {
+      setIsLoadingLocation(false);
+    }
+  };
+
+  // Handle location input change with debounced suggestions
+  const handleLocationInputChange = (e) => {
+    const value = e.target.value;
+    setLocationInput(value);
+    setLocationError("");
+
+    // Only try to re-initialize if we don't have autocomplete and Google Maps is loaded
+    if (!autocompleteRef.current && googleMapsLoaded && value.length >= 1) {
+      console.log("Autocomplete missing, attempting to re-initialize...");
+      setTimeout(() => {
+        if (!autocompleteRef.current && locationInputRef.current) {
+          initializeAutocomplete();
+        }
+      }, 300);
+    }
+  };
+
+  // Handle location search on Enter key or search button
+  const handleLocationSearch = (e) => {
+    if (e?.key === "Enter" || e?.type === "click") {
+      e.preventDefault();
+      searchLocation(locationInput);
+    }
+  };
+
+  // Initialize autocomplete with retry mechanism and state monitoring
+  useEffect(() => {
+    // Only initialize if Google Maps is not already loading/loaded
+    if (!isGoogleMapsLoading && !googleMapsLoaded) {
+      const initWithRetry = async (retryCount = 0) => {
+        try {
+          if (retryCount < 3) {
+            await initializeAutocomplete();
+          }
+        } catch (error) {
+          console.warn(
+            `Autocomplete initialization attempt ${retryCount + 1} failed:`,
+            error
+          );
+          if (retryCount < 2) {
+            setTimeout(() => initWithRetry(retryCount + 1), 1000);
+          }
+        }
+      };
+
+      initWithRetry();
+    }
+
+    // Cleanup function
+    return () => {
+      // Only clean up listeners, don't destroy the autocomplete instance
+      if (autocompleteRef.current) {
+        try {
+          window.google?.maps?.event?.clearInstanceListeners?.(
+            autocompleteRef.current
+          );
+        } catch (e) {
+          console.warn("Error during cleanup:", e);
         }
       }
-    } catch (e) {
-      console.warn("Google Places Autocomplete failed to initialize:", e);
-      // Non-fatal. User can still type address or use current location.
+    };
+  }, []); // Empty dependency array - only run once
+
+  // Re-initialize autocomplete when location is cleared (only when going from location to no location)
+  useEffect(() => {
+    if (
+      !userLocation &&
+      googleMapsLoaded &&
+      locationInputRef.current &&
+      !autocompleteRef.current
+    ) {
+      console.log("Re-initializing autocomplete after location clear...");
+      setTimeout(() => {
+        initializeAutocomplete();
+      }, 200);
     }
-  }, []);
+  }, [userLocation, googleMapsLoaded]);
 
   // Load saved location from localStorage
   useEffect(() => {
@@ -236,7 +517,7 @@ const ServiceDetailsPage = () => {
       return;
     }
 
-    setLoading(true);
+    setIsLoadingLocation(true);
     setLocationError("");
 
     navigator.geolocation.getCurrentPosition(
@@ -244,7 +525,6 @@ const ServiceDetailsPage = () => {
         try {
           const { latitude, longitude } = position.coords;
 
-          // Validate Google Maps API key
           const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
           if (!apiKey) {
             throw new Error(
@@ -252,7 +532,6 @@ const ServiceDetailsPage = () => {
             );
           }
 
-          // Fetch address using Google Maps Geocoding API
           const response = await fetch(
             `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}&language=en`,
             { method: "GET" }
@@ -280,7 +559,6 @@ const ServiceDetailsPage = () => {
             address,
           };
 
-          // Update state and localStorage
           setUserLocation(locationData);
           setLocationInput(address);
           localStorage.setItem(
@@ -289,24 +567,22 @@ const ServiceDetailsPage = () => {
           );
           localStorage.setItem("locationInput", address);
 
-          // Update filters to sort by distance
           setFilters((prev) => ({
             ...prev,
             sortBy: "distance",
             sortOrder: "asc",
           }));
 
-          // Fetch providers and skills with the new location
-          await Promise.all([fetchProviders(1), fetchAvailableSkills()]);
+          setLocationError("");
         } catch (error) {
           console.error("Error getting location details:", error);
           setLocationError(`Failed to get location details: ${error.message}`);
         } finally {
-          setLoading(false);
+          setIsLoadingLocation(false);
         }
       },
       (error) => {
-        setLoading(false);
+        setIsLoadingLocation(false);
         const errorMessages = {
           1: "Location access denied. Please enable location permissions in your browser settings.",
           2: "Location information is unavailable. Please try again later.",
@@ -335,6 +611,9 @@ const ServiceDetailsPage = () => {
       sortBy: "rating",
       sortOrder: "desc",
     }));
+
+    // Don't re-initialize autocomplete here - let the useEffect handle it
+
     fetchProviders(1);
     fetchAvailableSkills();
   };
@@ -613,22 +892,50 @@ const ServiceDetailsPage = () => {
                     <div className="flex flex-col space-y-3">
                       <div className="relative">
                         <Input
-                          id="location-search"
+                          ref={locationInputRef}
+                          id="location-search-input"
                           type="text"
-                          placeholder="Search for a location..."
+                          placeholder="Type to search locations... (e.g., Bhubaneswar, Cuttack)"
                           value={locationInput}
-                          onChange={(e) => setLocationInput(e.target.value)}
+                          onChange={handleLocationInputChange}
+                          onKeyPress={handleLocationSearch}
+                          onFocus={() => {
+                            // Only reinitialize if autocomplete is missing and Google Maps is loaded
+                            if (!autocompleteRef.current && googleMapsLoaded) {
+                              console.log(
+                                "Input focused, re-initializing autocomplete..."
+                              );
+                              initializeAutocomplete();
+                            }
+                          }}
                           className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 pr-10"
+                          disabled={isLoadingLocation}
+                          autoComplete="off" // Prevent browser autocomplete interference
                         />
-                        <MapPin className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <button
+                          onClick={handleLocationSearch}
+                          disabled={isLoadingLocation}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-emerald-600 disabled:opacity-50"
+                        >
+                          {isLoadingLocation ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-emerald-600 border-t-transparent"></div>
+                          ) : (
+                            <Search className="w-4 h-4" />
+                          )}
+                        </button>
                       </div>
                       <Button
                         onClick={getCurrentLocation}
                         size="sm"
                         variant="outline"
                         className="border-orange-300 text-orange-700 hover:bg-orange-100"
+                        disabled={isLoadingLocation}
                       >
-                        <Navigation className="w-4 h-4 mr-2" />
+                        {isLoadingLocation ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-orange-600 border-t-transparent mr-2"></div>
+                        ) : (
+                          <Navigation className="w-4 h-4 mr-2" />
+                        )}
                         Use Current Location
                       </Button>
                     </div>
@@ -638,6 +945,36 @@ const ServiceDetailsPage = () => {
                 {locationError && (
                   <div className="mb-6 p-4 bg-red-50 rounded-lg border border-red-200">
                     <p className="text-sm text-red-600">{locationError}</p>
+                  </div>
+                )}
+
+                {/* Debug Info (remove in production) */}
+                {process.env.NODE_ENV === "development" && (
+                  <div className="mb-6 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-xs text-blue-600">
+                      Debug: API Key{" "}
+                      {import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+                        ? "✓ Present"
+                        : "✗ Missing"}{" "}
+                      | Google Maps{" "}
+                      {googleMapsLoaded
+                        ? "✓ Loaded"
+                        : isGoogleMapsLoading
+                        ? "⏳ Loading"
+                        : "✗ Not Loaded"}{" "}
+                      | Autocomplete{" "}
+                      {autocompleteRef.current ? "✓ Ready" : "✗ Not Ready"}
+                    </p>
+                    {/* Show existing scripts for debugging */}
+                    <p className="text-xs text-blue-500 mt-1">
+                      Scripts:{" "}
+                      {
+                        document.querySelectorAll(
+                          'script[src*="maps.googleapis.com"]'
+                        ).length
+                      }{" "}
+                      Google Maps scripts found
+                    </p>
                   </div>
                 )}
 
@@ -845,7 +1182,7 @@ const ServiceDetailsPage = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
               >
-                <Card className="border-0 shadow-lg bg-white/80 backdrop-blud-sm">
+                <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
                   <CardContent className="p-8 text-center">
                     <div className="mb-4">
                       <Sparkles className="w-16 h-16 text-gray-400 mx-auto mb-4" />
