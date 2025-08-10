@@ -127,7 +127,7 @@ class ApiService {
     });
   }
 
-  // New methods for getting all providers with filtering
+  // Enhanced getAllProviders with proper location handling
   async getAllProviders(filters = {}) {
     const queryParams = new URLSearchParams();
 
@@ -137,13 +137,35 @@ class ApiService {
         filters[key] !== null &&
         filters[key] !== ""
       ) {
-        queryParams.append(key, filters[key]);
+        // Handle location parameter properly
+        if (key === "location" && filters[key]) {
+          queryParams.append(key, filters[key]);
+        }
+        // Handle other numeric parameters
+        else if (
+          key === "radius" ||
+          key === "minPrice" ||
+          key === "maxPrice" ||
+          key === "page" ||
+          key === "limit"
+        ) {
+          const numValue = parseFloat(filters[key]);
+          if (!isNaN(numValue)) {
+            queryParams.append(key, numValue.toString());
+          }
+        }
+        // Handle string parameters
+        else {
+          queryParams.append(key, filters[key].toString());
+        }
       }
     });
 
     const endpoint = `/provider/all${
       queryParams.toString() ? `?${queryParams.toString()}` : ""
     }`;
+
+    console.log("API Request URL:", `${this.baseURL}${endpoint}`);
     return this.request(endpoint, {
       method: "GET",
     });
@@ -155,16 +177,98 @@ class ApiService {
     });
   }
 
-  async searchProviders(query, page = 1, limit = 10) {
+  // Enhanced searchProviders with location support
+  async searchProviders(query, page = 1, limit = 10, additionalParams = {}) {
     const queryParams = new URLSearchParams({
-      query,
+      query: query.toString(),
       page: page.toString(),
       limit: limit.toString(),
     });
 
-    return this.request(`/provider/search?${queryParams.toString()}`, {
+    // Add additional parameters like location, radius, etc.
+    Object.keys(additionalParams).forEach((key) => {
+      if (
+        additionalParams[key] !== undefined &&
+        additionalParams[key] !== null &&
+        additionalParams[key] !== ""
+      ) {
+        queryParams.append(key, additionalParams[key].toString());
+      }
+    });
+
+    const endpoint = `/provider/search?${queryParams.toString()}`;
+    console.log("Search API Request URL:", `${this.baseURL}${endpoint}`);
+
+    return this.request(endpoint, {
       method: "GET",
     });
+  }
+
+  // New method to get providers by specific skill with location filtering
+  async getProvidersBySkill(skill, filters = {}) {
+    const queryParams = new URLSearchParams();
+
+    // Add skill to filters
+    const skillFilters = { ...filters, skill };
+
+    Object.keys(skillFilters).forEach((key) => {
+      if (
+        skillFilters[key] !== undefined &&
+        skillFilters[key] !== null &&
+        skillFilters[key] !== ""
+      ) {
+        if (key === "location" && skillFilters[key]) {
+          queryParams.append(key, skillFilters[key]);
+        } else if (
+          key === "radius" ||
+          key === "minPrice" ||
+          key === "maxPrice" ||
+          key === "page" ||
+          key === "limit"
+        ) {
+          const numValue = parseFloat(skillFilters[key]);
+          if (!isNaN(numValue)) {
+            queryParams.append(key, numValue.toString());
+          }
+        } else {
+          queryParams.append(key, skillFilters[key].toString());
+        }
+      }
+    });
+
+    const endpoint = `/provider/skill/${encodeURIComponent(skill)}${
+      queryParams.toString() ? `?${queryParams.toString()}` : ""
+    }`;
+
+    console.log("Skill-based API Request URL:", `${this.baseURL}${endpoint}`);
+    return this.request(endpoint, {
+      method: "GET",
+    });
+  }
+
+  // Utility method to format location for API calls
+  formatLocationForAPI(lat, lng) {
+    if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+      return null;
+    }
+    return `${lng},${lat}`; // Backend expects longitude,latitude format
+  }
+
+  // Method to validate location data
+  validateLocation(location) {
+    if (!location) return false;
+
+    const { lat, lng } = location;
+    return (
+      typeof lat === "number" &&
+      typeof lng === "number" &&
+      !isNaN(lat) &&
+      !isNaN(lng) &&
+      lat >= -90 &&
+      lat <= 90 &&
+      lng >= -180 &&
+      lng <= 180
+    );
   }
 }
 

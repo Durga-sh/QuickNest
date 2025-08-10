@@ -23,6 +23,7 @@ import {
   AlertCircle,
   X,
   SlidersHorizontal,
+  Loader2,
 } from "lucide-react";
 import apiService from "../api/provider";
 import ProviderDetailsModal from "../components/ProvideDetails";
@@ -55,6 +56,9 @@ const ServiceDetailsPage = () => {
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const autocompleteRef = useRef(null);
   const locationInputRef = useRef(null);
+  const [isGoogleMapsLoading, setIsGoogleMapsLoading] = useState(false);
+  const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
+
   const [filters, setFilters] = useState({
     skill: "",
     minPrice: "",
@@ -96,11 +100,7 @@ const ServiceDetailsPage = () => {
     },
   };
 
-  // Global flag to track if Google Maps is loading
-  const [isGoogleMapsLoading, setIsGoogleMapsLoading] = useState(false);
-  const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
-
-  // Load Google Maps API if not already loaded (Singleton pattern)
+  // Load Google Maps API if not already loaded
   const loadGoogleMapsAPI = () => {
     return new Promise((resolve, reject) => {
       // Check if Google Maps is already loaded
@@ -112,7 +112,6 @@ const ServiceDetailsPage = () => {
 
       // Check if already loading
       if (isGoogleMapsLoading) {
-        // Wait for the current loading to complete
         const checkLoaded = setInterval(() => {
           if (
             window.google &&
@@ -125,7 +124,6 @@ const ServiceDetailsPage = () => {
           }
         }, 100);
 
-        // Timeout after 10 seconds
         setTimeout(() => {
           clearInterval(checkLoaded);
           if (!window.google?.maps?.places) {
@@ -141,12 +139,10 @@ const ServiceDetailsPage = () => {
         return;
       }
 
-      // Check if script already exists
       const existingScript = document.querySelector(
         `script[src*="maps.googleapis.com"]`
       );
       if (existingScript) {
-        // Script exists, wait for it to load
         const checkLoaded = setInterval(() => {
           if (
             window.google &&
@@ -162,11 +158,8 @@ const ServiceDetailsPage = () => {
       }
 
       setIsGoogleMapsLoading(true);
+      const callbackName = `googleMapsCallback_${Date.now()}`;
 
-      // Create global callback function name
-      const callbackName = "googleMapsCallback";
-
-      // Create the callback function
       window[callbackName] = () => {
         setIsGoogleMapsLoading(false);
         if (window.google && window.google.maps && window.google.maps.places) {
@@ -175,7 +168,6 @@ const ServiceDetailsPage = () => {
         } else {
           reject(new Error("Google Maps API failed to load properly"));
         }
-        // Clean up the callback
         delete window[callbackName];
       };
 
@@ -183,7 +175,6 @@ const ServiceDetailsPage = () => {
       script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=${callbackName}`;
       script.async = true;
       script.defer = true;
-
       script.onerror = () => {
         setIsGoogleMapsLoading(false);
         delete window[callbackName];
@@ -197,14 +188,10 @@ const ServiceDetailsPage = () => {
   // Initialize Google Maps Places Autocomplete
   const initializeAutocomplete = async () => {
     try {
-      console.log("Initializing autocomplete...");
-
-      // Don't load API again if already loaded
       if (!googleMapsLoaded) {
         await loadGoogleMapsAPI();
       }
 
-      // Clear existing autocomplete if it exists
       if (autocompleteRef.current) {
         try {
           window.google?.maps?.event?.clearInstanceListeners?.(
@@ -222,8 +209,6 @@ const ServiceDetailsPage = () => {
         window.google.maps &&
         window.google.maps.places
       ) {
-        console.log("Creating new autocomplete instance...");
-
         autocompleteRef.current = new window.google.maps.places.Autocomplete(
           locationInputRef.current,
           {
@@ -238,10 +223,7 @@ const ServiceDetailsPage = () => {
           }
         );
 
-        // Add the place_changed listener
         autocompleteRef.current.addListener("place_changed", handlePlaceSelect);
-
-        console.log("Autocomplete initialized successfully!");
         setLocationError("");
       }
     } catch (error) {
@@ -268,6 +250,7 @@ const ServiceDetailsPage = () => {
         localStorage.setItem("selectedLocation", JSON.stringify(locationData));
         localStorage.setItem("locationInput", place.formatted_address);
 
+        // Auto-sort by distance when location is set
         setFilters((prev) => ({
           ...prev,
           sortBy: "distance",
@@ -276,8 +259,6 @@ const ServiceDetailsPage = () => {
 
         setLocationError("");
         console.log("Location selected successfully:", locationData);
-
-        // Don't re-initialize here - let it stay connected
       } else {
         setLocationError(
           "Please select a valid location from the suggestions."
@@ -308,7 +289,7 @@ const ServiceDetailsPage = () => {
       const response = await fetch(
         `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
           address
-        )}&key=${apiKey}`,
+        )}&components=country:IN&key=${apiKey}`,
         { method: "GET" }
       );
 
@@ -351,166 +332,7 @@ const ServiceDetailsPage = () => {
     }
   };
 
-  // Handle location input change with debounced suggestions
-  const handleLocationInputChange = (e) => {
-    const value = e.target.value;
-    setLocationInput(value);
-    setLocationError("");
-
-    // Only try to re-initialize if we don't have autocomplete and Google Maps is loaded
-    if (!autocompleteRef.current && googleMapsLoaded && value.length >= 1) {
-      console.log("Autocomplete missing, attempting to re-initialize...");
-      setTimeout(() => {
-        if (!autocompleteRef.current && locationInputRef.current) {
-          initializeAutocomplete();
-        }
-      }, 300);
-    }
-  };
-
-  // Handle location search on Enter key or search button
-  const handleLocationSearch = (e) => {
-    if (e?.key === "Enter" || e?.type === "click") {
-      e.preventDefault();
-      searchLocation(locationInput);
-    }
-  };
-
-  // Initialize autocomplete with retry mechanism and state monitoring
-  useEffect(() => {
-    // Only initialize if Google Maps is not already loading/loaded
-    if (!isGoogleMapsLoading && !googleMapsLoaded) {
-      const initWithRetry = async (retryCount = 0) => {
-        try {
-          if (retryCount < 3) {
-            await initializeAutocomplete();
-          }
-        } catch (error) {
-          console.warn(
-            `Autocomplete initialization attempt ${retryCount + 1} failed:`,
-            error
-          );
-          if (retryCount < 2) {
-            setTimeout(() => initWithRetry(retryCount + 1), 1000);
-          }
-        }
-      };
-
-      initWithRetry();
-    }
-
-    // Cleanup function
-    return () => {
-      // Only clean up listeners, don't destroy the autocomplete instance
-      if (autocompleteRef.current) {
-        try {
-          window.google?.maps?.event?.clearInstanceListeners?.(
-            autocompleteRef.current
-          );
-        } catch (e) {
-          console.warn("Error during cleanup:", e);
-        }
-      }
-    };
-  }, []); // Empty dependency array - only run once
-
-  // Re-initialize autocomplete when location is cleared (only when going from location to no location)
-  useEffect(() => {
-    if (
-      !userLocation &&
-      googleMapsLoaded &&
-      locationInputRef.current &&
-      !autocompleteRef.current
-    ) {
-      console.log("Re-initializing autocomplete after location clear...");
-      setTimeout(() => {
-        initializeAutocomplete();
-      }, 200);
-    }
-  }, [userLocation, googleMapsLoaded]);
-
-  // Load saved location from localStorage
-  useEffect(() => {
-    const savedLocation = localStorage.getItem("selectedLocation");
-    const savedLocationInput = localStorage.getItem("locationInput");
-    if (savedLocation) {
-      try {
-        const parsedLocation = JSON.parse(savedLocation);
-        if (
-          parsedLocation.lat &&
-          parsedLocation.lng &&
-          parsedLocation.address
-        ) {
-          setUserLocation(parsedLocation);
-          setLocationInput(savedLocationInput || parsedLocation.address);
-          setFilters((prev) => ({
-            ...prev,
-            sortBy: "distance",
-            sortOrder: "asc",
-          }));
-        } else {
-          throw new Error("Invalid location data in localStorage");
-        }
-      } catch (error) {
-        console.error("Error parsing saved location:", error);
-        localStorage.removeItem("selectedLocation");
-        localStorage.removeItem("locationInput");
-        setLocationError(
-          "Invalid saved location data. Please set your location again."
-        );
-      }
-    }
-  }, []);
-
-  // Fetch providers with current filters
-  const fetchProviders = async (page = 1) => {
-    try {
-      setLoading(true);
-      setError("");
-      const filterParams = {
-        ...filters,
-        page,
-        limit: filters.limit,
-        ...(selectedSkill && { skill: selectedSkill }),
-      };
-
-      if (userLocation && userLocation.lat && userLocation.lng) {
-        filterParams.lat = userLocation.lat;
-        filterParams.lng = userLocation.lng;
-        filterParams.radius = filters.radius;
-      }
-
-      console.log("Fetching providers with params:", filterParams);
-      const response = await apiService.getAllProviders(filterParams);
-      setProviders(Array.isArray(response.data) ? response.data : []);
-      setPagination(response.pagination || {});
-      setCurrentPage(page);
-    } catch (err) {
-      console.error("Error fetching providers:", err);
-      setError(err.message || "Failed to fetch providers");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch available skills
-  const fetchAvailableSkills = async () => {
-    try {
-      const skillsParams = {};
-      if (userLocation && userLocation.lat && userLocation.lng) {
-        skillsParams.lat = userLocation.lat;
-        skillsParams.lng = userLocation.lng;
-        skillsParams.radius = filters.radius;
-      }
-
-      const response = await apiService.getAvailableSkills(skillsParams);
-      setAvailableSkills(response.skills || []);
-    } catch (err) {
-      console.error("Error fetching skills:", err);
-    }
-  };
-
-  // Get current location
+  // Get current location using Geolocation API
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
       setLocationError("Geolocation is not supported by this browser.");
@@ -524,12 +346,32 @@ const ServiceDetailsPage = () => {
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-
           const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
           if (!apiKey) {
-            throw new Error(
-              "Google Maps API key is missing. Please configure VITE_GOOGLE_MAPS_API_KEY in your environment."
+            // Fallback without reverse geocoding
+            const locationData = {
+              lat: latitude,
+              lng: longitude,
+              address: `Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(
+                4
+              )}`,
+            };
+            setUserLocation(locationData);
+            setLocationInput(locationData.address);
+            localStorage.setItem(
+              "selectedLocation",
+              JSON.stringify(locationData)
             );
+            localStorage.setItem("locationInput", locationData.address);
+            setFilters((prev) => ({
+              ...prev,
+              sortBy: "distance",
+              sortOrder: "asc",
+            }));
+            setLocationError("");
+            setIsLoadingLocation(false);
+            return;
           }
 
           const response = await fetch(
@@ -542,12 +384,11 @@ const ServiceDetailsPage = () => {
           }
 
           const data = await response.json();
-
           let address = "Current Location";
+
           if (data.status === "OK" && data.results && data.results.length > 0) {
             address = data.results[0].formatted_address;
-          } else if (data.status !== "OK") {
-            console.warn("Geocoding API returned non-OK status:", data.status);
+          } else {
             address = `Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(
               4
             )}`;
@@ -584,7 +425,7 @@ const ServiceDetailsPage = () => {
       (error) => {
         setIsLoadingLocation(false);
         const errorMessages = {
-          1: "Location access denied. Please enable location permissions in your browser settings.",
+          1: "Location access denied. Please enable location permissions and try again.",
           2: "Location information is unavailable. Please try again later.",
           3: "Location request timed out. Please try again.",
           default: "An unknown error occurred while getting your location.",
@@ -593,8 +434,8 @@ const ServiceDetailsPage = () => {
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
+        timeout: 15000,
+        maximumAge: 60000, // Cache for 1 minute
       }
     );
   };
@@ -606,24 +447,118 @@ const ServiceDetailsPage = () => {
     localStorage.removeItem("selectedLocation");
     localStorage.removeItem("locationInput");
     setLocationError("");
+
     setFilters((prev) => ({
       ...prev,
       sortBy: "rating",
       sortOrder: "desc",
     }));
 
-    // Don't re-initialize autocomplete here - let the useEffect handle it
-
+    // Fetch providers without location filter
     fetchProviders(1);
     fetchAvailableSkills();
   };
 
-  // Handle filter changes
+  // Enhanced fetch providers with proper location handling
+  const fetchProviders = async (page = 1) => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const filterParams = {
+        ...filters,
+        page,
+        limit: filters.limit,
+        ...(selectedSkill && { skill: selectedSkill }),
+      };
+
+      // Add location-based filtering if user location is available
+      if (userLocation && userLocation.lat && userLocation.lng) {
+        // Format location as "lat,lng" for the backend
+        filterParams.location = `${userLocation.lng},${userLocation.lat}`;
+        filterParams.radius = parseInt(filters.radius);
+
+        // Ensure distance sorting when location is available
+        if (filterParams.sortBy === "rating" && userLocation) {
+          filterParams.sortBy = "distance";
+          filterParams.sortOrder = "asc";
+        }
+      }
+
+      console.log("Fetching providers with location params:", filterParams);
+      const response = await apiService.getAllProviders(filterParams);
+
+      // Process the response data
+      const providersData = Array.isArray(response.data) ? response.data : [];
+      setProviders(providersData);
+      setPagination(response.pagination || {});
+      setCurrentPage(page);
+
+      console.log(
+        `Found ${providersData.length} providers`,
+        userLocation ? `within ${filters.radius}km` : ""
+      );
+    } catch (err) {
+      console.error("Error fetching providers:", err);
+      setError(err.message || "Failed to fetch providers");
+      setProviders([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Enhanced fetch available skills with location consideration
+  const fetchAvailableSkills = async () => {
+    try {
+      // Note: If you want to filter skills by location, you'll need to modify the backend
+      // For now, we'll get all skills but could enhance this later
+      const response = await apiService.getAvailableSkills();
+      setAvailableSkills(response.skills || []);
+    } catch (err) {
+      console.error("Error fetching skills:", err);
+      setAvailableSkills([]);
+    }
+  };
+
+  // Handle location input change
+  const handleLocationInputChange = (e) => {
+    const value = e.target.value;
+    setLocationInput(value);
+    setLocationError("");
+
+    // Re-initialize autocomplete if needed
+    if (!autocompleteRef.current && googleMapsLoaded && value.length >= 1) {
+      setTimeout(() => {
+        if (!autocompleteRef.current && locationInputRef.current) {
+          initializeAutocomplete();
+        }
+      }, 300);
+    }
+  };
+
+  // Handle location search on Enter key or search button
+  const handleLocationSearch = (e) => {
+    if (e?.key === "Enter" || e?.type === "click") {
+      e.preventDefault();
+      searchLocation(locationInput);
+    }
+  };
+
+  // Handle filter changes with automatic refresh
   const handleFilterChange = (filterName, value) => {
-    setFilters((prev) => ({
-      ...prev,
-      [filterName]: value,
-    }));
+    setFilters((prev) => {
+      const newFilters = {
+        ...prev,
+        [filterName]: value,
+      };
+
+      // Auto-apply certain filters immediately
+      if (filterName === "radius" && userLocation) {
+        setTimeout(() => fetchProviders(1), 100);
+      }
+
+      return newFilters;
+    });
   };
 
   // Apply filters
@@ -635,7 +570,7 @@ const ServiceDetailsPage = () => {
 
   // Clear filters
   const clearFilters = () => {
-    setFilters({
+    const newFilters = {
       skill: "",
       minPrice: "",
       maxPrice: "",
@@ -643,7 +578,9 @@ const ServiceDetailsPage = () => {
       sortBy: userLocation ? "distance" : "rating",
       sortOrder: userLocation ? "asc" : "desc",
       limit: 12,
-    });
+    };
+
+    setFilters(newFilters);
     setSelectedSkill("");
     setSearchQuery("");
     setCurrentPage(1);
@@ -658,7 +595,7 @@ const ServiceDetailsPage = () => {
     fetchProviders(1);
   };
 
-  // Search providers
+  // Enhanced search with location consideration
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
       fetchProviders(1);
@@ -668,24 +605,26 @@ const ServiceDetailsPage = () => {
     try {
       setLoading(true);
       setError("");
+
       const searchParams = {
         query: searchQuery,
         page: 1,
         limit: filters.limit,
       };
 
+      // Add location parameters for search if available
       if (userLocation && userLocation.lat && userLocation.lng) {
         searchParams.lat = userLocation.lat;
         searchParams.lng = userLocation.lng;
-        searchParams.radius = filters.radius;
+        searchParams.radius = parseInt(filters.radius);
       }
 
       const response = await apiService.searchProviders(
         searchQuery,
         1,
-        filters.limit,
-        searchParams
+        filters.limit
       );
+
       setProviders(response.data || []);
       setPagination(response.pagination || {});
       setCurrentPage(1);
@@ -697,7 +636,7 @@ const ServiceDetailsPage = () => {
     }
   };
 
-  // Format price
+  // Utility functions
   const formatPrice = (price) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -705,13 +644,12 @@ const ServiceDetailsPage = () => {
     }).format(price);
   };
 
-  // Format distance
   const formatDistance = (distance) => {
     if (!distance) return null;
-    return `${(distance / 1000).toFixed(1)} km away`;
+    const km = (distance / 1000).toFixed(1);
+    return `${km} km away`;
   };
 
-  // Format availability
   const formatAvailability = (availability) => {
     if (!availability || availability.length === 0) return "Not specified";
     return availability
@@ -744,17 +682,97 @@ const ServiceDetailsPage = () => {
     setShowBookingModal(true);
   };
 
+  // Initialize autocomplete
+  useEffect(() => {
+    if (!isGoogleMapsLoading && !googleMapsLoaded) {
+      const initWithRetry = async (retryCount = 0) => {
+        try {
+          if (retryCount < 3) {
+            await initializeAutocomplete();
+          }
+        } catch (error) {
+          console.warn(
+            `Autocomplete initialization attempt ${retryCount + 1} failed:`,
+            error
+          );
+          if (retryCount < 2) {
+            setTimeout(() => initWithRetry(retryCount + 1), 1000);
+          }
+        }
+      };
+      initWithRetry();
+    }
+
+    return () => {
+      if (autocompleteRef.current) {
+        try {
+          window.google?.maps?.event?.clearInstanceListeners?.(
+            autocompleteRef.current
+          );
+        } catch (e) {
+          console.warn("Error during cleanup:", e);
+        }
+      }
+    };
+  }, []);
+
+  // Re-initialize autocomplete when needed
+  useEffect(() => {
+    if (
+      !userLocation &&
+      googleMapsLoaded &&
+      locationInputRef.current &&
+      !autocompleteRef.current
+    ) {
+      setTimeout(() => {
+        initializeAutocomplete();
+      }, 200);
+    }
+  }, [userLocation, googleMapsLoaded]);
+
+  // Load saved location from localStorage
+  useEffect(() => {
+    const savedLocation = localStorage.getItem("selectedLocation");
+    const savedLocationInput = localStorage.getItem("locationInput");
+
+    if (savedLocation) {
+      try {
+        const parsedLocation = JSON.parse(savedLocation);
+        if (
+          parsedLocation.lat &&
+          parsedLocation.lng &&
+          parsedLocation.address
+        ) {
+          setUserLocation(parsedLocation);
+          setLocationInput(savedLocationInput || parsedLocation.address);
+          setFilters((prev) => ({
+            ...prev,
+            sortBy: "distance",
+            sortOrder: "asc",
+          }));
+        } else {
+          throw new Error("Invalid location data");
+        }
+      } catch (error) {
+        console.error("Error parsing saved location:", error);
+        localStorage.removeItem("selectedLocation");
+        localStorage.removeItem("locationInput");
+      }
+    }
+  }, []);
+
+  // Initial fetch and fetch when location changes
   useEffect(() => {
     fetchProviders(1);
     fetchAvailableSkills();
   }, []);
 
+  // Refetch when location or key filters change
   useEffect(() => {
     if (userLocation) {
       fetchProviders(1);
-      fetchAvailableSkills();
     }
-  }, [userLocation, filters]);
+  }, [userLocation, filters.radius, filters.sortBy, filters.sortOrder]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
@@ -794,6 +812,7 @@ const ServiceDetailsPage = () => {
                   <p className="text-gray-600 flex items-center">
                     <Users className="w-4 h-4 mr-2" />
                     {pagination.totalProviders || 0} professionals available
+                    {userLocation && ` within ${filters.radius}km`}
                   </p>
                   {userLocation && (
                     <div className="flex items-center text-sm text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
@@ -826,7 +845,7 @@ const ServiceDetailsPage = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="lg:grid lg:grid-cols-4 lg:gap-8">
-          {/* Filters Sidebar */}
+          {/* Enhanced Filters Sidebar */}
           <motion.div
             className={`lg:col-span-1 ${
               showFilters ? "block" : "hidden lg:block"
@@ -853,134 +872,116 @@ const ServiceDetailsPage = () => {
                   </Button>
                 </div>
 
-                {/* Location Status */}
-                {userLocation ? (
-                  <div className="mb-6 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start space-x-2">
-                        <MapPin className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <p className="text-sm font-medium text-emerald-800">
-                            Current Location
-                          </p>
-                          <p className="text-xs text-emerald-600 mt-1">
-                            {userLocation.address}
+                {/* Enhanced Location Section */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    <MapPin className="w-4 h-4 inline mr-2" />
+                    Location
+                  </label>
+
+                  {userLocation ? (
+                    <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start space-x-2">
+                          <Target className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-emerald-800">
+                              Current Location
+                            </p>
+                            <p className="text-xs text-emerald-600 mt-1 break-words">
+                              {userLocation.address}
+                            </p>
+                            <p className="text-xs text-emerald-500 mt-1">
+                              Searching within {filters.radius}km radius
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={clearLocation}
+                          className="text-red-600 hover:bg-red-50 ml-2"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <AlertCircle className="w-4 h-4 text-orange-500" />
+                          <p className="text-sm font-medium text-orange-800">
+                            No Location Set
                           </p>
                         </div>
+                        <p className="text-xs text-orange-600 mb-3">
+                          Set your location to find nearby services and get
+                          distance-based results
+                        </p>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={clearLocation}
-                        className="text-red-600 hover:bg-red-50"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mb-6 p-4 bg-orange-50 rounded-lg border border-orange-200">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <AlertCircle className="w-4 h-4 text-orange-500" />
-                      <p className="text-sm font-medium text-orange-800">
-                        No Location Set
-                      </p>
-                    </div>
-                    <p className="text-xs text-orange-600 mb-3">
-                      Set your location to find nearby services
-                    </p>
-                    <div className="flex flex-col space-y-3">
+
                       <div className="relative">
                         <Input
                           ref={locationInputRef}
-                          id="location-search-input"
                           type="text"
-                          placeholder="Type to search locations... (e.g., Bhubaneswar, Cuttack)"
+                          placeholder="Search locations (e.g., Bhubaneswar, Cuttack)"
                           value={locationInput}
                           onChange={handleLocationInputChange}
                           onKeyPress={handleLocationSearch}
                           onFocus={() => {
-                            // Only reinitialize if autocomplete is missing and Google Maps is loaded
                             if (!autocompleteRef.current && googleMapsLoaded) {
-                              console.log(
-                                "Input focused, re-initializing autocomplete..."
-                              );
                               initializeAutocomplete();
                             }
                           }}
                           className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 pr-10"
                           disabled={isLoadingLocation}
-                          autoComplete="off" // Prevent browser autocomplete interference
+                          autoComplete="off"
                         />
                         <button
                           onClick={handleLocationSearch}
-                          disabled={isLoadingLocation}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-emerald-600 disabled:opacity-50"
+                          disabled={isLoadingLocation || !locationInput.trim()}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-emerald-600 disabled:opacity-50 transition-colors duration-200"
                         >
                           {isLoadingLocation ? (
-                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-emerald-600 border-t-transparent"></div>
+                            <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
                             <Search className="w-4 h-4" />
                           )}
                         </button>
                       </div>
+
                       <Button
                         onClick={getCurrentLocation}
                         size="sm"
                         variant="outline"
-                        className="border-orange-300 text-orange-700 hover:bg-orange-100"
+                        className="w-full border-emerald-300 text-emerald-700 hover:bg-emerald-50"
                         disabled={isLoadingLocation}
                       >
                         {isLoadingLocation ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-orange-600 border-t-transparent mr-2"></div>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         ) : (
                           <Navigation className="w-4 h-4 mr-2" />
                         )}
                         Use Current Location
                       </Button>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {locationError && (
-                  <div className="mb-6 p-4 bg-red-50 rounded-lg border border-red-200">
-                    <p className="text-sm text-red-600">{locationError}</p>
-                  </div>
-                )}
-
-                {/* Debug Info (remove in production) */}
-                {process.env.NODE_ENV === "development" && (
-                  <div className="mb-6 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <p className="text-xs text-blue-600">
-                      Debug: API Key{" "}
-                      {import.meta.env.VITE_GOOGLE_MAPS_API_KEY
-                        ? "✓ Present"
-                        : "✗ Missing"}{" "}
-                      | Google Maps{" "}
-                      {googleMapsLoaded
-                        ? "✓ Loaded"
-                        : isGoogleMapsLoading
-                        ? "⏳ Loading"
-                        : "✗ Not Loaded"}{" "}
-                      | Autocomplete{" "}
-                      {autocompleteRef.current ? "✓ Ready" : "✗ Not Ready"}
-                    </p>
-                    {/* Show existing scripts for debugging */}
-                    <p className="text-xs text-blue-500 mt-1">
-                      Scripts:{" "}
-                      {
-                        document.querySelectorAll(
-                          'script[src*="maps.googleapis.com"]'
-                        ).length
-                      }{" "}
-                      Google Maps scripts found
-                    </p>
-                  </div>
-                )}
+                  {locationError && (
+                    <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
+                      <div className="flex items-start space-x-2">
+                        <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                        <p className="text-sm text-red-600">{locationError}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {/* Search */}
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-3">
+                    <Search className="w-4 h-4 inline mr-2" />
                     Search Services
                   </label>
                   <div className="flex space-x-2">
@@ -996,8 +997,13 @@ const ServiceDetailsPage = () => {
                       onClick={handleSearch}
                       size="sm"
                       className="bg-emerald-600 hover:bg-emerald-700"
+                      disabled={loading}
                     >
-                      <Search className="w-4 h-4" />
+                      {loading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Search className="w-4 h-4" />
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -1005,10 +1011,11 @@ const ServiceDetailsPage = () => {
                 {/* Service Type */}
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-3">
+                    <Briefcase className="w-4 h-4 inline mr-2" />
                     Service Type
                   </label>
                   <select
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:border-emerald-500 focus:ring-emerald-500 transition-colors duration-200"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:border-emerald-500 focus:ring-emerald-500 transition-colors duration-200 bg-white"
                     value={filters.skill}
                     onChange={(e) =>
                       handleFilterChange("skill", e.target.value)
@@ -1026,9 +1033,10 @@ const ServiceDetailsPage = () => {
                 {/* Price Range */}
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-3">
+                    <DollarSign className="w-4 h-4 inline mr-2" />
                     Price Range (₹)
                   </label>
-                  <div className="flex space-x-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <Input
                       type="number"
                       placeholder="Min"
@@ -1050,14 +1058,15 @@ const ServiceDetailsPage = () => {
                   </div>
                 </div>
 
-                {/* Search Radius */}
+                {/* Search Radius - Only show when location is set */}
                 {userLocation && (
                   <div className="mb-6">
                     <label className="block text-sm font-medium text-gray-700 mb-3">
+                      <Target className="w-4 h-4 inline mr-2" />
                       Search Radius
                     </label>
                     <select
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:border-emerald-500 focus:ring-emerald-500 transition-colors duration-200"
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:border-emerald-500 focus:ring-emerald-500 transition-colors duration-200 bg-white"
                       value={filters.radius}
                       onChange={(e) =>
                         handleFilterChange("radius", e.target.value)
@@ -1068,6 +1077,7 @@ const ServiceDetailsPage = () => {
                       <option value="25">Within 25 km</option>
                       <option value="50">Within 50 km</option>
                       <option value="100">Within 100 km</option>
+                      <option value="200">Within 200 km</option>
                     </select>
                   </div>
                 )}
@@ -1078,7 +1088,7 @@ const ServiceDetailsPage = () => {
                     Sort By
                   </label>
                   <select
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:border-emerald-500 focus:ring-emerald-500 transition-colors duration-200"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:border-emerald-500 focus:ring-emerald-500 transition-colors duration-200 bg-white"
                     value={filters.sortBy}
                     onChange={(e) =>
                       handleFilterChange("sortBy", e.target.value)
@@ -1094,22 +1104,39 @@ const ServiceDetailsPage = () => {
                   </select>
                 </div>
 
+                {/* Apply Filters Button */}
                 <Button
                   onClick={applyFilters}
                   className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg hover:shadow-xl transition-all duration-300"
+                  disabled={loading}
                 >
-                  <Filter className="w-4 h-4 mr-2" />
+                  {loading ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Filter className="w-4 h-4 mr-2" />
+                  )}
                   Apply Filters
                 </Button>
+
+                {/* Location Stats */}
+                {userLocation && providers.length > 0 && (
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-xs text-blue-700">
+                      <Target className="w-3 h-3 inline mr-1" />
+                      Found {providers.length} providers within {filters.radius}
+                      km
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
 
-          {/* Results */}
+          {/* Results Section */}
           <div className="lg:col-span-3">
             {/* Skill Filter Pills */}
             <motion.div
-              className="mt-6 flex flex-wrap gap-3 mb-6"
+              className="mb-6 flex flex-wrap gap-3"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
@@ -1154,6 +1181,11 @@ const ServiceDetailsPage = () => {
                   <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600"></div>
                   <div className="absolute inset-0 animate-ping rounded-full h-12 w-12 border-4 border-emerald-400 opacity-20"></div>
                 </div>
+                <p className="ml-4 text-gray-600">
+                  {userLocation
+                    ? "Finding services near you..."
+                    : "Loading services..."}
+                </p>
               </motion.div>
             ) : error ? (
               <motion.div
@@ -1184,21 +1216,32 @@ const ServiceDetailsPage = () => {
               >
                 <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
                   <CardContent className="p-8 text-center">
-                    <div className="mb-4">
-                      <Sparkles className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-600 text-lg font-medium mb-2">
-                        No providers found
-                      </p>
-                      <p className="text-gray-500 mb-4">
-                        {userLocation
-                          ? `No services available in your area (${filters.radius}km radius)`
-                          : "Try adjusting your search criteria or set your location"}
-                      </p>
-                    </div>
+                    <Sparkles className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600 text-lg font-medium mb-2">
+                      No providers found
+                    </p>
+                    <p className="text-gray-500 mb-4">
+                      {userLocation
+                        ? `No services available within ${filters.radius}km of your location`
+                        : "Try setting your location to find nearby services"}
+                    </p>
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                      {userLocation && (
+                        <Button
+                          onClick={() => {
+                            setFilters((prev) => ({ ...prev, radius: "100" }));
+                            setTimeout(() => fetchProviders(1), 100);
+                          }}
+                          className="bg-emerald-600 hover:bg-emerald-700"
+                        >
+                          <Target className="w-4 h-4 mr-2" />
+                          Expand Search to 100km
+                        </Button>
+                      )}
                       <Button
                         onClick={clearFilters}
-                        className="bg-emerald-600 hover:bg-emerald-700"
+                        variant="outline"
+                        className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
                       >
                         Clear Filters
                       </Button>
@@ -1206,7 +1249,7 @@ const ServiceDetailsPage = () => {
                         <Button
                           onClick={getCurrentLocation}
                           variant="outline"
-                          className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                          className="border-orange-300 text-orange-700 hover:bg-orange-50"
                         >
                           <Navigation className="w-4 h-4 mr-2" />
                           Set Location
@@ -1223,6 +1266,32 @@ const ServiceDetailsPage = () => {
                 initial="hidden"
                 animate="visible"
               >
+                {/* Results Header */}
+                <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 border border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <span className="text-sm text-gray-600">
+                        {pagination.totalProviders || 0} providers found
+                        {userLocation && ` within ${filters.radius}km`}
+                        {selectedSkill && ` for "${selectedSkill}"`}
+                      </span>
+                      {userLocation && (
+                        <Badge
+                          variant="outline"
+                          className="border-emerald-200 text-emerald-700"
+                        >
+                          <MapPin className="w-3 h-3 mr-1" />
+                          Location-based results
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      Page {currentPage} of {pagination.totalPages || 1}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Provider Cards */}
                 {providers.map((provider) => {
                   const filteredServices = filters.skill
                     ? provider.pricing?.filter(
@@ -1232,12 +1301,7 @@ const ServiceDetailsPage = () => {
                       ) || []
                     : provider.pricing || [];
 
-                  if (filteredServices.length === 0) {
-                    console.log(
-                      `No services found for provider ${provider.user?.name} with skill ${filters.skill}`
-                    );
-                    return null;
-                  }
+                  if (filteredServices.length === 0) return null;
 
                   return filteredServices.map((service, index) => (
                     <motion.div
@@ -1251,7 +1315,7 @@ const ServiceDetailsPage = () => {
                             <div className="flex-1">
                               {/* Provider Header */}
                               <div className="flex items-start justify-between mb-6">
-                                <div>
+                                <div className="flex-1">
                                   <motion.h3
                                     className="text-xl font-semibold text-gray-900 mb-2"
                                     whileHover={{ color: "#059669" }}
@@ -1277,56 +1341,62 @@ const ServiceDetailsPage = () => {
                                       </span>
                                     </div>
                                     {provider.distance && (
-                                      <span className="text-sm text-emerald-600 flex items-center bg-emerald-50 px-2 py-1 rounded-full">
-                                        <MapPin className="w-4 h-4 mr-1" />
+                                      <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                                        <MapPin className="w-3 h-3 mr-1" />
                                         {formatDistance(provider.distance)}
-                                      </span>
+                                      </Badge>
                                     )}
                                   </div>
                                 </div>
                                 <Badge className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0">
                                   <Award className="w-4 h-4 mr-1" />
-                                  {provider.totalJobs || 0} jobs completed
+                                  {provider.totalJobs || 0} jobs
                                 </Badge>
                               </div>
 
-                              {/* Service Name */}
+                              {/* Service Details */}
                               <div className="mb-6">
                                 <Badge
                                   variant="outline"
-                                  className="text-lg border-emerald-200 text-emerald-700 bg-emerald-50"
+                                  className="text-lg border-emerald-200 text-emerald-700 bg-emerald-50 mb-4"
                                 >
                                   {service.service}
                                 </Badge>
-                              </div>
 
-                              {/* Location */}
-                              <div className="flex items-center mb-4">
-                                <MapPin className="w-4 h-4 text-gray-400 mr-2" />
-                                <span className="text-sm text-gray-600">
-                                  {provider.location?.address ||
-                                    "Location not specified"}
-                                </span>
-                              </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  {/* Location */}
+                                  <div className="flex items-center">
+                                    <MapPin className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
+                                    <span className="text-sm text-gray-600 truncate">
+                                      {provider.location?.address ||
+                                        "Location not specified"}
+                                    </span>
+                                  </div>
 
-                              {/* Availability */}
-                              <div className="flex items-center mb-4">
-                                <Clock className="w-4 h-4 text-gray-400 mr-2" />
-                                <span className="text-sm text-gray-600">
-                                  {formatAvailability(provider.availability)}
-                                </span>
-                              </div>
-
-                              {/* Pricing */}
-                              <div className="mb-6">
-                                <div className="flex items-center mb-2">
-                                  <DollarSign className="w-4 h-4 text-emerald-600 mr-2" />
-                                  <span className="text-sm font-medium text-gray-700">
-                                    Price:
-                                  </span>
+                                  {/* Availability */}
+                                  <div className="flex items-center">
+                                    <Clock className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
+                                    <span className="text-sm text-gray-600 truncate">
+                                      {formatAvailability(
+                                        provider.availability
+                                      )}
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="text-lg font-bold text-emerald-600">
-                                  {formatPrice(service.price || 0)}
+
+                                {/* Pricing */}
+                                <div className="mt-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center">
+                                      <DollarSign className="w-5 h-5 text-emerald-600 mr-2" />
+                                      <span className="text-sm font-medium text-gray-700">
+                                        Service Price:
+                                      </span>
+                                    </div>
+                                    <div className="text-xl font-bold text-emerald-600">
+                                      {formatPrice(service.price || 0)}
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -1367,7 +1437,7 @@ const ServiceDetailsPage = () => {
               </motion.div>
             )}
 
-            {/* Pagination */}
+            {/* Enhanced Pagination */}
             {pagination.totalPages > 1 && (
               <motion.div
                 className="mt-8 flex items-center justify-between bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-gray-200"
@@ -1385,7 +1455,7 @@ const ServiceDetailsPage = () => {
                     of {pagination.totalProviders} providers
                     {userLocation && (
                       <span className="text-emerald-600 ml-2">
-                        • Within {filters.radius}km
+                        • Within {filters.radius}km of your location
                       </span>
                     )}
                   </span>
@@ -1394,7 +1464,7 @@ const ServiceDetailsPage = () => {
                 <div className="flex items-center space-x-3">
                   <motion.button
                     onClick={() => fetchProviders(currentPage - 1)}
-                    disabled={!pagination.hasPrevPage}
+                    disabled={!pagination.hasPrevPage || loading}
                     className="flex items-center px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -1413,10 +1483,11 @@ const ServiceDetailsPage = () => {
                           <motion.button
                             key={pageNumber}
                             onClick={() => fetchProviders(pageNumber)}
+                            disabled={loading}
                             className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                               pageNumber === currentPage
                                 ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg"
-                                : "text-gray-500 bg-white border border-gray-300 hover:bg-gray-50"
+                                : "text-gray-500 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
                             }`}
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
@@ -1430,7 +1501,7 @@ const ServiceDetailsPage = () => {
 
                   <motion.button
                     onClick={() => fetchProviders(currentPage + 1)}
-                    disabled={!pagination.hasNextPage}
+                    disabled={!pagination.hasNextPage || loading}
                     className="flex items-center px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
