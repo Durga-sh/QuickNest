@@ -6,32 +6,35 @@ import PlacesAutocomplete, {
   geocodeByAddress,
   getLatLng,
 } from "react-places-autocomplete";
-import {
-  Home,
-  Menu,
-  X,
-  Navigation,
-  Loader2,
-  Search,
-  MapPin,
-} from "lucide-react";
+import { Home, Menu, X, Navigation, Loader2, MapPin } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
+import { debounce } from "lodash";
 
 const loadGoogleMapsScript = (callback) => {
-  if (window.google && window.google.maps) {
-    callback();
+  if (window.google && window.google.maps && window.google.maps.places) {
+    callback(null);
     return;
   }
+
   const existingScript = document.querySelector(
     `script[src*="maps.googleapis.com/maps/api/js"]`
   );
   if (existingScript) {
     existingScript.remove();
   }
+
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  if (!apiKey) {
+    callback(
+      new Error(
+        "Google Maps API key is missing. Please configure VITE_GOOGLE_MAPS_API_KEY."
+      )
+    );
+    return;
+  }
+
   const script = document.createElement("script");
-  script.src = `https://maps.googleapis.com/maps/api/js?key=${
-    import.meta.env.VITE_GOOGLE_MAPS_API_KEY
-  }&libraries=places`;
+  script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
   script.async = true;
   script.defer = true;
   script.onerror = () => {
@@ -39,8 +42,13 @@ const loadGoogleMapsScript = (callback) => {
     callback(new Error("Google Maps API script failed to load"));
   };
   script.onload = () => {
-    console.log("Google Maps API script loaded successfully");
-    callback();
+    if (window.google && window.google.maps && window.google.maps.places) {
+      console.log("Google Maps API and Places library loaded successfully");
+      callback(null);
+    } else {
+      console.error("Google Maps Places API not available after script load");
+      callback(new Error("Google Maps Places API not available"));
+    }
   };
   document.head.appendChild(script);
 };
@@ -56,12 +64,86 @@ const Header = () => {
   const [isGoogleMapsLoaded, setIsGoogleMapsLoaded] = useState(false);
   const [isScriptLoading, setIsScriptLoading] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
-  const [hasLocationPermission, setHasLocationPermission] = useState(false);
+  const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
+
+  // Debounced input handler with enhanced debugging and retry
+  const debouncedSetLocationInput = debounce(async (value) => {
+    setLocationInput(value);
+    setLocationError("");
+    setIsFetchingSuggestions(true);
+
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    if (
+      !apiKey ||
+      !window.google ||
+      !window.google.maps ||
+      !window.google.maps.places
+    ) {
+      console.error("API key or Places API not available");
+      setIsFetchingSuggestions(false);
+      setLocationError(
+        "Places API is not available. Check your API key and network."
+      );
+      return;
+    }
+
+    let attempt = 0;
+    const maxAttempts = 2;
+
+    while (attempt < maxAttempts) {
+      try {
+        // Use AutocompleteService for native integration
+        const service = new window.google.maps.places.AutocompleteService();
+        const request = {
+          input: value,
+          types: ["geocode"],
+          componentRestrictions: { country: "in" },
+        };
+
+        const response = await new Promise((resolve, reject) => {
+          service.getPlacePredictions(request, (predictions, status) => {
+            if (status === window.google.maps.places.PlacesServiceStatus.OK) {
+              console.log("Places API response:", predictions);
+              resolve(predictions);
+            } else {
+              console.error("Places API status:", status);
+              reject(new Error(`Places API error: ${status}`));
+            }
+          });
+        });
+
+        // Clear loading state after successful response
+        setIsFetchingSuggestions(false);
+        break; // Exit loop on success
+      } catch (error) {
+        attempt++;
+        console.error(`Attempt ${attempt} failed:`, error.message);
+        if (attempt === maxAttempts) {
+          setIsFetchingSuggestions(false);
+          setLocationError(
+            `Failed to load suggestions after ${maxAttempts} attempts: ${error.message}. Check your internet connection or API key.`
+          );
+        }
+      }
+    }
+
+    // Timeout to clear loading if no response within 10 seconds
+    const timeoutId = setTimeout(() => {
+      if (isFetchingSuggestions) {
+        console.warn("Autocomplete request timed out");
+        setIsFetchingSuggestions(false);
+        setLocationError(
+          "Autocomplete request timed out. Please check your internet connection or try again."
+        );
+      }
+    }, 10000); // 10 seconds
+    return () => clearTimeout(timeoutId);
+  }, 300);
 
   // Check if we're on the provider dashboard page
   const isProviderDashboard = location.pathname === "/provider-dashboard";
 
-  // Load saved location from localStorage on component mount
+  // Load saved location from localStorage
   useEffect(() => {
     const savedLocation = localStorage.getItem("selectedLocation");
     const savedLocationInput = localStorage.getItem("locationInput");
@@ -69,60 +151,80 @@ const Header = () => {
     if (savedLocation && savedLocationInput) {
       try {
         const parsedLocation = JSON.parse(savedLocation);
-        setSelectedLocation(parsedLocation);
-        setLocationInput(savedLocationInput);
+        if (
+          parsedLocation.lat &&
+          parsedLocation.lng &&
+          parsedLocation.address
+        ) {
+          setSelectedLocation(parsedLocation);
+          setLocationInput(savedLocationInput);
+        } else {
+          throw new Error("Invalid location data in localStorage");
+        }
       } catch (error) {
         console.error("Error parsing saved location:", error);
-        // Clear corrupted data
         localStorage.removeItem("selectedLocation");
         localStorage.removeItem("locationInput");
+        setLocationError(
+          "Invalid saved location data. Please set your location again."
+        );
       }
     }
   }, []);
 
+  // Load Google Maps API script
   useEffect(() => {
     if (!isScriptLoading && !isGoogleMapsLoaded) {
       setIsScriptLoading(true);
       loadGoogleMapsScript((error) => {
+        setIsScriptLoading(false);
         if (error) {
           setLocationError(
-            "Failed to load Google Maps API. Please check your API key or internet connection."
+            error.message ||
+              "Failed to load location services. Please check your internet connection or API key."
           );
-          setIsScriptLoading(false);
         } else {
           setIsGoogleMapsLoaded(true);
-          setIsScriptLoading(false);
         }
       });
     }
   }, [isScriptLoading, isGoogleMapsLoaded]);
 
+  // Get current location
   const getCurrentLocation = () => {
     if (!isGoogleMapsLoaded) {
-      setLocationError("Google Maps API is not loaded yet. Please try again.");
+      setLocationError(
+        "Location services are not loaded yet. Please try again."
+      );
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by this browser.");
       return;
     }
 
     setIsLoadingLocation(true);
     setLocationError("");
 
-    if (!navigator.geolocation) {
-      setLocationError("Geolocation is not supported by this browser");
-      setIsLoadingLocation(false);
-      return;
-    }
-
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-          const response = await fetch(
-            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${
-              import.meta.env.VITE_GOOGLE_MAPS_API_KEY
-            }&language=en&result_type=street_address|locality|country`
-          );
-          const data = await response.json();
+          const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+          if (!apiKey) {
+            throw new Error("Google Maps API key is missing.");
+          }
 
+          const response = await fetch(
+            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}&language=en`
+          );
+
+          if (!response.ok) {
+            throw new Error(`Geocoding API error: ${response.statusText}`);
+          }
+
+          const data = await response.json();
           if (
             data.status !== "OK" ||
             !data.results ||
@@ -144,20 +246,15 @@ const Header = () => {
 
           setLocationInput(formattedAddress);
           setSelectedLocation(locationData);
-          setHasLocationPermission(true);
 
-          // Save to localStorage
           localStorage.setItem(
             "selectedLocation",
             JSON.stringify(locationData)
           );
           localStorage.setItem("locationInput", formattedAddress);
 
-          setIsLoadingLocation(false);
-
-          // Navigate to services page with location
           navigate(
-            `/service?location=${latitude},${longitude}&address=${encodeURIComponent(
+            `/service?lat=${latitude}&lng=${longitude}&address=${encodeURIComponent(
               formattedAddress
             )}`
           );
@@ -166,32 +263,38 @@ const Header = () => {
           setLocationError(
             `Failed to get address: ${error.message}. Please try again or enter manually.`
           );
+        } finally {
           setIsLoadingLocation(false);
         }
       },
       (error) => {
         setIsLoadingLocation(false);
-        const errorMessage =
-          {
-            1: "Location access denied. Please enable location permissions and try again.",
-            2: "Location information is unavailable. Please check your GPS settings or move to an open area.",
-            3: "Location request timed out. Please try again later.",
-            default: "An unknown error occurred while getting location.",
-          }[error.code] || "An unknown error occurred while getting location.";
-        setLocationError(errorMessage);
+        const errorMessages = {
+          1: "Location access denied. Please enable location permissions in your browser settings.",
+          2: "Location information is unavailable. Please check your GPS settings or move to an open area.",
+          3: "Location request timed out. Please try again.",
+          default: "An unknown error occurred while getting your location.",
+        };
+        setLocationError(errorMessages[error.code] || errorMessages.default);
       },
       {
         enableHighAccuracy: true,
-        timeout: 20000,
-        maximumAge: 10000,
+        timeout: 10000,
+        maximumAge: 0,
       }
     );
   };
 
+  // Handle location selection from autocomplete
   const handleSelect = async (address) => {
     setLocationInput(address);
+    setLocationError("");
+    setIsFetchingSuggestions(false); // Clear loading state on selection
     try {
       const results = await geocodeByAddress(address);
+      if (!results || results.length === 0) {
+        throw new Error("No results found for the selected address.");
+      }
       const { lat, lng } = await getLatLng(results[0]);
 
       const locationData = {
@@ -202,37 +305,37 @@ const Header = () => {
 
       setSelectedLocation(locationData);
 
-      // Save to localStorage
       localStorage.setItem("selectedLocation", JSON.stringify(locationData));
       localStorage.setItem("locationInput", address);
 
       console.log(`Selected location: ${address}, Coordinates:`, { lat, lng });
 
-      // Navigate to services page with location
       navigate(
-        `/service?location=${lat},${lng}&address=${encodeURIComponent(address)}`
+        `/service?lat=${lat}&lng=${lng}&address=${encodeURIComponent(address)}`
       );
     } catch (error) {
       console.error("Error selecting location:", error);
-      setLocationError("Failed to process location. Please try again.");
+      setLocationError(
+        "Failed to process location. Please try another address or check your API key."
+      );
     }
   };
 
+  // Handle services navigation
   const handleServicesClick = () => {
     if (selectedLocation) {
-      // Navigate with saved location
       navigate(
-        `/service?location=${selectedLocation.lat},${
+        `/service?lat=${selectedLocation.lat}&lng=${
           selectedLocation.lng
         }&address=${encodeURIComponent(selectedLocation.address)}`
       );
     } else {
-      // Navigate without location (show all services)
       navigate("/service");
     }
     setIsMenuOpen(false);
   };
 
+  // Scroll to section for mobile menu
   const scrollToSection = (sectionId) => {
     const element = document.getElementById(sectionId);
     if (element) {
@@ -241,26 +344,30 @@ const Header = () => {
     setIsMenuOpen(false);
   };
 
+  // Handle logout
   const handleLogout = async () => {
     try {
       await logoutUser();
-      // Clear location data on logout
       localStorage.removeItem("selectedLocation");
       localStorage.removeItem("locationInput");
       setSelectedLocation(null);
       setLocationInput("");
-      navigate("/"); // Redirect to home page after logout
+      setLocationError("");
+      navigate("/");
     } catch (error) {
       console.error("Logout error:", error);
+      setLocationError("Failed to log out. Please try again.");
     }
   };
 
+  // Clear location
   const clearLocation = () => {
     setLocationInput("");
     setSelectedLocation(null);
     localStorage.removeItem("selectedLocation");
     localStorage.removeItem("locationInput");
     setLocationError("");
+    navigate("/service");
   };
 
   return (
@@ -277,7 +384,6 @@ const Header = () => {
           </div>
 
           <div className="hidden md:flex items-center space-x-6">
-            {/* Show location search and services only if not on provider dashboard */}
             {!isProviderDashboard && (
               <>
                 <div className="relative flex items-center">
@@ -285,18 +391,19 @@ const Header = () => {
                     <Fragment>
                       <PlacesAutocomplete
                         value={locationInput}
-                        onChange={setLocationInput}
+                        onChange={debouncedSetLocationInput}
                         onSelect={handleSelect}
                         searchOptions={{
-                          types: ["(cities)", "establishment", "geocode"],
-                          componentRestrictions: { country: "in" }, // Restrict to India, change as needed
+                          types: ["geocode"],
+                          componentRestrictions: { country: "in" },
+                          language: "en",
                         }}
+                        debounce={300}
                       >
                         {({
                           getInputProps,
                           suggestions,
                           getSuggestionItemProps,
-                          loading,
                         }) => (
                           <div className="relative w-80">
                             <div className="relative">
@@ -326,10 +433,12 @@ const Header = () => {
                                   size="sm"
                                   className="h-7 w-7 p-0 bg-white/10 hover:bg-white/20 text-white"
                                   onClick={getCurrentLocation}
-                                  disabled={isLoadingLocation}
+                                  disabled={
+                                    isLoadingLocation || isScriptLoading
+                                  }
                                   title="Use current location"
                                 >
-                                  {isLoadingLocation ? (
+                                  {isLoadingLocation || isScriptLoading ? (
                                     <Loader2 className="w-3 h-3 animate-spin" />
                                   ) : (
                                     <Navigation className="w-3 h-3" />
@@ -342,43 +451,59 @@ const Header = () => {
                                 </div>
                               )}
                             </div>
-                            {suggestions.length > 0 && (
+                            {(isFetchingSuggestions ||
+                              suggestions.length > 0) && (
                               <div className="absolute z-20 w-full bg-white text-gray-900 rounded-md shadow-lg mt-2 max-h-60 overflow-y-auto">
-                                {loading && (
+                                {isFetchingSuggestions && (
                                   <div className="p-3 text-gray-500 flex items-center">
                                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                    Loading...
+                                    Loading suggestions...
                                   </div>
                                 )}
-                                {suggestions.map((suggestion, index) => (
-                                  <div
-                                    key={index}
-                                    {...getSuggestionItemProps(suggestion, {
+                                {suggestions.map((suggestion, index) => {
+                                  const suggestionProps =
+                                    getSuggestionItemProps(suggestion, {
                                       className: `p-3 cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0 ${
                                         suggestion.active ? "bg-gray-100" : ""
                                       }`,
-                                    })}
-                                  >
-                                    <div className="flex items-center">
-                                      <MapPin className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
-                                      <span className="text-sm">
-                                        {suggestion.description}
-                                      </span>
+                                    });
+                                  // Extract key and spread remaining props
+                                  const { key, ...restProps } = suggestionProps;
+                                  return (
+                                    <div key={key} {...restProps}>
+                                      <div className="flex items-center">
+                                        <MapPin className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
+                                        <span className="text-sm">
+                                          {suggestion.description}
+                                        </span>
+                                      </div>
                                     </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             )}
                           </div>
                         )}
                       </PlacesAutocomplete>
+                      {locationError && (
+                        <div className="absolute top-full mt-2 p-3 bg-red-100/90 rounded-lg text-sm text-red-600 w-full">
+                          {locationError}
+                        </div>
+                      )}
                     </Fragment>
                   ) : (
-                    <Input
-                      placeholder="Loading location services..."
-                      className="h-9 bg-white/10 text-white placeholder-gray-300 border-none w-80"
-                      disabled
-                    />
+                    <div className="relative w-80">
+                      <Input
+                        placeholder="Loading location services..."
+                        className="h-9 bg-white/10 text-white placeholder-gray-300 border-none"
+                        disabled
+                      />
+                      {locationError && (
+                        <div className="absolute top-full mt-2 p-3 bg-red-100/90 rounded-lg text-sm text-red-600 w-full">
+                          {locationError}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
                 <button
@@ -394,7 +519,6 @@ const Header = () => {
             )}
             {user ? (
               <>
-                {/* Show My Bookings only if not on provider dashboard */}
                 {!isProviderDashboard && (
                   <Link to="/my-bookings">
                     <Button
@@ -452,26 +576,26 @@ const Header = () => {
       {isMenuOpen && (
         <div className="md:hidden bg-emerald-800">
           <div className="px-4 pt-4 pb-6 space-y-4">
-            <Fragment>
-              {/* Show location search only if not on provider dashboard */}
-              {!isProviderDashboard && (
-                <>
+            {!isProviderDashboard && (
+              <>
+                <div className="relative">
                   {isGoogleMapsLoaded ? (
-                    <div className="relative">
+                    <Fragment>
                       <PlacesAutocomplete
                         value={locationInput}
-                        onChange={setLocationInput}
+                        onChange={debouncedSetLocationInput}
                         onSelect={handleSelect}
                         searchOptions={{
-                          types: ["(cities)", "establishment", "geocode"],
+                          types: ["geocode"],
                           componentRestrictions: { country: "in" },
+                          language: "en",
                         }}
+                        debounce={300}
                       >
                         {({
                           getInputProps,
                           suggestions,
                           getSuggestionItemProps,
-                          loading,
                         }) => (
                           <div className="relative">
                             <div className="relative">
@@ -501,10 +625,12 @@ const Header = () => {
                                   size="sm"
                                   className="h-8 w-8 p-0 bg-white/10 hover:bg-white/20 text-white"
                                   onClick={getCurrentLocation}
-                                  disabled={isLoadingLocation}
+                                  disabled={
+                                    isLoadingLocation || isScriptLoading
+                                  }
                                   title="Use current location"
                                 >
-                                  {isLoadingLocation ? (
+                                  {isLoadingLocation || isScriptLoading ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                   ) : (
                                     <Navigation className="w-4 h-4" />
@@ -517,121 +643,131 @@ const Header = () => {
                                 </div>
                               )}
                             </div>
-                            {suggestions.length > 0 && (
+                            {(isFetchingSuggestions ||
+                              suggestions.length > 0) && (
                               <div className="absolute z-20 w-full bg-white text-gray-900 rounded-md shadow-lg mt-2 max-h-48 overflow-y-auto">
-                                {loading && (
+                                {isFetchingSuggestions && (
                                   <div className="p-3 text-gray-500 flex items-center">
                                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                    Loading...
+                                    Loading suggestions...
                                   </div>
                                 )}
-                                {suggestions.map((suggestion, index) => (
-                                  <div
-                                    key={index}
-                                    {...getSuggestionItemProps(suggestion, {
+                                {suggestions.map((suggestion, index) => {
+                                  const suggestionProps =
+                                    getSuggestionItemProps(suggestion, {
                                       className: `p-3 cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0 ${
                                         suggestion.active ? "bg-gray-100" : ""
                                       }`,
-                                    })}
-                                  >
-                                    <div className="flex items-center">
-                                      <MapPin className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
-                                      <span className="text-sm">
-                                        {suggestion.description}
-                                      </span>
+                                    });
+                                  // Extract key and spread remaining props
+                                  const { key, ...restProps } = suggestionProps;
+                                  return (
+                                    <div key={key} {...restProps}>
+                                      <div className="flex items-center">
+                                        <MapPin className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
+                                        <span className="text-sm">
+                                          {suggestion.description}
+                                        </span>
+                                      </div>
                                     </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             )}
                           </div>
                         )}
                       </PlacesAutocomplete>
-                    </div>
+                      {locationError && (
+                        <div className="mt-2 p-3 bg-red-100/20 rounded-lg text-sm text-red-200">
+                          {locationError}
+                        </div>
+                      )}
+                    </Fragment>
                   ) : (
-                    <Input
-                      placeholder="Loading location services..."
-                      className="h-10 bg-white/10 text-white placeholder-gray-300 border-none"
-                      disabled
-                    />
-                  )}
-                  {locationError && (
-                    <div className="p-3 bg-red-100/20 rounded-lg text-sm text-red-200">
-                      {locationError}
+                    <div className="relative">
+                      <Input
+                        placeholder="Loading location services..."
+                        className="h-10 bg-white/10 text-white placeholder-gray-300 border-none"
+                        disabled
+                      />
+                      {locationError && (
+                        <div className="mt-2 p-3 bg-red-100/20 rounded-lg text-sm text-red-200">
+                          {locationError}
+                        </div>
+                      )}
                     </div>
                   )}
-                  {selectedLocation && (
-                    <div className="p-3 bg-emerald-100/20 rounded-lg text-sm text-emerald-200">
-                      <div className="flex items-center">
-                        <MapPin className="w-4 h-4 mr-2" />
-                        <span>
-                          Services will be shown for: {selectedLocation.address}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  <button
-                    onClick={handleServicesClick}
-                    className="block w-full text-left text-white hover:text-gray-200 font-medium flex items-center justify-between"
-                  >
-                    <span>Services</span>
-                    {selectedLocation && (
-                      <span className="w-2 h-2 bg-emerald-300 rounded-full"></span>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => scrollToSection("how-it-works")}
-                    className="block w-full text-left text-white hover:text-gray-200 font-medium"
-                  >
-                    How it Works
-                  </button>
-                  <button
-                    onClick={() => scrollToSection("testimonials")}
-                    className="block w-full text-left text-white hover:text-gray-200 font-medium"
-                  >
-                    Reviews
-                  </button>
-                </>
-              )}
-              {user ? (
-                <div className="space-y-2">
-                  {/* Show My Bookings only if not on provider dashboard */}
-                  {!isProviderDashboard && (
-                    <Link to="/my-bookings" className="block w-full">
-                      <Button
-                        variant="outline"
-                        className="w-full border-white/20 text-white hover:bg-white/10"
-                      >
-                        My Bookings
-                      </Button>
-                    </Link>
-                  )}
-                  <Button
-                    variant="outline"
-                    className="w-full border-white/20 text-white hover:bg-white/10"
-                    onClick={handleLogout}
-                  >
-                    Log Out
-                  </Button>
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  <Link to="/login" className="block w-full">
+                {selectedLocation && (
+                  <div className="p-3 bg-emerald-100/20 rounded-lg text-sm text-emerald-200">
+                    <div className="flex items-center">
+                      <MapPin className="w-4 h-4 mr-2" />
+                      <span>
+                        Services will be shown for: {selectedLocation.address}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                <button
+                  onClick={handleServicesClick}
+                  className="block w-full text-left text-white hover:text-gray-200 font-medium flex items-center justify-between"
+                >
+                  <span>Services</span>
+                  {selectedLocation && (
+                    <span className="w-2 h-2 bg-emerald-300 rounded-full"></span>
+                  )}
+                </button>
+                <button
+                  onClick={() => scrollToSection("how-it-works")}
+                  className="block w-full text-left text-white hover:text-gray-200 font-medium"
+                >
+                  How it Works
+                </button>
+                <button
+                  onClick={() => scrollToSection("testimonials")}
+                  className="block w-full text-left text-white hover:text-gray-200 font-medium"
+                >
+                  Reviews
+                </button>
+              </>
+            )}
+            {user ? (
+              <div className="space-y-2">
+                {!isProviderDashboard && (
+                  <Link to="/my-bookings" className="block w-full">
                     <Button
                       variant="outline"
                       className="w-full border-white/20 text-white hover:bg-white/10"
                     >
-                      Sign In
+                      My Bookings
                     </Button>
                   </Link>
-                  <Link to="/register" className="block w-full">
-                    <Button className="w-full bg-white text-emerald-700 hover:bg-gray-100">
-                      Get Started
-                    </Button>
-                  </Link>
-                </div>
-              )}
-            </Fragment>
+                )}
+                <Button
+                  variant="outline"
+                  className="w-full border-white/20 text-white hover:bg-white/10"
+                  onClick={handleLogout}
+                >
+                  Log Out
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Link to="/login" className="block w-full">
+                  <Button
+                    variant="outline"
+                    className="w-full border-white/20 text-white hover:bg-white/10"
+                  >
+                    Sign In
+                  </Button>
+                </Link>
+                <Link to="/register" className="block w-full">
+                  <Button className="w-full bg-white text-emerald-700 hover:bg-gray-100">
+                    Get Started
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       )}

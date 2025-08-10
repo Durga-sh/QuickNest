@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -47,9 +47,12 @@ const ServiceDetailsPage = () => {
   const [selectedProviderId, setSelectedProviderId] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
-  const [selectedProviderForBooking, setSelectedProviderForBooking] = useState(null);
+  const [selectedProviderForBooking, setSelectedProviderForBooking] =
+    useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [locationError, setLocationError] = useState("");
+  const [locationInput, setLocationInput] = useState("");
+  const autocompleteRef = useRef(null);
   const [filters, setFilters] = useState({
     skill: "",
     minPrice: "",
@@ -91,22 +94,89 @@ const ServiceDetailsPage = () => {
     },
   };
 
+  // Initialize Google Maps Places Autocomplete
+  useEffect(() => {
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    try {
+      if (
+        apiKey &&
+        window?.google?.maps?.places?.Autocomplete &&
+        !autocompleteRef.current
+      ) {
+        const input = document.getElementById("location-search");
+        if (input) {
+          autocompleteRef.current = new window.google.maps.places.Autocomplete(
+            input,
+            {
+              types: ["geocode"],
+              fields: ["formatted_address", "geometry"],
+            }
+          );
+
+          autocompleteRef.current.addListener("place_changed", () => {
+            const place = autocompleteRef.current?.getPlace?.();
+            if (place?.geometry?.location) {
+              const locationData = {
+                lat: place.geometry.location.lat(),
+                lng: place.geometry.location.lng(),
+                address: place.formatted_address,
+              };
+              setUserLocation(locationData);
+              setLocationInput(place.formatted_address);
+              localStorage.setItem(
+                "selectedLocation",
+                JSON.stringify(locationData)
+              );
+              localStorage.setItem("locationInput", place.formatted_address);
+              setFilters((prev) => ({
+                ...prev,
+                sortBy: "distance",
+                sortOrder: "asc",
+              }));
+              setLocationError("");
+            } else {
+              setLocationError(
+                "Please select a valid location from the suggestions."
+              );
+            }
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("Google Places Autocomplete failed to initialize:", e);
+      // Non-fatal. User can still type address or use current location.
+    }
+  }, []);
+
   // Load saved location from localStorage
   useEffect(() => {
     const savedLocation = localStorage.getItem("selectedLocation");
+    const savedLocationInput = localStorage.getItem("locationInput");
     if (savedLocation) {
       try {
         const parsedLocation = JSON.parse(savedLocation);
-        setUserLocation(parsedLocation);
-        setFilters((prev) => ({
-          ...prev,
-          sortBy: "distance",
-          sortOrder: "asc",
-        }));
+        if (
+          parsedLocation.lat &&
+          parsedLocation.lng &&
+          parsedLocation.address
+        ) {
+          setUserLocation(parsedLocation);
+          setLocationInput(savedLocationInput || parsedLocation.address);
+          setFilters((prev) => ({
+            ...prev,
+            sortBy: "distance",
+            sortOrder: "asc",
+          }));
+        } else {
+          throw new Error("Invalid location data in localStorage");
+        }
       } catch (error) {
         console.error("Error parsing saved location:", error);
         localStorage.removeItem("selectedLocation");
         localStorage.removeItem("locationInput");
+        setLocationError(
+          "Invalid saved location data. Please set your location again."
+        );
       }
     }
   }, []);
@@ -162,7 +232,7 @@ const ServiceDetailsPage = () => {
   // Get current location
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
-      setLocationError("Geolocation is not supported by this browser");
+      setLocationError("Geolocation is not supported by this browser.");
       return;
     }
 
@@ -173,16 +243,35 @@ const ServiceDetailsPage = () => {
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
+
+          // Validate Google Maps API key
+          const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+          if (!apiKey) {
+            throw new Error(
+              "Google Maps API key is missing. Please configure VITE_GOOGLE_MAPS_API_KEY in your environment."
+            );
+          }
+
+          // Fetch address using Google Maps Geocoding API
           const response = await fetch(
-            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${
-              import.meta.env.VITE_GOOGLE_MAPS_API_KEY
-            }&language=en`
+            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}&language=en`,
+            { method: "GET" }
           );
+
+          if (!response.ok) {
+            throw new Error(`Geocoding API error: ${response.statusText}`);
+          }
+
           const data = await response.json();
 
           let address = "Current Location";
           if (data.status === "OK" && data.results && data.results.length > 0) {
             address = data.results[0].formatted_address;
+          } else if (data.status !== "OK") {
+            console.warn("Geocoding API returned non-OK status:", data.status);
+            address = `Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(
+              4
+            )}`;
           }
 
           const locationData = {
@@ -191,39 +280,45 @@ const ServiceDetailsPage = () => {
             address,
           };
 
+          // Update state and localStorage
           setUserLocation(locationData);
-          localStorage.setItem("selectedLocation", JSON.stringify(locationData));
+          setLocationInput(address);
+          localStorage.setItem(
+            "selectedLocation",
+            JSON.stringify(locationData)
+          );
           localStorage.setItem("locationInput", address);
 
+          // Update filters to sort by distance
           setFilters((prev) => ({
             ...prev,
             sortBy: "distance",
             sortOrder: "asc",
           }));
 
-          await fetchProviders(1);
-          await fetchAvailableSkills();
+          // Fetch providers and skills with the new location
+          await Promise.all([fetchProviders(1), fetchAvailableSkills()]);
         } catch (error) {
-          console.error("Error getting location:", error);
-          setLocationError("Failed to get location details");
+          console.error("Error getting location details:", error);
+          setLocationError(`Failed to get location details: ${error.message}`);
         } finally {
           setLoading(false);
         }
       },
       (error) => {
         setLoading(false);
-        const errorMessage = {
-          1: "Location access denied. Please enable location permissions.",
-          2: "Location information is unavailable.",
-          3: "Location request timed out.",
-          default: "An unknown error occurred while getting location.",
-        }[error.code] || "An unknown error occurred while getting location.";
-        setLocationError(errorMessage);
+        const errorMessages = {
+          1: "Location access denied. Please enable location permissions in your browser settings.",
+          2: "Location information is unavailable. Please try again later.",
+          3: "Location request timed out. Please try again.",
+          default: "An unknown error occurred while getting your location.",
+        };
+        setLocationError(errorMessages[error.code] || errorMessages.default);
       },
       {
         enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 300000,
+        timeout: 10000,
+        maximumAge: 0,
       }
     );
   };
@@ -231,6 +326,7 @@ const ServiceDetailsPage = () => {
   // Clear location
   const clearLocation = () => {
     setUserLocation(null);
+    setLocationInput("");
     localStorage.removeItem("selectedLocation");
     localStorage.removeItem("locationInput");
     setLocationError("");
@@ -240,6 +336,7 @@ const ServiceDetailsPage = () => {
       sortOrder: "desc",
     }));
     fetchProviders(1);
+    fetchAvailableSkills();
   };
 
   // Handle filter changes
@@ -378,7 +475,7 @@ const ServiceDetailsPage = () => {
       fetchProviders(1);
       fetchAvailableSkills();
     }
-  }, [userLocation]);
+  }, [userLocation, filters]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
@@ -452,7 +549,9 @@ const ServiceDetailsPage = () => {
         <div className="lg:grid lg:grid-cols-4 lg:gap-8">
           {/* Filters Sidebar */}
           <motion.div
-            className={`lg:col-span-1 ${showFilters ? "block" : "hidden lg:block"}`}
+            className={`lg:col-span-1 ${
+              showFilters ? "block" : "hidden lg:block"
+            }`}
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
@@ -511,15 +610,28 @@ const ServiceDetailsPage = () => {
                     <p className="text-xs text-orange-600 mb-3">
                       Set your location to find nearby services
                     </p>
-                    <Button
-                      onClick={getCurrentLocation}
-                      size="sm"
-                      variant="outline"
-                      className="border-orange-300 text-orange-700 hover:bg-orange-100"
-                    >
-                      <Navigation className="w-4 h-4 mr-2" />
-                      Use Current Location
-                    </Button>
+                    <div className="flex flex-col space-y-3">
+                      <div className="relative">
+                        <Input
+                          id="location-search"
+                          type="text"
+                          placeholder="Search for a location..."
+                          value={locationInput}
+                          onChange={(e) => setLocationInput(e.target.value)}
+                          className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 pr-10"
+                        />
+                        <MapPin className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      </div>
+                      <Button
+                        onClick={getCurrentLocation}
+                        size="sm"
+                        variant="outline"
+                        className="border-orange-300 text-orange-700 hover:bg-orange-100"
+                      >
+                        <Navigation className="w-4 h-4 mr-2" />
+                        Use Current Location
+                      </Button>
+                    </div>
                   </div>
                 )}
 
@@ -561,7 +673,9 @@ const ServiceDetailsPage = () => {
                   <select
                     className="w-full p-3 border border-gray-300 rounded-lg focus:border-emerald-500 focus:ring-emerald-500 transition-colors duration-200"
                     value={filters.skill}
-                    onChange={(e) => handleFilterChange("skill", e.target.value)}
+                    onChange={(e) =>
+                      handleFilterChange("skill", e.target.value)
+                    }
                   >
                     <option value="">All Services</option>
                     {availableSkills.map((skillData) => (
@@ -582,14 +696,18 @@ const ServiceDetailsPage = () => {
                       type="number"
                       placeholder="Min"
                       value={filters.minPrice}
-                      onChange={(e) => handleFilterChange("minPrice", e.target.value)}
+                      onChange={(e) =>
+                        handleFilterChange("minPrice", e.target.value)
+                      }
                       className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
                     />
                     <Input
                       type="number"
                       placeholder="Max"
                       value={filters.maxPrice}
-                      onChange={(e) => handleFilterChange("maxPrice", e.target.value)}
+                      onChange={(e) =>
+                        handleFilterChange("maxPrice", e.target.value)
+                      }
                       className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
                     />
                   </div>
@@ -604,7 +722,9 @@ const ServiceDetailsPage = () => {
                     <select
                       className="w-full p-3 border border-gray-300 rounded-lg focus:border-emerald-500 focus:ring-emerald-500 transition-colors duration-200"
                       value={filters.radius}
-                      onChange={(e) => handleFilterChange("radius", e.target.value)}
+                      onChange={(e) =>
+                        handleFilterChange("radius", e.target.value)
+                      }
                     >
                       <option value="5">Within 5 km</option>
                       <option value="10">Within 10 km</option>
@@ -623,7 +743,9 @@ const ServiceDetailsPage = () => {
                   <select
                     className="w-full p-3 border border-gray-300 rounded-lg focus:border-emerald-500 focus:ring-emerald-500 transition-colors duration-200"
                     value={filters.sortBy}
-                    onChange={(e) => handleFilterChange("sortBy", e.target.value)}
+                    onChange={(e) =>
+                      handleFilterChange("sortBy", e.target.value)
+                    }
                   >
                     {userLocation && (
                       <option value="distance">Distance (Nearest First)</option>
@@ -705,7 +827,9 @@ const ServiceDetailsPage = () => {
                 <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
                   <CardContent className="p-8 text-center">
                     <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-                    <p className="text-red-600 mb-4 text-lg font-medium">{error}</p>
+                    <p className="text-red-600 mb-4 text-lg font-medium">
+                      {error}
+                    </p>
                     <Button
                       onClick={() => fetchProviders(1)}
                       className="bg-emerald-600 hover:bg-emerald-700"
@@ -721,7 +845,7 @@ const ServiceDetailsPage = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
               >
-                <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+                <Card className="border-0 shadow-lg bg-white/80 backdrop-blud-sm">
                   <CardContent className="p-8 text-center">
                     <div className="mb-4">
                       <Sparkles className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -843,7 +967,8 @@ const ServiceDetailsPage = () => {
                               <div className="flex items-center mb-4">
                                 <MapPin className="w-4 h-4 text-gray-400 mr-2" />
                                 <span className="text-sm text-gray-600">
-                                  {provider.location?.address || "Location not specified"}
+                                  {provider.location?.address ||
+                                    "Location not specified"}
                                 </span>
                               </div>
 
@@ -916,7 +1041,10 @@ const ServiceDetailsPage = () => {
                 <div className="flex items-center text-sm text-gray-600">
                   <span>
                     Showing {(currentPage - 1) * filters.limit + 1} to{" "}
-                    {Math.min(currentPage * filters.limit, pagination.totalProviders)}{" "}
+                    {Math.min(
+                      currentPage * filters.limit,
+                      pagination.totalProviders
+                    )}{" "}
                     of {pagination.totalProviders} providers
                     {userLocation && (
                       <span className="text-emerald-600 ml-2">
@@ -939,25 +1067,28 @@ const ServiceDetailsPage = () => {
                   </motion.button>
 
                   <div className="flex items-center space-x-2">
-                    {[...Array(Math.min(5, pagination.totalPages))].map((_, i) => {
-                      const pageNumber = currentPage <= 3 ? i + 1 : currentPage + i - 2;
-                      if (pageNumber > pagination.totalPages) return null;
-                      return (
-                        <motion.button
-                          key={pageNumber}
-                          onClick={() => fetchProviders(pageNumber)}
-                          className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                            pageNumber === currentPage
-                              ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg"
-                              : "text-gray-500 bg-white border border-gray-300 hover:bg-gray-50"
-                          }`}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          {pageNumber}
-                        </motion.button>
-                      );
-                    })}
+                    {[...Array(Math.min(5, pagination.totalPages))].map(
+                      (_, i) => {
+                        const pageNumber =
+                          currentPage <= 3 ? i + 1 : currentPage + i - 2;
+                        if (pageNumber > pagination.totalPages) return null;
+                        return (
+                          <motion.button
+                            key={pageNumber}
+                            onClick={() => fetchProviders(pageNumber)}
+                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                              pageNumber === currentPage
+                                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg"
+                                : "text-gray-500 bg-white border border-gray-300 hover:bg-gray-50"
+                            }`}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            {pageNumber}
+                          </motion.button>
+                        );
+                      }
+                    )}
                   </div>
 
                   <motion.button
