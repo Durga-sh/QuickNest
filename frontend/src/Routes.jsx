@@ -11,7 +11,7 @@ import CreateServicePage from "./pages/CreateServicePage";
 import AllServicesPage from "./pages/serviceDetailsPage";
 import UserBookings from "./pages/UserBooking";
 import ServicesPage from "./pages/servicesPage";
-
+import ProviderBookings from "./pages/ProviderbookingPage";
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
@@ -39,6 +39,14 @@ const AppRoutes = () => {
         }
       />
       <Route
+        path="/provider-bookings"
+        element={
+          <ProtectedRoute requiredRole="provider">
+            <ProviderBookings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/my-bookings"
         element={
           <ProtectedRoute>
@@ -49,7 +57,7 @@ const AppRoutes = () => {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/service" element={<AllServicesPage />} />
-      <Route path="/services" element={<AllServicesPage/>} />
+      <Route path="/services" element={<AllServicesPage />} />
     </Routes>
   );
 };

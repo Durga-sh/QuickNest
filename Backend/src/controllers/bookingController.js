@@ -254,10 +254,11 @@ exports.getUserBookings = async (req, res) => {
   }
 };
 
-// Get provider bookings
+// Get provider bookings - FIXED
 exports.getProviderBookings = async (req, res) => {
   try {
-    const provider = await Provider.findOne({ user: req.user.id });
+    // Find provider using userId field instead of user field
+    const provider = await Provider.findOne({ userId: req.user.id });
     if (!provider) {
       return res.status(404).json({ message: "Provider profile not found" });
     }
@@ -268,6 +269,13 @@ exports.getProviderBookings = async (req, res) => {
 
     const bookings = await Booking.find({ provider: provider._id })
       .populate("user", "name email")
+      .populate({
+        path: "provider",
+        populate: {
+          path: "userId",
+          select: "name email",
+        },
+      })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -302,7 +310,7 @@ exports.getBookingById = async (req, res) => {
     }
 
     // Check if user owns this booking or is the provider
-    const provider = await Provider.findOne({ user: req.user.id });
+    const provider = await Provider.findOne({ userId: req.user.id });
     if (
       booking.user._id.toString() !== req.user.id &&
       (!provider || booking.provider._id.toString() !== provider._id.toString())
@@ -320,26 +328,67 @@ exports.getBookingById = async (req, res) => {
   }
 };
 
-// Update booking status (for providers)
+// Update booking status (for providers) - ENHANCED
 exports.updateBookingStatus = async (req, res) => {
   try {
     const { status } = req.body;
     const { bookingId } = req.params;
 
-    const provider = await Provider.findOne({ user: req.user.id });
+    console.log(`🔄 Updating booking ${bookingId} to status: ${status}`);
+
+    // Validate status
+    const validStatuses = [
+      "pending",
+      "confirmed",
+      "in-progress",
+      "completed",
+      "cancelled",
+    ];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        message:
+          "Invalid status. Valid statuses are: " + validStatuses.join(", "),
+      });
+    }
+
+    // Find provider using userId field
+    const provider = await Provider.findOne({ userId: req.user.id });
     if (!provider) {
       return res.status(404).json({ message: "Provider profile not found" });
     }
 
-    const booking = await Booking.findById(bookingId);
+    // Find booking and verify ownership
+    const booking = await Booking.findById(bookingId).populate(
+      "user",
+      "name email"
+    );
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
 
     if (booking.provider.toString() !== provider._id.toString()) {
-      return res.status(403).json({ message: "Access denied" });
+      return res
+        .status(403)
+        .json({ message: "Access denied - not your booking" });
     }
 
+    // Additional validation for completing bookings
+    if (status === "completed") {
+      const today = new Date();
+      const bookingDate = new Date(booking.bookingDate);
+
+      // Set both dates to midnight for date-only comparison
+      today.setHours(0, 0, 0, 0);
+      bookingDate.setHours(0, 0, 0, 0);
+
+      if (today.getTime() < bookingDate.getTime()) {
+        return res.status(400).json({
+          message: "Cannot complete booking before the booking date",
+        });
+      }
+    }
+
+    // Update booking status
     booking.status = status;
     if (status === "completed") {
       booking.completedAt = new Date();
@@ -347,10 +396,18 @@ exports.updateBookingStatus = async (req, res) => {
 
     await booking.save();
 
+    console.log(`✅ Booking ${bookingId} status updated to: ${status}`);
+
     res.json({
       success: true,
-      message: "Booking status updated successfully",
-      booking,
+      message: `Booking ${status} successfully`,
+      booking: {
+        id: booking._id,
+        bookingId: booking.bookingId,
+        status: booking.status,
+        completedAt: booking.completedAt,
+        user: booking.user,
+      },
     });
   } catch (error) {
     console.error("Update booking status error:", error);

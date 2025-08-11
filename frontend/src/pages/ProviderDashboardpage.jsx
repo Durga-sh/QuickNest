@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom"; // Add useNavigate
+import { useNavigate } from "react-router-dom";
 import {
   Plus,
   User,
@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 const ProviderDashboard = () => {
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate();
   const [providerData] = useState({
     user: { name: "John Smith", email: "john.smith@example.com" },
     skills: ["Plumbing", "Pipe Repair", "Water Heater Installation"],
@@ -47,7 +47,12 @@ const ProviderDashboard = () => {
 
   // Function to redirect to create service page
   const redirectToCreateService = () => {
-    navigate("/create-service"); // Use navigate instead of window.location.href
+    navigate("/create-service");
+  };
+
+  // Function to redirect to view bookings page
+  const redirectToViewBookings = () => {
+    navigate("/provider-bookings");
   };
 
   const StatCard = ({ title, value, icon: Icon, color }) => (
@@ -169,7 +174,10 @@ const ProviderDashboard = () => {
                 <Edit className="h-6 w-6" />
                 <span>Edit Profile</span>
               </button>
-              <button className="flex items-center justify-center space-x-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-6 py-4 rounded-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl shadow-lg font-semibold">
+              <button
+                onClick={redirectToViewBookings}
+                className="flex items-center justify-center space-x-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-6 py-4 rounded-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl shadow-lg font-semibold"
+              >
                 <Eye className="h-6 w-6" />
                 <span>View Bookings</span>
               </button>
