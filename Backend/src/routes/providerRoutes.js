@@ -29,13 +29,12 @@ router.get("/skills", providerController.getAvailableSkills);
 router.get("/search", providerController.searchProviders);
 
 // New route for getting nearby providers (location-based)
-router.get("/nearby", providerController.getNearbyProviders);
+// router.get("/nearby", providerController);
 
-// New route for getting provider statistics
-router.get("/stats", providerController.getProviderStats);
+
 
 // Route for getting providers by specific skill (with location support)
-router.get("/skill/:skill", providerController.getProvidersBySkill);
+// router.get("/skill/:skill", providerController.getProvidersBySkill);
 
 // Keep this last to avoid conflicts with other routes
 router.get("/:providerId", providerController.getProviderById);

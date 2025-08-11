@@ -876,5 +876,4 @@ exports.searchProviders = async (req, res) => {
   }
 };
 
-// Enhanced getProvidersBySkill with improved location filtering
-exports.get;
+

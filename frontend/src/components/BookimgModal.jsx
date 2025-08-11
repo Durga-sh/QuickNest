@@ -57,6 +57,67 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
     }));
   };
 
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setError("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude.toString();
+        const lon = position.coords.longitude.toString();
+
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
+          );
+          if (!response.ok) {
+            throw new Error("Failed to fetch address");
+          }
+          const data = await response.json();
+          if (data.error) {
+            throw new Error(data.error.message || "Address not found");
+          }
+          setFormData((prev) => ({
+            ...prev,
+            address: data.display_name || "",
+            coordinates: { latitude: lat, longitude: lon },
+          }));
+        } catch (err) {
+          setError(`Failed to get address: ${err.message}`);
+          setFormData((prev) => ({
+            ...prev,
+            coordinates: { latitude: lat, longitude: lon },
+          }));
+        }
+      },
+      (err) => {
+        setError(`Location access error: ${err.message}`);
+      }
+    );
+  };
+
+  const timeSlots = [
+    "09:00-10:00",
+    "10:00-11:00",
+    "11:00-12:00",
+    "12:00-13:00",
+    "13:00-14:00",
+    "14:00-15:00",
+    "15:00-16:00",
+    "16:00-17:00",
+    "17:00-18:00",
+  ];
+
+  const handleTimeSlotChange = (e) => {
+    const [start, end] = e.target.value.split("-");
+    setFormData((prev) => ({
+      ...prev,
+      timeSlot: { start, end },
+    }));
+  };
+
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
       const script = document.createElement("script");
@@ -119,7 +180,8 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
       if (
         !formData.service ||
         !formData.bookingDate ||
-        !formData.timeSlot.start
+        !formData.timeSlot.start ||
+        !formData.timeSlot.end
       ) {
         throw new Error("Please fill in all required fields");
       }
@@ -161,6 +223,10 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
   };
 
   const today = new Date().toISOString().split("T")[0];
+  const selectedTimeSlot =
+    formData.timeSlot.start && formData.timeSlot.end
+      ? `${formData.timeSlot.start}-${formData.timeSlot.end}`
+      : "";
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -190,9 +256,6 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
               <h3 className="font-semibold text-gray-900 mb-2">
                 {provider.user?.name}
               </h3>
-              <p className="text-gray-600 text-sm">
-                {provider.location.address}
-              </p>
             </div>
 
             {/* Service Selection */}
@@ -244,24 +307,20 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
                   <Clock className="h-4 w-4 inline mr-1" />
                   Time Slot *
                 </label>
-                <div className="flex gap-2">
-                  <input
-                    type="time"
-                    name="timeSlot.start"
-                    value={formData.timeSlot.start}
-                    onChange={handleInputChange}
-                    required
-                    className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                  <input
-                    type="time"
-                    name="timeSlot.end"
-                    value={formData.timeSlot.end}
-                    onChange={handleInputChange}
-                    required
-                    className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+                <select
+                  name="timeSlot"
+                  value={selectedTimeSlot}
+                  onChange={handleTimeSlotChange}
+                  required
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select time slot</option>
+                  {timeSlots.map((slot) => (
+                    <option key={slot} value={slot}>
+                      {slot}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -280,6 +339,13 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
                 placeholder="Enter complete address where service is required"
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
+              <button
+                type="button"
+                onClick={getCurrentLocation}
+                className="mt-2 bg-blue-100 text-blue-600 py-1 px-3 rounded hover:bg-blue-200 transition-colors"
+              >
+                Use Current Location
+              </button>
             </div>
 
             {/* Contact Phone */}
