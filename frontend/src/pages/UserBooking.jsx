@@ -163,44 +163,44 @@ const UserBookings = () => {
     setShowReviewModal(true);
   };
 
-const handleReviewSubmit = async () => {
-  if (!reviewData.rating || reviewData.rating < 1) {
-    alert("Please select a rating");
-    return;
-  }
+  const handleReviewSubmit = async () => {
+    if (!reviewData.rating || reviewData.rating < 1) {
+      alert("Please select a rating");
+      return;
+    }
 
-  try {
-    setSubmittingReview(true);
+    try {
+      setSubmittingReview(true);
 
-    // Submit review using the API service
-    const response = await reviewApiService.submitReview({
-      bookingId: selectedBooking._id,
-      providerId: selectedBooking.provider._id,
-      rating: reviewData.rating,
-      comment: reviewData.comment,
-    });
+      // Submit review using the API service
+      const response = await reviewApiService.submitReview({
+        bookingId: selectedBooking._id,
+        providerId: selectedBooking.provider._id,
+        rating: reviewData.rating,
+        comment: reviewData.comment,
+      });
 
-    console.log("Review submitted successfully:", response);
+      console.log("Review submitted successfully:", response);
 
-    // Update the booking to show it's been reviewed
-    setBookings((prev) =>
-      prev.map((booking) =>
-        booking._id === selectedBooking._id
-          ? { ...booking, hasReview: true }
-          : booking
-      )
-    );
+      // Update the booking to show it's been reviewed
+      setBookings((prev) =>
+        prev.map((booking) =>
+          booking._id === selectedBooking._id
+            ? { ...booking, hasReview: true }
+            : booking
+        )
+      );
 
-    setShowReviewModal(false);
-    setReviewData({ rating: 0, comment: "" });
-    alert("Review submitted successfully!");
-  } catch (err) {
-    console.error("Error submitting review:", err);
-    alert(`Failed to submit review: ${err.message}`);
-  } finally {
-    setSubmittingReview(false);
-  }
-};
+      setShowReviewModal(false);
+      setReviewData({ rating: 0, comment: "" });
+      alert("Review submitted successfully!");
+    } catch (err) {
+      console.error("Error submitting review:", err);
+      alert(`Failed to submit review: ${err.message}`);
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat("en-IN", {

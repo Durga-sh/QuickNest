@@ -374,11 +374,25 @@ exports.getProviderById = async (req, res) => {
 
     const provider = await Provider.findById(providerId).populate(
       "userId",
-      "name email"
+      "name email phone"
     );
+
     if (!provider) {
-      return res.status(404).json({ message: "Provider not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Provider not found",
+      });
     }
+
+    // Get review statistics
+    const Review = require("../model/Review");
+    const reviewStats = await Review.getProviderStats(providerId);
+
+    // Get recent reviews (last 5)
+    const recentReviews = await Review.find({ providerId })
+      .populate("userId", "name")
+      .sort({ createdAt: -1 })
+      .limit(5);
 
     res.status(200).json({
       success: true,
@@ -387,29 +401,54 @@ exports.getProviderById = async (req, res) => {
         user: {
           name: provider.userId.name,
           email: provider.userId.email,
+          phone: provider.userId.phone,
         },
         skills: provider.skills,
         location: provider.location,
         pricing: provider.pricing,
         availability: provider.availability,
         status: provider.status,
+        rating: reviewStats.averageRating,
+        totalReviews: reviewStats.totalReviews,
+        reviewCount: reviewStats.totalReviews, // For backward compatibility
+        ratingDistribution: reviewStats.ratingDistribution,
+        recentReviews: recentReviews.map((review) => ({
+          id: review._id,
+          rating: review.rating,
+          comment: review.comment,
+          userName: review.userId.name,
+          date: review.createdAt,
+        })),
+        yearsOfExperience: provider.yearsOfExperience || 0,
+        bio: provider.bio || "",
+        services: provider.pricing, // Map pricing to services for consistency
+        serviceAreas: provider.serviceAreas || [],
+        address: provider.location?.address,
+        isActive: provider.isActive,
+        totalJobs: provider.totalJobs || 0,
+        createdAt: provider.createdAt,
       },
     });
   } catch (error) {
     console.error("Get provider by ID error:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
   }
 };
 
-// Enhanced getAllProviders with improved location-based filtering
+// Updated getAllProviders method with review information
 exports.getAllProviders = async (req, res) => {
   try {
     const {
       skill,
       location,
-      radius = 50, // Default radius in km
+      radius = 50,
       minPrice,
       maxPrice,
+      minRating = 0,
       page = 1,
       limit = 10,
       sortBy = "createdAt",
@@ -422,6 +461,7 @@ exports.getAllProviders = async (req, res) => {
       radius,
       minPrice,
       maxPrice,
+      minRating,
       sortBy,
       sortOrder,
     });
@@ -432,9 +472,14 @@ exports.getAllProviders = async (req, res) => {
       isActive: true,
     };
 
-    // Filter by service (pricing.service) instead of skills array for exact match
+    // Add rating filter
+    if (minRating > 0) {
+      filter.rating = { $gte: parseFloat(minRating) };
+    }
+
+    // Filter by service
     if (skill) {
-      const skillRegex = new RegExp(`^${skill}$`, "i"); // Exact match, case-insensitive
+      const skillRegex = new RegExp(`^${skill}$`, "i");
       filter["pricing.service"] = skillRegex;
     }
 
@@ -455,46 +500,32 @@ exports.getAllProviders = async (req, res) => {
         .split(",")
         .map((coord) => parseFloat(coord.trim()));
 
-      console.log("Parsed coordinates:", coordinates);
-
       if (
         coordinates.length === 2 &&
         !isNaN(coordinates[0]) &&
         !isNaN(coordinates[1])
       ) {
-        // Validate coordinate ranges
         const [lng, lat] = coordinates;
         if (lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90) {
-          console.log(
-            `Adding geoNear with coordinates: [${lng}, ${lat}], radius: ${radius}km`
-          );
-
           aggregationPipeline.push({
             $geoNear: {
               near: {
                 type: "Point",
-                coordinates: [lng, lat], // [longitude, latitude]
+                coordinates: [lng, lat],
               },
               distanceField: "distance",
-              maxDistance: radius * 1000, // Convert km to meters
+              maxDistance: radius * 1000,
               spherical: true,
-              query: filter, // Apply other filters in geoNear
+              query: filter,
             },
           });
-
-          // Since geoNear already applies the filter, we don't need to match again
         } else {
-          console.warn("Invalid coordinates provided:", coordinates);
-          // If coordinates are invalid, fall back to regular filtering
           aggregationPipeline.push({ $match: filter });
         }
       } else {
-        console.warn("Invalid location format:", location);
-        // If location format is invalid, fall back to regular filtering
         aggregationPipeline.push({ $match: filter });
       }
     } else {
-      // No location provided, use regular filtering
       aggregationPipeline.push({ $match: filter });
     }
 
@@ -512,6 +543,26 @@ exports.getAllProviders = async (req, res) => {
         $unwind: "$user",
       },
       {
+        $lookup: {
+          from: "reviews",
+          localField: "_id",
+          foreignField: "providerId",
+          as: "reviews",
+        },
+      },
+      {
+        $addFields: {
+          reviewCount: { $size: "$reviews" },
+          averageRating: {
+            $cond: {
+              if: { $gt: [{ $size: "$reviews" }, 0] },
+              then: { $avg: "$reviews.rating" },
+              else: 0,
+            },
+          },
+        },
+      },
+      {
         $project: {
           _id: 1,
           userId: 1,
@@ -519,8 +570,8 @@ exports.getAllProviders = async (req, res) => {
           location: 1,
           pricing: 1,
           availability: 1,
-          rating: 1,
-          totalReviews: 1,
+          rating: { $ifNull: ["$averageRating", "$rating"] },
+          totalReviews: { $ifNull: ["$reviewCount", "$totalReviews"] },
           totalJobs: 1,
           createdAt: 1,
           status: 1,
@@ -534,10 +585,12 @@ exports.getAllProviders = async (req, res) => {
       }
     );
 
-    // Add sorting - prioritize distance if location is provided
+    // Add sorting
     const sortOptions = {};
     if (location && sortBy === "distance") {
-      sortOptions.distance = 1; // Ascending for distance (nearest first)
+      sortOptions.distance = 1;
+    } else if (sortBy === "rating") {
+      sortOptions.rating = sortOrder === "desc" ? -1 : 1;
     } else {
       sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
     }
@@ -562,18 +615,6 @@ exports.getAllProviders = async (req, res) => {
     const totalProviders = providers.length;
     const totalPages = Math.ceil(totalProviders / limit);
 
-    // Log location-based results
-    if (location && providers.length > 0) {
-      const distances = providers
-        .filter((p) => p.distance !== null)
-        .map((p) => (p.distance / 1000).toFixed(1));
-      console.log(
-        `Distance range: ${Math.min(...distances)}km - ${Math.max(
-          ...distances
-        )}km`
-      );
-    }
-
     res.status(200).json({
       success: true,
       data: paginatedProviders,
@@ -590,6 +631,7 @@ exports.getAllProviders = async (req, res) => {
         radius: parseInt(radius),
         minPrice: minPrice ? parseFloat(minPrice) : null,
         maxPrice: maxPrice ? parseFloat(maxPrice) : null,
+        minRating: minRating ? parseFloat(minRating) : 0,
         sortBy,
         sortOrder,
       },
@@ -597,9 +639,87 @@ exports.getAllProviders = async (req, res) => {
     });
   } catch (error) {
     console.error("Get all providers error:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
   }
 };
+
+// Add provider statistics method
+exports.getProviderStats = async (req, res) => {
+  try {
+    const { providerId } = req.params;
+
+    const provider = await Provider.findById(providerId);
+    if (!provider) {
+      return res.status(404).json({
+        success: false,
+        message: "Provider not found",
+      });
+    }
+
+    // Get review statistics
+    const Review = require("../model/Review");
+    const reviewStats = await Review.getProviderStats(providerId);
+
+    // Get booking statistics
+    const Booking = require("../model/Booking");
+    const bookingStats = await Booking.aggregate([
+      { $match: { provider: new mongoose.Types.ObjectId(providerId) } },
+      {
+        $group: {
+          _id: null,
+          totalBookings: { $sum: 1 },
+          completedBookings: {
+            $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] },
+          },
+          cancelledBookings: {
+            $sum: { $cond: [{ $eq: ["$status", "cancelled"] }, 1, 0] },
+          },
+          totalRevenue: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "completed"] }, "$servicePrice", 0],
+            },
+          },
+        },
+      },
+    ]);
+
+    const stats =
+      bookingStats.length > 0
+        ? bookingStats[0]
+        : {
+            totalBookings: 0,
+            completedBookings: 0,
+            cancelledBookings: 0,
+            totalRevenue: 0,
+          };
+
+    // Calculate completion rate
+    const completionRate =
+      stats.totalBookings > 0
+        ? (stats.completedBookings / stats.totalBookings) * 100
+        : 0;
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        ...reviewStats,
+        ...stats,
+        completionRate: Math.round(completionRate * 10) / 10,
+      },
+    });
+  } catch (error) {
+    console.error("Get provider stats error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+}; 
 
 // Get all unique skills from approved providers
 exports.getAvailableSkills = async (req, res) => {

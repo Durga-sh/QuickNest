@@ -225,79 +225,276 @@ exports.verifyPayment = async (req, res) => {
 // Get user bookings
 exports.getUserBookings = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
+    const userId = req.user.id;
+    const { page = 1, limit = 10, status } = req.query;
 
-    const bookings = await Booking.find({ user: req.user.id })
-      .populate("provider", "user skills location rating")
-      .populate("user", "name email")
+    // Build filter
+    const filter = { user: userId };
+    if (status && status !== "all") {
+      filter.status = status;
+    }
+
+    // Get bookings with populated provider and user data - FIXED populate paths
+    const bookings = await Booking.find(filter)
+      .populate({
+        path: "provider",
+        populate: {
+          path: "userId", // Changed from "user" to "userId"
+          select: "name email phone",
+        },
+      })
+      .populate("user", "name email phone")
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
 
-    const total = await Booking.countDocuments({ user: req.user.id });
+    // Check which bookings have reviews
+    const Review = require("../model/Review");
+    const bookingIds = bookings.map((booking) => booking._id);
+    const existingReviews = await Review.find({
+      bookingId: { $in: bookingIds },
+    });
 
-    res.json({
+    // Create a map of booking IDs to review status
+    const reviewMap = {};
+    existingReviews.forEach((review) => {
+      reviewMap[review.bookingId.toString()] = true;
+    });
+
+    // Add hasReview field to each booking and fix provider.user structure
+    const bookingsWithReviewStatus = bookings.map((booking) => {
+      const bookingObj = booking.toObject();
+      bookingObj.hasReview = reviewMap[booking._id.toString()] || false;
+
+      // Fix provider.user structure for frontend compatibility
+      if (bookingObj.provider && bookingObj.provider.userId) {
+        bookingObj.provider.user = {
+          name: bookingObj.provider.userId.name,
+          email: bookingObj.provider.userId.email,
+          phone: bookingObj.provider.userId.phone,
+        };
+      }
+
+      return bookingObj;
+    });
+
+    // Get total count for pagination
+    const totalBookings = await Booking.countDocuments(filter);
+    const totalPages = Math.ceil(totalBookings / limit);
+
+    res.status(200).json({
       success: true,
-      bookings,
+      bookings: bookingsWithReviewStatus,
       pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: totalBookings,
+        pages: totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
       },
     });
   } catch (error) {
     console.error("Get user bookings error:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
   }
 };
 
 // Get provider bookings - FIXED
 exports.getProviderBookings = async (req, res) => {
   try {
-    // Find provider using userId field instead of user field
-    const provider = await Provider.findOne({ userId: req.user.id });
+    const userId = req.user.id;
+    const { page = 1, limit = 10, status } = req.query;
+
+    // Find provider profile
+    const Provider = require("../model/Provider");
+    const provider = await Provider.findOne({ userId });
     if (!provider) {
-      return res.status(404).json({ message: "Provider profile not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Provider profile not found",
+      });
     }
 
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
+    // Build filter
+    const filter = { provider: provider._id };
+    if (status && status !== "all") {
+      filter.status = status;
+    }
 
-    const bookings = await Booking.find({ provider: provider._id })
-      .populate("user", "name email")
+    // Get bookings with populated user data - FIXED populate paths
+    const bookings = await Booking.find(filter)
+      .populate("user", "name email phone")
       .populate({
         path: "provider",
         populate: {
-          path: "userId",
-          select: "name email",
+          path: "userId", // Changed from "user" to "userId"
+          select: "name email phone",
         },
       })
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
 
-    const total = await Booking.countDocuments({ provider: provider._id });
+    // Check which bookings have reviews
+    const Review = require("../model/Review");
+    const bookingIds = bookings.map((booking) => booking._id);
+    const existingReviews = await Review.find({
+      bookingId: { $in: bookingIds },
+    });
 
-    res.json({
+    // Create a map of booking IDs to review data
+    const reviewMap = {};
+    existingReviews.forEach((review) => {
+      reviewMap[review.bookingId.toString()] = {
+        hasReview: true,
+        rating: review.rating,
+        comment: review.comment,
+        reviewId: review._id,
+      };
+    });
+
+    // Add review information to each booking and fix provider.user structure
+    const bookingsWithReviewStatus = bookings.map((booking) => {
+      const bookingObj = booking.toObject();
+      const reviewInfo = reviewMap[booking._id.toString()];
+      bookingObj.hasReview = reviewInfo?.hasReview || false;
+
+      if (reviewInfo) {
+        bookingObj.review = {
+          rating: reviewInfo.rating,
+          comment: reviewInfo.comment,
+          reviewId: reviewInfo.reviewId,
+        };
+      }
+
+      // Fix provider.user structure for frontend compatibility
+      if (bookingObj.provider && bookingObj.provider.userId) {
+        bookingObj.provider.user = {
+          name: bookingObj.provider.userId.name,
+          email: bookingObj.provider.userId.email,
+          phone: bookingObj.provider.userId.phone,
+        };
+      }
+
+      return bookingObj;
+    });
+
+    // Get total count for pagination
+    const totalBookings = await Booking.countDocuments(filter);
+    const totalPages = Math.ceil(totalBookings / limit);
+
+    res.status(200).json({
       success: true,
-      bookings,
+      bookings: bookingsWithReviewStatus,
       pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: totalBookings,
+        pages: totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
       },
     });
   } catch (error) {
     console.error("Get provider bookings error:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
   }
 };
 
+// Alternative approach: If you want to keep the populate simple and handle structure in code
+exports.getUserBookingsAlternative = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { page = 1, limit = 10, status } = req.query;
+
+    // Build filter
+    const filter = { user: userId };
+    if (status && status !== "all") {
+      filter.status = status;
+    }
+
+    // Get bookings with simple populate
+    const bookings = await Booking.find(filter)
+      .populate("provider")
+      .populate("user", "name email phone")
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    // Get provider user details separately
+    const Provider = require("../model/Provider");
+    const User = require("../model/User");
+
+    for (let booking of bookings) {
+      if (booking.provider && booking.provider.userId) {
+        const providerUser = await User.findById(
+          booking.provider.userId
+        ).select("name email phone");
+        if (providerUser) {
+          booking.provider = booking.provider.toObject();
+          booking.provider.user = {
+            name: providerUser.name,
+            email: providerUser.email,
+            phone: providerUser.phone,
+          };
+        }
+      }
+    }
+
+    // Check which bookings have reviews
+    const Review = require("../model/Review");
+    const bookingIds = bookings.map((booking) => booking._id);
+    const existingReviews = await Review.find({
+      bookingId: { $in: bookingIds },
+    });
+
+    // Create a map of booking IDs to review status
+    const reviewMap = {};
+    existingReviews.forEach((review) => {
+      reviewMap[review.bookingId.toString()] = true;
+    });
+
+    // Add hasReview field to each booking
+    const bookingsWithReviewStatus = bookings.map((booking) => {
+      const bookingObj = booking.toObject();
+      bookingObj.hasReview = reviewMap[booking._id.toString()] || false;
+      return bookingObj;
+    });
+
+    // Get total count for pagination
+    const totalBookings = await Booking.countDocuments(filter);
+    const totalPages = Math.ceil(totalBookings / limit);
+
+    res.status(200).json({
+      success: true,
+      bookings: bookingsWithReviewStatus,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: totalBookings,
+        pages: totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (error) {
+    console.error("Get user bookings error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
 // Get booking by ID
 exports.getBookingById = async (req, res) => {
   try {

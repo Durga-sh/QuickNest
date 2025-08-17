@@ -81,7 +81,7 @@ try {
 }
 
 if (reviewRoutes) {
-  app.use("/api/reeview", reviewRoutes);
+  app.use("/api/reviews", reviewRoutes);
   console.log("✅ Mounted /api/review");
 } else {
   console.warn("⚠️ reviewRoutes not mounted");

@@ -187,6 +187,7 @@ export const verifyToken = async () => {
     });
     return response.data;
   } catch (error) {
+      console.error("Verify Token Error:", error);
     localStorage.removeItem("token");
     return false;
   }
