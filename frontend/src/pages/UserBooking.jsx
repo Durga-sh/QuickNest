@@ -1,7 +1,7 @@
 // Hyperlocal Service Marketplace/src/pages/UserBookings.jsx
 import React, { useState, useEffect } from "react";
 // eslint-disable-next-line no-unused-vars
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar,
   Clock,
@@ -19,14 +19,31 @@ import {
   AlertCircle,
   XCircle,
   Clock as ClockIcon,
+  Mail,
+  X,
+  Send,
+  MessageSquare,
+  Award,
+  Navigation,
 } from "lucide-react";
 import bookingApiService from "../api/booking";
+import apiService from "../api/provider";
+import reviewApiService from "../api/review";
 
 const UserBookings = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [providerDetails, setProviderDetails] = useState(null);
+  const [reviewData, setReviewData] = useState({
+    rating: 0,
+    comment: "",
+  });
+  const [submittingReview, setSubmittingReview] = useState(false);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -77,6 +94,25 @@ const UserBookings = () => {
     },
   };
 
+  const modalVariants = {
+    hidden: { opacity: 0, scale: 0.8 },
+    visible: {
+      opacity: 1,
+      scale: 1,
+      transition: {
+        duration: 0.3,
+        ease: "easeOut",
+      },
+    },
+    exit: {
+      opacity: 0,
+      scale: 0.8,
+      transition: {
+        duration: 0.2,
+      },
+    },
+  };
+
   useEffect(() => {
     fetchBookings();
   }, [pagination.page, statusFilter]);
@@ -105,6 +141,66 @@ const UserBookings = () => {
       setLoading(false);
     }
   };
+
+  const fetchProviderDetails = async (providerId) => {
+    try {
+      const provider = await apiService.getProviderById(providerId);
+      setProviderDetails(provider);
+    } catch (err) {
+      console.error("Error fetching provider details:", err);
+      setError("Failed to load provider details");
+    }
+  };
+
+  const handleViewDetails = (booking) => {
+    setSelectedBooking(booking);
+    fetchProviderDetails(booking.provider._id);
+    setShowDetailsModal(true);
+  };
+
+  const handleReviewClick = (booking) => {
+    setSelectedBooking(booking);
+    setShowReviewModal(true);
+  };
+
+const handleReviewSubmit = async () => {
+  if (!reviewData.rating || reviewData.rating < 1) {
+    alert("Please select a rating");
+    return;
+  }
+
+  try {
+    setSubmittingReview(true);
+
+    // Submit review using the API service
+    const response = await reviewApiService.submitReview({
+      bookingId: selectedBooking._id,
+      providerId: selectedBooking.provider._id,
+      rating: reviewData.rating,
+      comment: reviewData.comment,
+    });
+
+    console.log("Review submitted successfully:", response);
+
+    // Update the booking to show it's been reviewed
+    setBookings((prev) =>
+      prev.map((booking) =>
+        booking._id === selectedBooking._id
+          ? { ...booking, hasReview: true }
+          : booking
+      )
+    );
+
+    setShowReviewModal(false);
+    setReviewData({ rating: 0, comment: "" });
+    alert("Review submitted successfully!");
+  } catch (err) {
+    console.error("Error submitting review:", err);
+    alert(`Failed to submit review: ${err.message}`);
+  } finally {
+    setSubmittingReview(false);
+  }
+};
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat("en-IN", {
@@ -165,6 +261,28 @@ const UserBookings = () => {
 
   const handlePageChange = (newPage) => {
     setPagination((prev) => ({ ...prev, page: newPage }));
+  };
+
+  const StarRating = ({ rating, onRatingChange, readOnly = false }) => {
+    return (
+      <div className="flex space-x-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <motion.button
+            key={star}
+            type="button"
+            onClick={() => !readOnly && onRatingChange(star)}
+            className={`${
+              star <= rating ? "text-yellow-400" : "text-gray-300"
+            } ${!readOnly ? "hover:text-yellow-400 cursor-pointer" : ""}`}
+            whileHover={!readOnly ? { scale: 1.1 } : {}}
+            whileTap={!readOnly ? { scale: 0.9 } : {}}
+            disabled={readOnly}
+          >
+            <Star className="w-6 h-6 fill-current" />
+          </motion.button>
+        ))}
+      </div>
+    );
   };
 
   if (loading && bookings.length === 0) {
@@ -336,24 +454,33 @@ const UserBookings = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     {/* Provider Info */}
                     <motion.div
-                      className="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl"
+                      className="col-span-2 flex items-center space-x-4 p-4 bg-gray-50 rounded-xl"
                       whileHover={{ scale: 1.02 }}
                       transition={{ duration: 0.2 }}
                     >
                       <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center">
                         <User className="h-6 w-6 text-white" />
                       </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">
-                          {booking.provider?.user?.name || "Provider"}
-                        </p>
-                        <div className="flex items-center space-x-1">
-                          <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                          <span className="text-sm text-gray-600">
-                            {booking.provider?.rating?.toFixed(1) || "N/A"}
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <p className="font-semibold text-gray-900">
+                            {booking.provider?.user?.name || "Provider"}
+                          </p>
+                          <div className="flex items-center space-x-1">
+                            <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                            <span className="text-sm text-gray-600">
+                              {booking.provider?.rating?.toFixed(1) || "N/A"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-1 text-sm text-gray-600">
+                          <Mail className="h-4 w-4" />
+                          <span className="truncate">
+                            {booking.provider?.user?.email ||
+                              "No email provided"}
                           </span>
                         </div>
                       </div>
@@ -432,6 +559,7 @@ const UserBookings = () => {
                     </p>
                     <div className="flex space-x-3">
                       <motion.button
+                        onClick={() => handleViewDetails(booking)}
                         className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-all duration-200 text-sm flex items-center"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
@@ -439,14 +567,15 @@ const UserBookings = () => {
                         <Eye className="h-4 w-4 mr-2" />
                         View Details
                       </motion.button>
-                      {booking.status === "completed" && !booking.rating && (
+                      {booking.status === "completed" && !booking.hasReview && (
                         <motion.button
-                          className="bg-yellow-100 text-yellow-700 px-4 py-2 rounded-lg hover:bg-yellow-200 transition-all duration-200 text-sm flex items-center"
+                          onClick={() => handleReviewClick(booking)}
+                          className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-4 py-2 rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-all duration-200 text-sm flex items-center shadow-md"
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                         >
                           <Star className="h-4 w-4 mr-2" />
-                          Rate Service
+                          Give Review
                         </motion.button>
                       )}
                     </div>
@@ -496,6 +625,386 @@ const UserBookings = () => {
           </motion.div>
         )}
       </div>
+
+      {/* Review Modal */}
+      <AnimatePresence>
+        {showReviewModal && (
+          <motion.div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+              variants={modalVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-semibold text-gray-900">
+                    Rate Your Experience
+                  </h3>
+                  <button
+                    onClick={() => setShowReviewModal(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+
+                <div className="mb-6">
+                  <div className="flex items-center space-x-4 mb-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center">
+                      <User className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">
+                        {selectedBooking?.provider?.user?.name}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {selectedBooking?.service}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Rating *
+                  </label>
+                  <StarRating
+                    rating={reviewData.rating}
+                    onRatingChange={(rating) =>
+                      setReviewData({ ...reviewData, rating })
+                    }
+                  />
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Your Review
+                  </label>
+                  <textarea
+                    value={reviewData.comment}
+                    onChange={(e) =>
+                      setReviewData({ ...reviewData, comment: e.target.value })
+                    }
+                    placeholder="Share your experience with this provider..."
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    rows={4}
+                  />
+                </div>
+
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => setShowReviewModal(false)}
+                    className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all duration-200"
+                  >
+                    Cancel
+                  </button>
+                  <motion.button
+                    onClick={handleReviewSubmit}
+                    disabled={submittingReview || !reviewData.rating}
+                    className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-4 py-3 rounded-lg hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    {submittingReview ? (
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4 mr-2" />
+                        Submit Review
+                      </>
+                    )}
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Provider Details Modal */}
+      <AnimatePresence>
+        {showDetailsModal && (
+          <motion.div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              variants={modalVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-semibold text-gray-900">
+                    Provider Details
+                  </h3>
+                  <button
+                    onClick={() => setShowDetailsModal(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+
+                {providerDetails ? (
+                  <div className="space-y-6">
+                    {/* Provider Header */}
+                    <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl">
+                      <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center">
+                        <User className="h-8 w-8 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-xl font-semibold text-gray-900">
+                          {providerDetails.user?.name || "Provider Name"}
+                        </h4>
+                        <div className="flex items-center space-x-4 mt-1">
+                          <div className="flex items-center space-x-1">
+                            <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                            <span className="text-sm text-gray-600">
+                              {providerDetails.rating?.toFixed(1) || "N/A"}(
+                              {providerDetails.reviewCount || 0} reviews)
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-1 text-sm text-gray-600">
+                            <Award className="h-4 w-4" />
+                            <span>
+                              {providerDetails.yearsOfExperience || 0} years
+                              exp.
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Contact Information */}
+                    <div className="bg-gray-50 rounded-xl p-4">
+                      <h5 className="font-semibold text-gray-900 mb-3 flex items-center">
+                        <Phone className="h-5 w-5 mr-2 text-emerald-600" />
+                        Contact Information
+                      </h5>
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Mail className="h-4 w-4 text-gray-500" />
+                          <span className="text-sm text-gray-700">
+                            {providerDetails.user?.email || "No email provided"}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Phone className="h-4 w-4 text-gray-500" />
+                          <span className="text-sm text-gray-700">
+                            {providerDetails.user?.phone ||
+                              selectedBooking?.contactPhone ||
+                              "No phone provided"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Location */}
+                    <div className="bg-gray-50 rounded-xl p-4">
+                      <h5 className="font-semibold text-gray-900 mb-3 flex items-center">
+                        <MapPin className="h-5 w-5 mr-2 text-emerald-600" />
+                        Location
+                      </h5>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-sm text-gray-700">
+                            <span className="font-medium">Service Area:</span>{" "}
+                            {providerDetails.serviceAreas?.join(", ") ||
+                              "Not specified"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-700">
+                            <span className="font-medium">Address:</span>{" "}
+                            {providerDetails.address || "Not provided"}
+                          </p>
+                        </div>
+                        {providerDetails.location?.coordinates && (
+                          <motion.button
+                            className="flex items-center space-x-2 text-emerald-600 hover:text-emerald-700 text-sm font-medium"
+                            whileHover={{ scale: 1.02 }}
+                            onClick={() => {
+                              const [lng, lat] =
+                                providerDetails.location.coordinates;
+                              window.open(
+                                `https://www.google.com/maps?q=${lat},${lng}`,
+                                "_blank"
+                              );
+                            }}
+                          >
+                            <Navigation className="h-4 w-4" />
+                            <span>View on Map</span>
+                          </motion.button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Services */}
+                    <div className="bg-gray-50 rounded-xl p-4">
+                      <h5 className="font-semibold text-gray-900 mb-3 flex items-center">
+                        <Award className="h-5 w-5 mr-2 text-emerald-600" />
+                        Services Offered
+                      </h5>
+                      <div className="grid grid-cols-2 gap-3">
+                        {providerDetails.services &&
+                        providerDetails.services.length > 0 ? (
+                          providerDetails.services.map((service, index) => (
+                            <div
+                              key={index}
+                              className="bg-white p-3 rounded-lg border border-gray-200"
+                            >
+                              <p className="font-medium text-gray-900 text-sm">
+                                {service.name || service}
+                              </p>
+                              {service.price && (
+                                <p className="text-emerald-600 text-sm font-semibold">
+                                  {formatPrice(service.price)}
+                                </p>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-gray-500 text-sm col-span-2">
+                            No services listed
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Skills */}
+                    {providerDetails.skills &&
+                      providerDetails.skills.length > 0 && (
+                        <div className="bg-gray-50 rounded-xl p-4">
+                          <h5 className="font-semibold text-gray-900 mb-3">
+                            Skills & Expertise
+                          </h5>
+                          <div className="flex flex-wrap gap-2">
+                            {providerDetails.skills.map((skill, index) => (
+                              <span
+                                key={index}
+                                className="px-3 py-1 bg-emerald-100 text-emerald-800 text-sm rounded-full font-medium"
+                              >
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                    {/* Bio/Description */}
+                    {providerDetails.bio && (
+                      <div className="bg-gray-50 rounded-xl p-4">
+                        <h5 className="font-semibold text-gray-900 mb-3">
+                          About
+                        </h5>
+                        <p className="text-gray-700 text-sm leading-relaxed">
+                          {providerDetails.bio}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Booking Details */}
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                      <h5 className="font-semibold text-gray-900 mb-3 flex items-center">
+                        <Calendar className="h-5 w-5 mr-2 text-emerald-600" />
+                        Your Booking Details
+                      </h5>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-gray-600">Service:</p>
+                          <p className="font-medium text-gray-900">
+                            {selectedBooking?.service}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600">Date:</p>
+                          <p className="font-medium text-gray-900">
+                            {formatDate(selectedBooking?.bookingDate)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600">Time:</p>
+                          <p className="font-medium text-gray-900">
+                            {formatTime(selectedBooking?.timeSlot.start)} -{" "}
+                            {formatTime(selectedBooking?.timeSlot.end)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600">Status:</p>
+                          <span
+                            className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                              selectedBooking?.status
+                            )}`}
+                          >
+                            {selectedBooking?.status?.charAt(0).toUpperCase() +
+                              selectedBooking?.status?.slice(1)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-emerald-200">
+                        <p className="text-gray-600 text-sm">
+                          Service Address:
+                        </p>
+                        <p className="font-medium text-gray-900 text-sm">
+                          {selectedBooking?.address}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex space-x-3 pt-4 border-t border-gray-200">
+                      <motion.button
+                        onClick={() => setShowDetailsModal(false)}
+                        className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all duration-200"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Close
+                      </motion.button>
+                      {selectedBooking?.provider?.user?.phone && (
+                        <motion.button
+                          onClick={() => {
+                            window.open(
+                              `tel:${selectedBooking.provider.user.phone}`
+                            );
+                          }}
+                          className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-4 py-3 rounded-lg hover:from-emerald-700 hover:to-teal-700 transition-all duration-200 flex items-center justify-center"
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          <Phone className="h-4 w-4 mr-2" />
+                          Call Provider
+                        </motion.button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600 mx-auto mb-4"></div>
+                      <p className="text-gray-600">
+                        Loading provider details...
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

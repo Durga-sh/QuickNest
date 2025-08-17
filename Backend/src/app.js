@@ -72,6 +72,21 @@ if (bookingRoutes) {
   console.warn("⚠️ bookingRoutes not mounted");
 }
 
+let reviewRoutes;
+try {
+  reviewRoutes = require("./routes/reviewRoutes");
+  console.log("✅ review routes imported");
+} catch (err) {
+  console.error("❌ Failed to import reviewRoutes.js:", err);
+}
+
+if (reviewRoutes) {
+  app.use("/api/reeview", reviewRoutes);
+  console.log("✅ Mounted /api/review");
+} else {
+  console.warn("⚠️ reviewRoutes not mounted");
+}
+
 // Error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
