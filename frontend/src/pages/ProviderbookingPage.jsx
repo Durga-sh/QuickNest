@@ -14,8 +14,11 @@ import {
   AlertCircle,
   Star,
   Eye,
+  MessageSquare,
+  StarIcon,
 } from "lucide-react";
 import bookingApiService from "../api/booking";
+import reviewApiService from "../api/review";
 
 const ProviderBookings = () => {
   const navigate = useNavigate();
@@ -26,6 +29,8 @@ const ProviderBookings = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [updatingBooking, setUpdatingBooking] = useState(null);
+  const [bookingReviews, setBookingReviews] = useState({});
+  const [loadingReviews, setLoadingReviews] = useState({});
 
   useEffect(() => {
     fetchBookings();
@@ -40,12 +45,58 @@ const ProviderBookings = () => {
       );
       setBookings(response.bookings || []);
       setTotalPages(response.pagination?.pages || 1);
+
+      // Fetch reviews for completed bookings
+      const completedBookings =
+        response.bookings?.filter(
+          (booking) => booking.status === "completed"
+        ) || [];
+
+      if (completedBookings.length > 0) {
+        fetchReviewsForBookings(completedBookings);
+      }
     } catch (err) {
       console.error("Error fetching bookings:", err);
       setError(err.message || "Failed to fetch bookings");
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchReviewsForBookings = async (completedBookings) => {
+    const reviewPromises = completedBookings.map(async (booking) => {
+      try {
+        setLoadingReviews((prev) => ({ ...prev, [booking._id]: true }));
+        const response = await reviewApiService.getReviewByBooking(booking._id);
+        // Handle both direct review object and nested response structure
+        const review = response.review || response;
+        console.log(`Review for booking ${booking._id}:`, review); // Debug log
+        return { bookingId: booking._id, review };
+      } catch (error) {
+        // Review not found is expected for some bookings
+        if (
+          !error.message.includes("Review not found") &&
+          !error.message.includes("404")
+        ) {
+          console.error(
+            `Error fetching review for booking ${booking._id}:`,
+            error
+          );
+        }
+        return { bookingId: booking._id, review: null };
+      } finally {
+        setLoadingReviews((prev) => ({ ...prev, [booking._id]: false }));
+      }
+    });
+
+    const reviewResults = await Promise.all(reviewPromises);
+    const reviewsMap = {};
+
+    reviewResults.forEach(({ bookingId, review }) => {
+      reviewsMap[bookingId] = review;
+    });
+
+    setBookingReviews(reviewsMap);
   };
 
   const updateBookingStatus = async (bookingId, newStatus) => {
@@ -64,6 +115,18 @@ const ProviderBookings = () => {
 
       // Show success message
       alert(`Booking ${newStatus} successfully!`);
+
+      // If marking as completed, try to fetch review after a delay
+      if (newStatus === "completed") {
+        setTimeout(async () => {
+          try {
+            const review = await reviewApiService.getReviewByBooking(bookingId);
+            setBookingReviews((prev) => ({ ...prev, [bookingId]: review }));
+          } catch (error) {
+            // Review might not exist yet
+          }
+        }, 1000);
+      }
     } catch (err) {
       console.error("Error updating booking:", err);
       alert(err.message || "Failed to update booking status");
@@ -105,6 +168,103 @@ const ProviderBookings = () => {
       default:
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
+  };
+
+  const renderStarRating = (rating) => {
+    const numericRating = Number(rating) || 0;
+    return (
+      <div className="flex items-center space-x-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <StarIcon
+            key={star}
+            className={`h-5 w-5 ${
+              star <= numericRating
+                ? "text-yellow-400 fill-yellow-400"
+                : "text-gray-300"
+            }`}
+            fill={star <= numericRating ? "currentColor" : "none"}
+          />
+        ))}
+        <span className="ml-2 text-sm font-semibold text-gray-700">
+          {numericRating}/5
+        </span>
+      </div>
+    );
+  };
+
+  const renderReviewSection = (booking) => {
+    const review = bookingReviews[booking._id];
+    const isLoadingReview = loadingReviews[booking._id];
+
+    if (booking.status !== "completed") {
+      return null;
+    }
+
+    return (
+      <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl p-4 mb-6 border border-yellow-200">
+        <div className="flex items-center space-x-2 mb-3">
+          <Star className="h-5 w-5 text-yellow-500" />
+          <span className="font-semibold text-gray-900">Customer Review</span>
+        </div>
+
+        {isLoadingReview ? (
+          <div className="flex items-center space-x-2 text-gray-500">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-500"></div>
+            <span>Loading review...</span>
+          </div>
+        ) : review ? (
+          <div className="space-y-3">
+            {/* Debug info - remove in production */}
+            {process.env.NODE_ENV === "development" && (
+              <div className="text-xs text-gray-400 bg-gray-100 p-2 rounded">
+                Debug: Rating: {review.rating}, Comment: "{review.comment}"
+              </div>
+            )}
+
+            {/* Rating */}
+            <div className="flex items-center justify-between">
+              <div>{renderStarRating(review.rating)}</div>
+              <span className="text-sm text-gray-500">
+                {review.createdAt
+                  ? new Date(review.createdAt).toLocaleDateString()
+                  : "Unknown date"}
+              </span>
+            </div>
+
+            {/* Review Text */}
+            {review.comment && review.comment.trim() !== "" ? (
+              <div className="bg-white/70 rounded-lg p-3">
+                <div className="flex items-start space-x-2">
+                  <MessageSquare className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-gray-700 text-sm leading-relaxed">
+                    "{review.comment}"
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white/70 rounded-lg p-3">
+                <div className="flex items-start space-x-2">
+                  <MessageSquare className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-gray-500 text-sm italic">
+                    No written comment provided
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Review by */}
+            <div className="text-xs text-gray-500">
+              Review by {booking.user?.name || review.user?.name || "Customer"}
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center space-x-2 text-gray-500">
+            <AlertCircle className="h-4 w-4" />
+            <span className="text-sm">No review submitted yet</span>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const formatDate = (dateString) => {
@@ -281,6 +441,9 @@ const ProviderBookings = () => {
                       <p className="text-gray-700">{booking.contactPhone}</p>
                     </div>
                   </div>
+
+                  {/* Review Section - Show for completed bookings */}
+                  {renderReviewSection(booking)}
 
                   {/* Details Grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
