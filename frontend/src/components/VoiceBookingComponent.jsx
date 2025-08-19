@@ -6,17 +6,23 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
+  Loader2,
 } from "lucide-react";
 import voiceAssistantService from "../services/voiceAssistantService";
 import voiceBookingParser from "../utils/voiceBookingParser";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
 
 const VoiceBookingComponent = ({ onBookingParsed, onClose }) => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isBooking, setIsBooking] = useState(false);
   const [parsedBooking, setParsedBooking] = useState(null);
   const [error, setError] = useState("");
   const [suggestions, setSuggestions] = useState([]);
+  const [bookingSuccess, setBookingSuccess] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Check if voice features are supported
@@ -54,13 +60,26 @@ const VoiceBookingComponent = ({ onBookingParsed, onClose }) => {
     setIsListening(false);
   };
 
-  const processVoiceCommand = (command) => {
+  const processVoiceCommand = async (command) => {
     try {
       const parsed = voiceBookingParser.parseVoiceCommand(command);
       const bookingData = voiceBookingParser.generateBookingData(parsed);
 
       setParsedBooking(bookingData);
-      if (parsed.confidence < 0.6) {
+
+      // If confidence is high (>= 0.6), automatically proceed with booking
+      if (
+        parsed.confidence >= 0.6 &&
+        bookingData.service &&
+        bookingData.bookingDate
+      ) {
+        setSuggestions([]);
+        speakResponse("Great! I'll book that service for you right away.");
+
+        // Automatically proceed with booking
+        await autoBookService(bookingData);
+      } else {
+        // Low confidence, provide suggestions
         const suggestions = voiceBookingParser.getSuggestions(parsed);
         setSuggestions(suggestions);
         speakResponse(
@@ -68,13 +87,6 @@ const VoiceBookingComponent = ({ onBookingParsed, onClose }) => {
             suggestions[0] || ""
           }`
         );
-      } else {
-        setSuggestions([]);
-        // Immediately book the service if confidence is high
-        if (onBookingParsed) {
-          onBookingParsed(bookingData);
-          speakResponse("Great! I'll help you complete the booking.");
-        }
       }
     } catch (error) {
       console.error("Error processing voice command:", error);
@@ -87,7 +99,46 @@ const VoiceBookingComponent = ({ onBookingParsed, onClose }) => {
     }
   };
 
-  // Removed generateConfirmationResponse, not needed
+  const autoBookService = async (bookingData) => {
+    setIsBooking(true);
+
+    try {
+      // Navigate to services page with pre-filled booking data
+      if (onBookingParsed) {
+        onBookingParsed(bookingData);
+      } else {
+        // Alternative: Navigate to services page with query params
+        const queryParams = new URLSearchParams({
+          service: bookingData.service,
+          autoBook: "true",
+          date: bookingData.bookingDate?.toISOString() || "",
+          timeStart: bookingData.timeSlot?.start || "",
+          timeEnd: bookingData.timeSlot?.end || "",
+          urgent: bookingData.urgent ? "true" : "false",
+        });
+
+        navigate(`/services?${queryParams.toString()}`);
+      }
+
+      setBookingSuccess(true);
+      speakResponse("Your booking has been processed successfully!");
+      toast.success("Booking initiated successfully!");
+
+      // Auto-close after success
+      setTimeout(() => {
+        onClose();
+      }, 2000);
+    } catch (error) {
+      console.error("Auto booking error:", error);
+      setError("Failed to process booking automatically");
+      speakResponse(
+        "Sorry, there was an issue processing your booking. Please try again."
+      );
+      toast.error("Booking failed. Please try again.");
+    } finally {
+      setIsBooking(false);
+    }
+  };
 
   const speakResponse = (text) => {
     voiceAssistantService.speak(text, {
@@ -102,6 +153,7 @@ const VoiceBookingComponent = ({ onBookingParsed, onClose }) => {
     setTranscript("");
     setParsedBooking(null);
     setSuggestions([]);
+    setBookingSuccess(false);
 
     const started = voiceAssistantService.startListening();
     if (!started) {
@@ -117,13 +169,12 @@ const VoiceBookingComponent = ({ onBookingParsed, onClose }) => {
     voiceAssistantService.stopListening();
   };
 
-  // Removed confirmBooking, not needed
-
   const tryAgain = () => {
     setTranscript("");
     setParsedBooking(null);
     setSuggestions([]);
     setError("");
+    setBookingSuccess(false);
     startListening();
   };
 
@@ -167,6 +218,20 @@ const VoiceBookingComponent = ({ onBookingParsed, onClose }) => {
               <span>Processing...</span>
             </div>
           )}
+
+          {isBooking && (
+            <div className="flex items-center justify-center space-x-2 text-purple-600">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Booking your service...</span>
+            </div>
+          )}
+
+          {bookingSuccess && (
+            <div className="flex items-center justify-center space-x-2 text-green-600">
+              <CheckCircle className="w-5 h-5" />
+              <span>Booking successful! Redirecting...</span>
+            </div>
+          )}
         </div>
 
         {/* Transcript Display */}
@@ -186,10 +251,10 @@ const VoiceBookingComponent = ({ onBookingParsed, onClose }) => {
         )}
 
         {/* Suggestions */}
-        {suggestions.length > 0 && (
+        {suggestions.length > 0 && !bookingSuccess && (
           <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-yellow-800 text-sm font-medium mb-2">
-              Suggestions:
+              Please provide more details:
             </p>
             <ul className="text-yellow-700 text-sm space-y-1">
               {suggestions.map((suggestion, index) => (
@@ -200,57 +265,60 @@ const VoiceBookingComponent = ({ onBookingParsed, onClose }) => {
         )}
 
         {/* Parsed Booking Display */}
-        {parsedBooking && (
-          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <div className="flex items-center space-x-2 mb-3">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <h3 className="font-medium text-green-800">Booking Details</h3>
-            </div>
-
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Service:</span>
-                <span className="font-medium">
-                  {parsedBooking.serviceDisplay || "Not specified"}
-                </span>
+        {parsedBooking &&
+          parsedBooking.confidence >= 0.6 &&
+          !bookingSuccess && (
+            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center space-x-2 mb-3">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <h3 className="font-medium text-green-800">
+                  Auto-Booking Details
+                </h3>
               </div>
 
-              <div className="flex justify-between">
-                <span className="text-gray-600">Date:</span>
-                <span className="font-medium">
-                  {parsedBooking.bookingDate
-                    ? formatDate(parsedBooking.bookingDate)
-                    : "Not specified"}
-                </span>
-              </div>
-
-              <div className="flex justify-between">
-                <span className="text-gray-600">Time:</span>
-                <span className="font-medium">
-                  {parsedBooking.timeDisplay || "Not specified"}
-                </span>
-              </div>
-
-              {parsedBooking.urgent && (
+              <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Priority:</span>
-                  <span className="font-medium text-red-600">Urgent</span>
+                  <span className="text-gray-600">Service:</span>
+                  <span className="font-medium">
+                    {parsedBooking.serviceDisplay || "Not specified"}
+                  </span>
                 </div>
-              )}
 
-              <div className="flex justify-between">
-                <span className="text-gray-600">Confidence:</span>
-                <span className="font-medium">
-                  {Math.round(parsedBooking.confidence * 100)}%
-                </span>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Date:</span>
+                  <span className="font-medium">
+                    {parsedBooking.bookingDate
+                      ? formatDate(parsedBooking.bookingDate)
+                      : "Not specified"}
+                  </span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Time:</span>
+                  <span className="font-medium">
+                    {parsedBooking.timeDisplay || "Not specified"}
+                  </span>
+                </div>
+
+                {parsedBooking.urgent && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Priority:</span>
+                    <span className="font-medium text-red-600">Urgent</span>
+                  </div>
+                )}
+
+                <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-blue-700">
+                  ✓ High confidence (
+                  {Math.round(parsedBooking.confidence * 100)}%) - Booking
+                  automatically!
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Action Buttons */}
         <div className="flex flex-col space-y-3">
-          {!isListening && !parsedBooking && (
+          {!isListening && !parsedBooking && !bookingSuccess && (
             <button
               onClick={startListening}
               className="flex items-center justify-center space-x-2 bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors"
@@ -270,26 +338,40 @@ const VoiceBookingComponent = ({ onBookingParsed, onClose }) => {
             </button>
           )}
 
-          {/* No confirmation needed, booking is auto-submitted if confidence is high */}
+          {parsedBooking &&
+            parsedBooking.confidence < 0.6 &&
+            !bookingSuccess && (
+              <button
+                onClick={tryAgain}
+                className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors"
+              >
+                Try Again - Be More Specific
+              </button>
+            )}
 
-          {parsedBooking && parsedBooking.confidence < 0.6 && (
+          {!isBooking && !bookingSuccess && (
             <button
-              onClick={tryAgain}
-              className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors"
+              onClick={onClose}
+              className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
             >
-              Please Try Again
+              Close
             </button>
           )}
         </div>
 
         {/* Instructions */}
-        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-          <p className="text-blue-800 text-xs">
-            <Volume2 className="w-4 h-4 inline mr-1" />
-            Try saying: "Book an electrician tomorrow at 10 AM" or "I need a
-            plumber today morning"
-          </p>
-        </div>
+        {!bookingSuccess && (
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+            <p className="text-blue-800 text-xs">
+              <Volume2 className="w-4 h-4 inline mr-1" />
+              Try saying: "Book an electrician tomorrow at 10 AM" or "I need a
+              plumber today morning"
+            </p>
+            <p className="text-blue-600 text-xs mt-1">
+              💡 High confidence bookings will be processed automatically!
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

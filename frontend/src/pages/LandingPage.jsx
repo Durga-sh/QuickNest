@@ -1,10 +1,9 @@
-import VoiceBookingButton, {
-  VoiceBookingButtonPresets,
-} from "../components/VoiceBookingButton";
+import VoiceBookingSafeWrapper, {
+  VoiceBookingSafePresets,
+} from "../components/VoiceBookingSafeWrapper";
 import VoiceBookingComponent from "../components/VoiceBookingComponent";
-// Updated frontend/src/pages/LandingPage.jsx
-
 import { Link, useNavigate } from "react-router-dom";
+
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
 import { Button } from "../components/ui/button";
@@ -29,11 +28,9 @@ import {
   Award,
   TrendingUp,
 } from "lucide-react";
-
-// Import the Chatbot component
 import Chatbot from "../components/chatbot";
-
 import React, { useState } from "react";
+import { toast } from "react-hot-toast";
 
 const QuickNestLanding = () => {
   const [showVoiceBooking, setShowVoiceBooking] = useState(false);
@@ -45,14 +42,14 @@ const QuickNestLanding = () => {
       name: "Plumbing",
       description: "Expert plumbers for all your needs",
       color: "bg-gradient-to-br from-blue-500 to-blue-600",
-      serviceType: "plumbing",
+      serviceType: "plumber",
     },
     {
       icon: Zap,
       name: "Electrical",
       description: "Licensed electricians available 24/7",
       color: "bg-gradient-to-br from-yellow-500 to-orange-500",
-      serviceType: "electrical",
+      serviceType: "electrician",
     },
     {
       icon: Scissors,
@@ -66,32 +63,81 @@ const QuickNestLanding = () => {
       name: "Painting",
       description: "Transform your space with skilled painters",
       color: "bg-gradient-to-br from-green-500 to-emerald-500",
-      serviceType: "painting",
+      serviceType: "painter",
     },
     {
       icon: Car,
       name: "Auto Repair",
       description: "Mobile mechanics for your vehicle",
       color: "bg-gradient-to-br from-red-500 to-red-600",
-      serviceType: "auto repair",
+      serviceType: "mechanic",
     },
     {
       icon: Home,
       name: "Home Cleaning",
       description: "Thorough cleaning services",
       color: "bg-gradient-to-br from-purple-500 to-violet-500",
-      serviceType: "cleaning",
+      serviceType: "cleaner",
     },
   ];
 
   // Handle service booking navigation
   const handleBookService = (serviceType, serviceName) => {
-    // Navigate to services page with the selected service type as a filter
     navigate(
       `/services?skill=${encodeURIComponent(
         serviceType
       )}&category=${encodeURIComponent(serviceName)}`
     );
+  };
+
+  // Handle voice booking result
+  const handleVoiceBookingResult = (bookingData) => {
+    console.log("Voice booking result:", bookingData);
+
+    // Navigate to services page with pre-filled data
+    const queryParams = new URLSearchParams({
+      service: bookingData.service || "",
+      voiceBooking: "true",
+      date: bookingData.bookingDate?.toISOString() || "",
+      timeStart: bookingData.timeSlot?.start || "",
+      timeEnd: bookingData.timeSlot?.end || "",
+      urgent: bookingData.urgent ? "true" : "false",
+      autoFill: "true",
+    });
+
+    // Close voice modal
+    setShowVoiceBooking(false);
+
+    // Show success message
+    toast.success(
+      `Voice booking processed! Redirecting to ${bookingData.serviceDisplay} services...`
+    );
+
+    // Navigate with a small delay for better UX
+    setTimeout(() => {
+      navigate(`/services?${queryParams.toString()}`);
+    }, 1000);
+  };
+
+  // Handle auto-booking success
+  const handleAutoBookingSuccess = (booking, bookingData) => {
+    console.log("Auto-booking successful:", booking);
+
+    // Close voice modal
+    setShowVoiceBooking(false);
+
+    // Show success toast
+    toast.success(
+      `🎉 Booking confirmed! ${bookingData.serviceDisplay} service booked for ${bookingData.dateDisplay}`,
+      {
+        duration: 5000,
+      }
+    );
+
+    // Navigate to bookings page to show the new booking
+    setTimeout(() => {
+      navigate("/dashboard/bookings");
+    }, 2000);
   };
 
   const features = [
@@ -118,10 +164,10 @@ const QuickNestLanding = () => {
     },
     {
       icon: Clock,
-      title: "Quick Booking",
+      title: "Voice Booking",
       description:
-        "Book services instantly and get professionals at your doorstep within hours",
-      color: "bg-gradient-to-br from-blue-100 to-cyan-100 text-blue-700",
+        "Book services instantly with voice commands - just say what you need!",
+      color: "bg-gradient-to-br from-purple-100 to-violet-100 text-purple-700",
     },
   ];
 
@@ -130,7 +176,7 @@ const QuickNestLanding = () => {
       name: "Sarah Johnson",
       role: "Homeowner",
       content:
-        "QuickNest made finding a reliable plumber so easy. The live tracking feature gave me peace of mind!",
+        "QuickNest's voice booking is amazing! I just said 'book a plumber tomorrow morning' and it was done automatically!",
       rating: 5,
       avatar: "SJ",
     },
@@ -138,7 +184,7 @@ const QuickNestLanding = () => {
       name: "Mike Chen",
       role: "Business Owner",
       content:
-        "As an electrician, QuickNest has helped me connect with more customers and grow my business.",
+        "As an electrician, QuickNest has helped me connect with more customers. The voice booking brings in many new clients.",
       rating: 5,
       avatar: "MC",
     },
@@ -146,7 +192,7 @@ const QuickNestLanding = () => {
       name: "Emily Davis",
       role: "Working Professional",
       content:
-        "The beauty services at home are a game-changer. Professional, convenient, and affordable!",
+        "Voice booking saves me so much time! I can book services while driving or cooking. So convenient!",
       rating: 5,
       avatar: "ED",
     },
@@ -262,7 +308,7 @@ const QuickNestLanding = () => {
               >
                 <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 shadow-lg">
                   <Sparkles className="w-4 h-4 mr-2" />
-                  Trusted by 50,000+ customers
+                  Now with Voice Booking! Just speak to book
                 </Badge>
               </motion.div>
               <motion.h1
@@ -284,8 +330,9 @@ const QuickNestLanding = () => {
                 transition={{ delay: 0.5, duration: 0.6 }}
               >
                 Connect with verified local professionals for all your home and
-                personal service needs. From plumbing to beauty services - we've
-                got you covered with live tracking and secure payments.
+                personal service needs. Now with{" "}
+                <strong>AI-powered voice booking</strong> - just say "Book an
+                electrician tomorrow at 10 AM" and we'll handle the rest!
               </motion.p>
               <motion.div
                 className="mt-8 sm:max-w-lg sm:mx-auto sm:text-center lg:text-left lg:mx-0"
@@ -306,9 +353,21 @@ const QuickNestLanding = () => {
                     variant="outline"
                     size="lg"
                     className="flex items-center bg-transparent border-2 hover:bg-gray-50 transition-all duration-300"
+                    onClick={() => {
+                      // Simple voice booking trigger
+                      if (
+                        "webkitSpeechRecognition" in window ||
+                        "SpeechRecognition" in window
+                      ) {
+                        setShowVoiceBooking(true);
+                      } else {
+                        alert(
+                          "Voice recognition not supported in this browser. Please use Chrome or Firefox."
+                        );
+                      }
+                    }}
                   >
-                    <Play className="mr-2 w-4 h-4" />
-                    Watch Demo
+                    🎤 Try Voice Booking
                   </Button>
                 </div>
                 <motion.div
@@ -323,6 +382,14 @@ const QuickNestLanding = () => {
                     transition={{ duration: 0.2 }}
                   >
                     <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
+                    Auto Voice Booking
+                  </motion.div>
+                  <motion.div
+                    className="flex items-center"
+                    whileHover={{ scale: 1.05 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
                     Verified Professionals
                   </motion.div>
                   <motion.div
@@ -331,15 +398,7 @@ const QuickNestLanding = () => {
                     transition={{ duration: 0.2 }}
                   >
                     <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
-                    Secure Payments
-                  </motion.div>
-                  <motion.div
-                    className="flex items-center"
-                    whileHover={{ scale: 1.05 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
-                    24/7 Support
+                    Instant Confirmation
                   </motion.div>
                 </motion.div>
               </motion.div>
@@ -384,7 +443,10 @@ const QuickNestLanding = () => {
                       <Home className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
                     </motion.div>
                     <p className="text-emerald-800 font-semibold">
-                      QuickNest App Interface
+                      QuickNest Voice Booking
+                    </p>
+                    <p className="text-emerald-600 text-sm mt-2">
+                      "Book a plumber tomorrow at 10 AM"
                     </p>
                   </div>
                 </div>
@@ -396,7 +458,7 @@ const QuickNestLanding = () => {
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                     <span className="text-sm font-medium text-gray-900">
-                      Live Tracking
+                      🎤 Voice Active
                     </span>
                   </div>
                 </motion.div>
@@ -407,9 +469,9 @@ const QuickNestLanding = () => {
                   style={{ animationDelay: "1s" }}
                 >
                   <div className="flex items-center space-x-2">
-                    <Shield className="w-4 h-4 text-emerald-600" />
+                    <CheckCircle className="w-4 h-4 text-emerald-600" />
                     <span className="text-sm font-medium text-gray-900">
-                      Secure Payment
+                      Auto Booked!
                     </span>
                   </div>
                 </motion.div>
@@ -436,7 +498,8 @@ const QuickNestLanding = () => {
               Professional Services at Your Fingertips
             </h2>
             <p className="mt-4 text-lg text-gray-600">
-              Choose from our wide range of verified local professionals
+              Choose from our wide range of verified local professionals - book
+              instantly with voice or traditional booking
             </p>
           </motion.div>
           <motion.div
@@ -466,18 +529,23 @@ const QuickNestLanding = () => {
                       {service.name}
                     </h3>
                     <p className="text-gray-600 mb-6">{service.description}</p>
-                    <Button
-                      variant="ghost"
-                      className="text-emerald-600 hover:text-emerald-700 p-0 group"
-                      onClick={() =>
-                        handleBookService(service.serviceType, service.name)
-                      }
-                    >
-                      <span className="group-hover:translate-x-1 transition-transform duration-200">
-                        Book Now
-                      </span>
-                      <ArrowRight className="ml-1 w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
-                    </Button>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        variant="ghost"
+                        className="text-emerald-600 hover:text-emerald-700 p-0 group"
+                        onClick={() =>
+                          handleBookService(service.serviceType, service.name)
+                        }
+                      >
+                        <span className="group-hover:translate-x-1 transition-transform duration-200">
+                          Book Now
+                        </span>
+                        <ArrowRight className="ml-1 w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
+                      </Button>
+                      <p className="text-xs text-gray-500">
+                        💡 Try: "Book {service.serviceType} tomorrow morning"
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -500,7 +568,8 @@ const QuickNestLanding = () => {
               Why Choose QuickNest?
             </h2>
             <p className="mt-4 text-lg text-gray-600">
-              Experience the future of local service booking
+              Experience the future of local service booking with AI-powered
+              voice commands
             </p>
           </motion.div>
           <motion.div
@@ -552,7 +621,8 @@ const QuickNestLanding = () => {
               What Our Users Say
             </h2>
             <p className="mt-4 text-lg text-gray-600">
-              Join thousands of satisfied customers and professionals
+              Join thousands of satisfied customers loving our voice booking
+              feature
             </p>
           </motion.div>
           <motion.div
@@ -680,7 +750,8 @@ const QuickNestLanding = () => {
               Ready to Get Started?
             </h2>
             <p className="mt-4 text-lg text-gray-600">
-              Join QuickNest today and experience hassle-free service booking
+              Join QuickNest today and experience hassle-free voice booking -
+              it's as easy as speaking!
             </p>
             <motion.div
               className="mt-8 flex flex-col sm:flex-row gap-4 justify-center"
@@ -689,21 +760,22 @@ const QuickNestLanding = () => {
               transition={{ delay: 0.2, duration: 0.6 }}
               viewport={{ once: true }}
             >
+              <Button
+                size="lg"
+                className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg hover:shadow-xl transition-all duration-300"
+                onClick={() => setShowVoiceBooking(true)}
+              >
+                🎤 Try Voice Booking Now
+              </Button>
               <Link to="/register">
                 <Button
                   size="lg"
-                  className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg hover:shadow-xl transition-all duration-300"
+                  variant="outline"
+                  className="border-2 hover:bg-gray-50 transition-all duration-300"
                 >
-                  Book Your First Service
+                  Sign Up & Book Traditional
                 </Button>
               </Link>
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-2 hover:bg-gray-50 transition-all duration-300"
-              >
-                Join as Professional
-              </Button>
             </motion.div>
           </motion.div>
         </div>
@@ -711,14 +783,20 @@ const QuickNestLanding = () => {
 
       {/* Add the Chatbot Component */}
       <Chatbot />
+
       {/* Voice Booking Modal */}
       {showVoiceBooking && (
-        <VoiceBookingComponent onClose={() => setShowVoiceBooking(false)} />
+        <VoiceBookingComponent
+          onClose={() => setShowVoiceBooking(false)}
+          onBookingParsed={handleVoiceBookingResult}
+          onAutoBookingSuccess={handleAutoBookingSuccess}
+        />
       )}
-      {/* Voice Booking Floating Button */}
-      <div className="fixed bottom-28 right-8 z-50">
-        <VoiceBookingButtonPresets.FloatingButton
-          onClick={() => setShowVoiceBooking(true)}
+
+      {/* Voice Booking Floating Button - moved to right side for side-by-side visibility with chatbot */}
+      <div className="fixed bottom-12 right-20 z-30">
+        <VoiceBookingSafePresets.FloatingButton
+          onBookingParsed={handleVoiceBookingResult}
         />
       </div>
     </div>
@@ -726,17 +804,3 @@ const QuickNestLanding = () => {
 };
 
 export default QuickNestLanding;
-
-// Voice Booking Floating Button
-// Place at the end of the main return, outside overlays
-// (Assuming main return is a <div> or <main> at the top level)
-// Add relative to top-level container if not present
-
-// Add inside the main return's JSX:
-{
-  /* <div className="fixed bottom-8 right-8 z-50">
-  <VoiceBookingButton.FloatingButton />
-</div> */
-}
-
-// export default QuickNestLanding;

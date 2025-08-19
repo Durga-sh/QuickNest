@@ -2,6 +2,8 @@
 const express = require("express");
 const router = express.Router();
 const { isAuthenticated } = require("../middleware/auth");
+const Booking = require("../model/Booking");
+const Provider = require("../model/Provider");
 
 // Voice processing utilities
 class VoiceBookingProcessor {
@@ -83,10 +85,15 @@ class VoiceBookingProcessor {
       },
       confidence: 0,
       suggestions: [],
+      autoBookingReady: false,
     };
 
     result.confidence = this.calculateConfidence(result.extractedData);
     result.suggestions = this.generateSuggestions(result.extractedData);
+    result.autoBookingReady = this.isAutoBookingReady(
+      result.extractedData,
+      result.confidence
+    );
 
     return result;
   }
@@ -237,6 +244,12 @@ class VoiceBookingProcessor {
     return Math.min(confidence, 1.0);
   }
 
+  isAutoBookingReady(extractedData, confidence) {
+    return (
+      confidence >= 0.6 && extractedData.service && extractedData.datePreference
+    );
+  }
+
   generateSuggestions(extractedData) {
     const suggestions = [];
 
@@ -284,16 +297,84 @@ class VoiceBookingProcessor {
     targetDate.setDate(today.getDate() + daysUntilTarget);
     return targetDate;
   }
+
+  // Generate booking data from voice command
+  generateBookingData(extractedData) {
+    const bookingData = {
+      service: extractedData.service?.type || "",
+      serviceDisplay: extractedData.service?.type
+        ? extractedData.service.type.charAt(0).toUpperCase() +
+          extractedData.service.type.slice(1)
+        : "",
+      bookingDate: null,
+      timeSlot: null,
+      urgent: extractedData.urgency?.isUrgent || false,
+      location: extractedData.location?.hints?.[0] || "home",
+    };
+
+    // Set booking date
+    if (extractedData.datePreference?.targetDate) {
+      bookingData.bookingDate = extractedData.datePreference.targetDate;
+      bookingData.dateDisplay = extractedData.datePreference.value;
+    }
+
+    // Set time slot
+    if (extractedData.timePreference) {
+      let startHour = 9; // default
+      let minutes = 0;
+
+      if (extractedData.timePreference.type === "specific") {
+        const timeMatch = extractedData.timePreference.matched.match(
+          /(\d{1,2}):?(\d{2})?\s*(am|pm)?/i
+        );
+        if (timeMatch) {
+          startHour = parseInt(timeMatch[1]);
+          minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+          const period = timeMatch[3]?.toLowerCase();
+
+          if (period === "pm" && startHour !== 12) startHour += 12;
+          if (period === "am" && startHour === 12) startHour = 0;
+        }
+      } else if (extractedData.timePreference.value === "morning") {
+        startHour = 9;
+      } else if (extractedData.timePreference.value === "afternoon") {
+        startHour = 14;
+      } else if (extractedData.timePreference.value === "evening") {
+        startHour = 18;
+      }
+
+      const endHour = startHour + 1;
+
+      bookingData.timeSlot = {
+        start: `${startHour.toString().padStart(2, "0")}:${minutes
+          .toString()
+          .padStart(2, "0")}`,
+        end: `${endHour.toString().padStart(2, "0")}:${minutes
+          .toString()
+          .padStart(2, "0")}`,
+      };
+
+      bookingData.timeDisplay = this.formatTime(startHour, minutes);
+    }
+
+    return bookingData;
+  }
+
+  formatTime(hour, minutes) {
+    const period = hour >= 12 ? "PM" : "AM";
+    const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+    return `${displayHour}:${minutes.toString().padStart(2, "0")} ${period}`;
+  }
 }
 
 const voiceProcessor = new VoiceBookingProcessor();
 
-// Process voice command
+// Process voice command and potentially auto-book
 router.post("/process-command", isAuthenticated, async (req, res) => {
   try {
     console.log("🎤 Processing voice command:", req.body);
 
-    const { transcript, metadata } = req.body;
+    const { transcript, metadata, autoBook = false } = req.body;
 
     if (!transcript || transcript.trim().length === 0) {
       return res.status(400).json({
@@ -305,20 +386,46 @@ router.post("/process-command", isAuthenticated, async (req, res) => {
     // Process the voice command
     const result = voiceProcessor.processVoiceCommand(transcript, req.user.id);
 
+    // Generate booking data if confidence is sufficient
+    let bookingData = null;
+    if (result.autoBookingReady) {
+      bookingData = voiceProcessor.generateBookingData(result.extractedData);
+    }
+
+    // Auto-book if requested and confidence is high enough
+    let autoBookingResult = null;
+    if (autoBook && result.autoBookingReady && bookingData) {
+      try {
+        autoBookingResult = await processAutoBooking(req.user.id, bookingData);
+      } catch (error) {
+        console.error("❌ Auto-booking failed:", error);
+        autoBookingResult = {
+          success: false,
+          error: error.message,
+        };
+      }
+    }
+
     // Log the processing result
     console.log("✅ Voice command processed:", {
       userId: req.user.id,
       confidence: result.confidence,
       service: result.extractedData.service?.type,
       urgency: result.extractedData.urgency?.level,
+      autoBookingReady: result.autoBookingReady,
+      autoBooked: !!autoBookingResult?.success,
     });
 
     res.json({
       success: true,
       result,
+      bookingData,
+      autoBookingResult,
       message:
         result.confidence > 0.6
-          ? "Command processed successfully"
+          ? autoBookingResult?.success
+            ? "Voice booking processed successfully!"
+            : "Command processed - ready for booking"
           : "Command partially understood - please provide more details",
     });
   } catch (error) {
@@ -334,30 +441,184 @@ router.post("/process-command", isAuthenticated, async (req, res) => {
   }
 });
 
-// Get voice processing history for user
-router.get("/history", isAuthenticated, async (req, res) => {
+// Auto-booking helper function
+async function processAutoBooking(userId, bookingData) {
   try {
-    const { page = 1, limit = 10 } = req.query;
+    // Find available providers for the service
+    const providers = await Provider.find({
+      skills: { $in: [bookingData.service] },
+      isActive: true,
+    })
+      .populate("userId", "name email phone")
+      .limit(10);
 
-    // In a real application, you might want to store voice commands in database
-    // For now, we'll return a placeholder response
+    if (providers.length === 0) {
+      throw new Error(
+        `No providers available for ${bookingData.serviceDisplay}`
+      );
+    }
+
+    // For auto-booking, select the first available provider
+    // In a real app, you might want more sophisticated matching
+    const selectedProvider = providers[0];
+
+    // Create a booking request (without payment for now)
+    const booking = new Booking({
+      user: userId,
+      provider: selectedProvider._id,
+      service: bookingData.serviceDisplay,
+      servicePrice: 500, // Default price - should be determined by service type
+      bookingDate: bookingData.bookingDate || new Date(),
+      timeSlot: bookingData.timeSlot || {
+        start: "09:00",
+        end: "10:00",
+      },
+      address: "Auto-booking location", // Should be from user profile
+      contactPhone: "Auto-booking contact", // Should be from user profile
+      specialInstructions: `Voice booking: ${
+        bookingData.originalCommand || "Auto-booked via voice"
+      }`,
+      status: "pending", // Pending until payment
+      bookingId: `VOICE-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      paymentDetails: {
+        status: "pending",
+        amount: 50000, // 500 * 100 (in paise)
+      },
+    });
+
+    await booking.save();
+
+    console.log("✅ Auto-booking created:", booking.bookingId);
+
+    return {
+      success: true,
+      booking: {
+        id: booking._id,
+        bookingId: booking.bookingId,
+        service: booking.service,
+        provider: {
+          name: selectedProvider.userId.name,
+          rating: selectedProvider.rating,
+        },
+        bookingDate: booking.bookingDate,
+        timeSlot: booking.timeSlot,
+        status: booking.status,
+      },
+      message: "Auto-booking created successfully",
+    };
+  } catch (error) {
+    console.error("❌ Auto-booking error:", error);
+    throw error;
+  }
+}
+
+// Get available providers for a service (for voice booking)
+router.post("/get-providers", isAuthenticated, async (req, res) => {
+  try {
+    const { service, location } = req.body;
+
+    if (!service) {
+      return res.status(400).json({
+        success: false,
+        message: "Service type is required",
+      });
+    }
+
+    // Find providers for the service
+    const providers = await Provider.find({
+      skills: { $in: [service] },
+      isActive: true,
+    })
+      .populate("userId", "name email phone")
+      .select("skills rating location reviewCount isActive")
+      .sort({ rating: -1, reviewCount: -1 })
+      .limit(10);
 
     res.json({
       success: true,
-      history: [],
+      providers: providers.map((provider) => ({
+        id: provider._id,
+        name: provider.userId.name,
+        skills: provider.skills,
+        rating: provider.rating,
+        reviewCount: provider.reviewCount,
+        location: provider.location,
+      })),
+      message: `Found ${providers.length} providers for ${service}`,
+    });
+  } catch (error) {
+    console.error("❌ Get providers error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get providers",
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "Internal server error",
+    });
+  }
+});
+
+// Voice booking history
+router.get("/bookings", isAuthenticated, async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+
+    // Get voice-initiated bookings
+    const bookings = await Booking.find({
+      user: req.user.id,
+      bookingId: { $regex: /^VOICE-/ }, // Only voice bookings
+    })
+      .populate("provider", "skills rating")
+      .populate({
+        path: "provider",
+        populate: {
+          path: "userId",
+          select: "name email phone",
+        },
+      })
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const totalBookings = await Booking.countDocuments({
+      user: req.user.id,
+      bookingId: { $regex: /^VOICE-/ },
+    });
+
+    res.json({
+      success: true,
+      bookings: bookings.map((booking) => ({
+        id: booking._id,
+        bookingId: booking.bookingId,
+        service: booking.service,
+        servicePrice: booking.servicePrice,
+        bookingDate: booking.bookingDate,
+        timeSlot: booking.timeSlot,
+        status: booking.status,
+        provider: booking.provider
+          ? {
+              name: booking.provider.userId?.name,
+              rating: booking.provider.rating,
+              skills: booking.provider.skills,
+            }
+          : null,
+        createdAt: booking.createdAt,
+        isVoiceBooking: true,
+      })),
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total: 0,
-        pages: 0,
+        total: totalBookings,
+        pages: Math.ceil(totalBookings / limit),
       },
-      message: "Voice history feature coming soon",
+      message: "Voice bookings retrieved successfully",
     });
   } catch (error) {
-    console.error("❌ Get voice history error:", error);
+    console.error("❌ Get voice bookings error:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to get voice history",
+      message: "Failed to get voice bookings",
       error:
         process.env.NODE_ENV === "development"
           ? error.message
@@ -383,6 +644,7 @@ router.post("/validate-command", isAuthenticated, async (req, res) => {
       isValid: true,
       errors: [],
       warnings: [],
+      autoBookingReady: false,
     };
 
     // Check service
@@ -401,11 +663,19 @@ router.post("/validate-command", isAuthenticated, async (req, res) => {
       validation.warnings.push("No time specified - please select a time slot");
     }
 
+    // Check if ready for auto-booking
+    validation.autoBookingReady = voiceProcessor.isAutoBookingReady(
+      extractedData,
+      voiceProcessor.calculateConfidence(extractedData)
+    );
+
     res.json({
       success: true,
       validation,
       message: validation.isValid
-        ? "Voice command is valid"
+        ? validation.autoBookingReady
+          ? "Ready for auto-booking!"
+          : "Voice command is valid but needs more details for auto-booking"
         : "Voice command has validation errors",
     });
   } catch (error) {
