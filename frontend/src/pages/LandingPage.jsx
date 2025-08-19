@@ -1,3 +1,7 @@
+import VoiceBookingButton, {
+  VoiceBookingButtonPresets,
+} from "../components/VoiceBookingButton";
+import VoiceBookingComponent from "../components/VoiceBookingComponent";
 // Updated frontend/src/pages/LandingPage.jsx
 
 import { Link, useNavigate } from "react-router-dom";
@@ -27,9 +31,12 @@ import {
 } from "lucide-react";
 
 // Import the Chatbot component
-import Chatbot from "../components/Chatbot";
+import Chatbot from "../components/chatbot";
+
+import React, { useState } from "react";
 
 const QuickNestLanding = () => {
+  const [showVoiceBooking, setShowVoiceBooking] = useState(false);
   const navigate = useNavigate();
 
   const services = [
@@ -704,8 +711,32 @@ const QuickNestLanding = () => {
 
       {/* Add the Chatbot Component */}
       <Chatbot />
+      {/* Voice Booking Modal */}
+      {showVoiceBooking && (
+        <VoiceBookingComponent onClose={() => setShowVoiceBooking(false)} />
+      )}
+      {/* Voice Booking Floating Button */}
+      <div className="fixed bottom-28 right-8 z-50">
+        <VoiceBookingButtonPresets.FloatingButton
+          onClick={() => setShowVoiceBooking(true)}
+        />
+      </div>
     </div>
   );
 };
 
 export default QuickNestLanding;
+
+// Voice Booking Floating Button
+// Place at the end of the main return, outside overlays
+// (Assuming main return is a <div> or <main> at the top level)
+// Add relative to top-level container if not present
+
+// Add inside the main return's JSX:
+{
+  /* <div className="fixed bottom-8 right-8 z-50">
+  <VoiceBookingButton.FloatingButton />
+</div> */
+}
+
+// export default QuickNestLanding;

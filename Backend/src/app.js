@@ -103,6 +103,21 @@ if (chatbotRoutes) {
   console.warn("⚠️ chatbotRoutes not mounted");
 }
 
+let voiceRoutes;
+try {
+  voiceRoutes = require("./routes/voiceRoutes");
+  console.log("✅ Voice routes imported");
+} catch (err) {
+  console.error("❌ Failed to import voiceRoutes.js:", err);
+}
+
+if (voiceRoutes) {
+  app.use("/api/voice", voiceRoutes);
+  console.log("✅ Mounted /api/voice");
+} else {
+  console.warn("⚠️ voiceRoutes not mounted");
+}
+
 // Error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);

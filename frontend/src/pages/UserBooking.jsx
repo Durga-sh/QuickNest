@@ -29,6 +29,7 @@ import {
 import bookingApiService from "../api/booking";
 import apiService from "../api/provider";
 import reviewApiService from "../api/review";
+import VoiceBookingButton from "../components/VoiceBookingButton";
 
 const UserBookings = () => {
   const [bookings, setBookings] = useState([]);
@@ -304,7 +305,7 @@ const UserBookings = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white py-8 px-4 sm:px-6 lg:px-8">
+  <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white py-8 px-4 sm:px-6 lg:px-8 relative">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <motion.div
@@ -727,6 +728,10 @@ const UserBookings = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      {/* Voice Booking Floating Button */}
+      <div className="fixed bottom-8 right-8 z-50">
+        <VoiceBookingButton.FloatingButton />
+      </div>
 
       {/* Provider Details Modal */}
       <AnimatePresence>
