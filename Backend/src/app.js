@@ -18,6 +18,7 @@ try {
   console.error("❌ Failed to import providerRoute.js:", err);
 }
 
+
 let bookingRoutes;
 try {
   bookingRoutes = require("./routes/bookingRoute");
@@ -85,6 +86,21 @@ if (reviewRoutes) {
   console.log("✅ Mounted /api/review");
 } else {
   console.warn("⚠️ reviewRoutes not mounted");
+}
+
+let chatbotRoutes;
+try {
+  chatbotRoutes = require("./routes/chatbotRoutes");
+  console.log("✅ Chatbot routes imported");
+} catch (err) {
+  console.error("❌ Failed to import chatbotRoutes.js:", err);
+}
+
+if (chatbotRoutes) {
+  app.use("/api/chatbot", chatbotRoutes);
+  console.log("✅ Mounted /api/chatbot");
+} else {
+  console.warn("⚠️ chatbotRoutes not mounted");
 }
 
 // Error handler

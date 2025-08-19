@@ -1,3 +1,5 @@
+// Updated frontend/src/pages/LandingPage.jsx
+
 import { Link, useNavigate } from "react-router-dom";
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
@@ -23,6 +25,9 @@ import {
   Award,
   TrendingUp,
 } from "lucide-react";
+
+// Import the Chatbot component
+import Chatbot from "../components/Chatbot";
 
 const QuickNestLanding = () => {
   const navigate = useNavigate();
@@ -696,6 +701,9 @@ const QuickNestLanding = () => {
           </motion.div>
         </div>
       </section>
+
+      {/* Add the Chatbot Component */}
+      <Chatbot />
     </div>
   );
 };
