@@ -1,7 +1,6 @@
-// frontend/src/utils/voiceBookingParser.js
+
 class VoiceBookingParser {
   constructor() {
-    // Service keywords mapping
     this.serviceKeywords = {
       electrician: [
         "electrician",

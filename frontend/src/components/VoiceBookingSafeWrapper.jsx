@@ -1,4 +1,4 @@
-// frontend/src/components/VoiceBookingSafeWrapper.jsx
+
 import React, { useState, useEffect } from "react";
 import { Mic, MicOff, AlertCircle } from "lucide-react";
 

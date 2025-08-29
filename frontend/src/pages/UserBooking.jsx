@@ -1,5 +1,4 @@
-// Hyperlocal Service Marketplace/src/pages/UserBookings.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -29,7 +28,10 @@ import {
 import bookingApiService from "../api/booking";
 import apiService from "../api/provider";
 import reviewApiService from "../api/review";
-import VoiceBookingButton from "../components/VoiceBookingButton";
+import VoiceBookingButton, {
+  VoiceBookingButtonPresets,
+} from "../components/VoiceBookingButton";
+import { getToken } from "../utils/tokenManager";
 
 const UserBookings = () => {
   const [bookings, setBookings] = useState([]);
@@ -51,6 +53,15 @@ const UserBookings = () => {
     total: 0,
     pages: 0,
   });
+
+  // Check authentication on component mount
+  useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      setError("Please log in to view your bookings");
+      setLoading(false);
+    }
+  }, []);
 
   // Animation variants
   const containerVariants = {
@@ -114,34 +125,72 @@ const UserBookings = () => {
     },
   };
 
-  useEffect(() => {
-    fetchBookings();
-  }, [pagination.page, statusFilter]);
+  const fetchBookings = useCallback(async () => {
+    const token = getToken();
+    if (!token) {
+      setError("Authentication required. Please log in.");
+      setLoading(false);
+      return;
+    }
 
-  const fetchBookings = async () => {
     try {
       setLoading(true);
       setError("");
+      console.log("Fetching bookings...");
+
       const response = await bookingApiService.getUserBookings(
         pagination.page,
         pagination.limit
       );
 
-      let filteredBookings = response.bookings;
+      console.log("API Response:", response);
+
+      // Handle different response structures
+      let allBookings = [];
+      if (response.bookings) {
+        allBookings = response.bookings;
+      } else if (Array.isArray(response)) {
+        allBookings = response;
+      } else if (response.data && Array.isArray(response.data)) {
+        allBookings = response.data;
+      }
+
+      console.log("All bookings:", allBookings);
+
+      let filteredBookings = allBookings;
       if (statusFilter !== "all") {
-        filteredBookings = response.bookings.filter(
+        filteredBookings = allBookings.filter(
           (booking) => booking.status === statusFilter
         );
       }
 
       setBookings(filteredBookings);
-      setPagination(response.pagination);
+
+      // Handle pagination
+      if (response.pagination) {
+        setPagination(response.pagination);
+      } else {
+        setPagination((prev) => ({
+          ...prev,
+          total: allBookings.length,
+          pages: Math.ceil(allBookings.length / pagination.limit),
+        }));
+      }
     } catch (err) {
-      setError(err.message);
+      console.error("Error fetching bookings:", err);
+      setError(err.message || "Failed to fetch bookings");
     } finally {
       setLoading(false);
     }
-  };
+  }, [pagination.page, pagination.limit, statusFilter]);
+
+  useEffect(() => {
+    // Only fetch if user is authenticated
+    const token = getToken();
+    if (token) {
+      fetchBookings();
+    }
+  }, [fetchBookings]);
 
   const fetchProviderDetails = async (providerId) => {
     try {
@@ -305,7 +354,7 @@ const UserBookings = () => {
   }
 
   return (
-  <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white py-8 px-4 sm:px-6 lg:px-8 relative">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white py-8 px-4 sm:px-6 lg:px-8 relative">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <motion.div
@@ -404,11 +453,20 @@ const UserBookings = () => {
               <h3 className="text-xl font-medium text-gray-900 mb-2">
                 No bookings found
               </h3>
-              <p className="text-gray-600">
+              <p className="text-gray-600 mb-4">
                 {statusFilter === "all"
                   ? "You haven't made any bookings yet."
                   : `No ${statusFilter} bookings found.`}
               </p>
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                  <p className="text-red-700 text-sm">Error: {error}</p>
+                </div>
+              )}
+              <div className="text-xs text-gray-500">
+                Debug: Loading={loading.toString()}, Error={error || "none"},
+                Filter={statusFilter}
+              </div>
             </motion.div>
           ) : (
             bookings.map((booking) => (
@@ -730,7 +788,7 @@ const UserBookings = () => {
       </AnimatePresence>
       {/* Voice Booking Floating Button */}
       <div className="fixed bottom-8 right-8 z-50">
-        <VoiceBookingButton.FloatingButton />
+        <VoiceBookingButtonPresets.FloatingButton />
       </div>
 
       {/* Provider Details Modal */}

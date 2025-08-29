@@ -4,27 +4,27 @@ const passport = require("passport");
 const connectDB = require("./config/db");
 const path = require("path");
 
-console.log("🟡 Starting app.js...");
+console.log(" Starting app.js...");
 
 // Import routes
 const authRoutes = require("./routes/auth");
-console.log("✅ Auth routes loaded");
+console.log("Auth routes loaded");
 
 let providerRoutes;
 try {
   providerRoutes = require("./routes/providerRoutes");
-  console.log("✅ Provider routes imported");
+  console.log(" Provider routes imported");
 } catch (err) {
-  console.error("❌ Failed to import providerRoute.js:", err);
+  console.error(" Failed to import providerRoute.js:", err);
 }
 
 
 let bookingRoutes;
 try {
   bookingRoutes = require("./routes/bookingRoute");
-  console.log("✅ Booking routes imported");
+  console.log(" Booking routes imported");
 } catch (err) {
-  console.error("❌ Failed to import bookingRoutes.js:", err);
+  console.error("Failed to import bookingRoutes.js:", err);
 }
 
 // Initialize app
@@ -51,71 +51,71 @@ require("./config/passport");
 
 // Global logger
 app.use((req, res, next) => {
-  console.log(`➡️ ${req.method} ${req.originalUrl}`);
+  console.log(`${req.method} ${req.originalUrl}`);
   next();
 });
 
 // Routes
 app.use("/api/auth", authRoutes);
-console.log("✅ Mounted /api/auth");
+console.log(" Mounted /api/auth");
 
 if (providerRoutes) {
   app.use("/api/provider", providerRoutes);
-  console.log("✅ Mounted /api/provider");
+  console.log(" Mounted /api/provider");
 } else {
-  console.warn("⚠️ providerRoutes not mounted");
+  console.warn(" providerRoutes not mounted");
 }
 
 if (bookingRoutes) {
   app.use("/api/booking", bookingRoutes);
-  console.log("✅ Mounted /api/booking");
+  console.log(" Mounted /api/booking");
 } else {
-  console.warn("⚠️ bookingRoutes not mounted");
+  console.warn(" bookingRoutes not mounted");
 }
 
 let reviewRoutes;
 try {
   reviewRoutes = require("./routes/reviewRoutes");
-  console.log("✅ review routes imported");
+  console.log("review routes imported");
 } catch (err) {
-  console.error("❌ Failed to import reviewRoutes.js:", err);
+  console.error("Failed to import reviewRoutes.js:", err);
 }
 
 if (reviewRoutes) {
   app.use("/api/reviews", reviewRoutes);
-  console.log("✅ Mounted /api/review");
+  console.log("Mounted /api/review");
 } else {
-  console.warn("⚠️ reviewRoutes not mounted");
+  console.warn(" reviewRoutes not mounted");
 }
 
 let chatbotRoutes;
 try {
   chatbotRoutes = require("./routes/chatbotRoutes");
-  console.log("✅ Chatbot routes imported");
+  console.log("Chatbot routes imported");
 } catch (err) {
-  console.error("❌ Failed to import chatbotRoutes.js:", err);
+  console.error("Failed to import chatbotRoutes.js:", err);
 }
 
 if (chatbotRoutes) {
   app.use("/api/chatbot", chatbotRoutes);
-  console.log("✅ Mounted /api/chatbot");
+  console.log(" Mounted /api/chatbot");
 } else {
-  console.warn("⚠️ chatbotRoutes not mounted");
+  console.warn(" chatbotRoutes not mounted");
 }
 
 let voiceRoutes;
 try {
   voiceRoutes = require("./routes/voiceRoutes");
-  console.log("✅ Voice routes imported");
+  console.log("Voice routes imported");
 } catch (err) {
-  console.error("❌ Failed to import voiceRoutes.js:", err);
+  console.error(" Failed to import voiceRoutes.js:", err);
 }
 
 if (voiceRoutes) {
   app.use("/api/voice", voiceRoutes);
-  console.log("✅ Mounted /api/voice");
+  console.log(" Mounted /api/voice");
 } else {
-  console.warn("⚠️ voiceRoutes not mounted");
+  console.warn(" voiceRoutes not mounted");
 }
 
 // Error handler
