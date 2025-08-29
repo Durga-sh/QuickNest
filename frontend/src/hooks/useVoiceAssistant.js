@@ -118,7 +118,7 @@ const useVoiceAssistant = (options = {}) => {
         try {
           token = localStorage.getItem("token");
         } catch (e) {
-          console.warn("Could not access localStorage");
+          console.warn("Could not access localStorage"+e);
         }
 
         // Try backend processing if token is available
@@ -355,7 +355,7 @@ const useVoiceAssistant = (options = {}) => {
       try {
         token = localStorage.getItem("token");
       } catch (e) {
-        throw new Error("Authentication required");
+        throw new Error("Authentication required"+ e);
       }
 
       const response = await fetch("/api/voice/process-command", {

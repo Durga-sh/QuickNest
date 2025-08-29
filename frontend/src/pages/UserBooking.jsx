@@ -157,9 +157,22 @@ const UserBookings = () => {
 
       console.log("All bookings:", allBookings);
 
-      let filteredBookings = allBookings;
+      // Check for existing reviews for each booking
+      const bookingsWithReviewStatus = await Promise.all(
+        allBookings.map(async (booking) => {
+          try {
+            await reviewApiService.getReviewByBooking(booking._id);
+            return { ...booking, hasReview: true };
+          } catch {
+            // If review not found, booking doesn't have a review
+            return { ...booking, hasReview: false };
+          }
+        })
+      );
+
+      let filteredBookings = bookingsWithReviewStatus;
       if (statusFilter !== "all") {
-        filteredBookings = allBookings.filter(
+        filteredBookings = bookingsWithReviewStatus.filter(
           (booking) => booking.status === statusFilter
         );
       }
@@ -172,8 +185,8 @@ const UserBookings = () => {
       } else {
         setPagination((prev) => ({
           ...prev,
-          total: allBookings.length,
-          pages: Math.ceil(allBookings.length / pagination.limit),
+          total: bookingsWithReviewStatus.length,
+          pages: Math.ceil(bookingsWithReviewStatus.length / pagination.limit),
         }));
       }
     } catch (err) {
@@ -626,6 +639,7 @@ const UserBookings = () => {
                         <Eye className="h-4 w-4 mr-2" />
                         View Details
                       </motion.button>
+                      {/* Allow reviews only for completed bookings */}
                       {booking.status === "completed" && !booking.hasReview && (
                         <motion.button
                           onClick={() => handleReviewClick(booking)}
@@ -636,6 +650,13 @@ const UserBookings = () => {
                           <Star className="h-4 w-4 mr-2" />
                           Give Review
                         </motion.button>
+                      )}
+                      {/* Show if review already exists */}
+                      {booking.hasReview && (
+                        <div className="bg-green-100 text-green-800 px-4 py-2 rounded-lg text-sm flex items-center">
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Review Submitted
+                        </div>
                       )}
                     </div>
                   </div>
