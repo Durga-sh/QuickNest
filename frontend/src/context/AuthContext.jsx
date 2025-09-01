@@ -80,6 +80,7 @@ export const AuthProvider = ({ children }) => {
         loginUser,
         logoutUser,
         isAuthenticated: !!user,
+        isProvider: user?.role === "provider",
       }}
     >
       {children}

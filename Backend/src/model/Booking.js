@@ -87,6 +87,34 @@ const bookingSchema = new mongoose.Schema(
     completedAt: {
       type: Date,
     },
+    // Real-time tracking fields
+    tracking: {
+      isActive: {
+        type: Boolean,
+        default: false,
+      },
+      startedAt: {
+        type: Date,
+      },
+      endedAt: {
+        type: Date,
+      },
+      currentLocation: {
+        latitude: Number,
+        longitude: Number,
+        timestamp: Date,
+      },
+      locationHistory: [
+        {
+          latitude: Number,
+          longitude: Number,
+          timestamp: {
+            type: Date,
+            default: Date.now,
+          },
+        },
+      ],
+    },
   },
   {
     timestamps: true,

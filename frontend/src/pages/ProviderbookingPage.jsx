@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import bookingApiService from "../api/booking";
 import reviewApiService from "../api/review";
+import LocationTracking from "../components/LocationTracking";
 
 const ProviderBookings = () => {
   const navigate = useNavigate();
@@ -75,6 +76,7 @@ const ProviderBookings = () => {
       } catch (error) {
         // Review not found is expected for some bookings
         if (
+          error.message !== "REVIEW_NOT_FOUND" &&
           !error.message.includes("Review not found") &&
           !error.message.includes("404")
         ) {
@@ -122,8 +124,8 @@ const ProviderBookings = () => {
           try {
             const review = await reviewApiService.getReviewByBooking(bookingId);
             setBookingReviews((prev) => ({ ...prev, [bookingId]: review }));
-          } catch (error) {
-            // Review might not exist yet
+          } catch {
+            // Review might not exist yet - this is expected
           }
         }, 1000);
       }
@@ -214,13 +216,6 @@ const ProviderBookings = () => {
           </div>
         ) : review ? (
           <div className="space-y-3">
-            {/* Debug info - remove in production */}
-            {process.env.NODE_ENV === "development" && (
-              <div className="text-xs text-gray-400 bg-gray-100 p-2 rounded">
-                Debug: Rating: {review.rating}, Comment: "{review.comment}"
-              </div>
-            )}
-
             {/* Rating */}
             <div className="flex items-center justify-between">
               <div>{renderStarRating(review.rating)}</div>
@@ -639,6 +634,22 @@ const ProviderBookings = () => {
                         </div>
                       )}
                   </div>
+
+                  {/* Location Tracking for In-Progress Bookings */}
+                  {booking.status === "in-progress" && (
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                      <LocationTracking
+                        bookingId={booking._id}
+                        onTrackingStateChange={(isTracking, location) => {
+                          console.log("Tracking state changed:", {
+                            isTracking,
+                            location,
+                          });
+                          // You can add additional logic here if needed
+                        }}
+                      />
+                    </div>
+                  )}
 
                   {/* Booking Created Date */}
                   <div className="mt-4 pt-4 border-t border-gray-200">

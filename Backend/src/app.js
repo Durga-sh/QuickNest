@@ -18,7 +18,6 @@ try {
   console.error(" Failed to import providerRoute.js:", err);
 }
 
-
 let bookingRoutes;
 try {
   bookingRoutes = require("./routes/bookingRoute");
@@ -116,6 +115,21 @@ if (voiceRoutes) {
   console.log(" Mounted /api/voice");
 } else {
   console.warn(" voiceRoutes not mounted");
+}
+
+let trackingRoutes;
+try {
+  trackingRoutes = require("./routes/trackingRoutes");
+  console.log("Tracking routes imported");
+} catch (err) {
+  console.error(" Failed to import trackingRoutes.js:", err);
+}
+
+if (trackingRoutes) {
+  app.use("/api/tracking", trackingRoutes);
+  console.log(" Mounted /api/tracking");
+} else {
+  console.warn(" trackingRoutes not mounted");
 }
 
 // Error handler

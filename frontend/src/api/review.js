@@ -16,7 +16,17 @@ class ReviewApiService {
     this.axiosInstance.interceptors.response.use(
       (response) => response,
       (error) => {
-        console.error("Review API Error:", error);
+        // Check if it's a review not found error (404 with specific message)
+        const is404 = error.response?.status === 404;
+        const isBookingEndpoint = error.config?.url?.includes("/booking/");
+
+        // Suppress all 404 errors on booking endpoints - they're expected
+        if (is404 && isBookingEndpoint) {
+          // Don't log anything for expected 404s on booking endpoints
+        } else {
+          console.error("Review API Error:", error);
+        }
+
         if (error.response) {
           const errorMessage =
             error.response.data?.message ||
@@ -53,7 +63,13 @@ class ReviewApiService {
       const response = await this.axiosInstance(config);
       return response.data;
     } catch (error) {
-      console.error("Review API Request failed:", error);
+      // Only log unexpected errors for request method (suppress 404 on booking endpoints)
+      const is404 = error.response?.status === 404;
+      const isBookingEndpoint = endpoint?.includes("/booking/");
+
+      if (!(is404 && isBookingEndpoint)) {
+        console.error("Review API Request failed:", error);
+      }
       throw error;
     }
   }
@@ -84,9 +100,20 @@ class ReviewApiService {
 
   // Get review by booking ID
   async getReviewByBooking(bookingId) {
-    return this.request(`/booking/${bookingId}`, {
-      method: "GET",
-    });
+    try {
+      return await this.request(`/booking/${bookingId}`, {
+        method: "GET",
+      });
+    } catch (error) {
+      // Don't log "Review not found" as an error - it's expected for bookings without reviews
+      if (
+        error.message.includes("Review not found") ||
+        error.message.includes("404")
+      ) {
+        throw new Error("REVIEW_NOT_FOUND");
+      }
+      throw error;
+    }
   }
 
   // Get user's reviews
@@ -117,10 +144,23 @@ class ReviewApiService {
       await this.getReviewByBooking(bookingId);
       return false; // Review already exists
     } catch (error) {
-      if (error.message.includes("Review not found")) {
+      if (error.message === "REVIEW_NOT_FOUND") {
         return true; // No review found, can review
       }
       throw error;
+    }
+  }
+
+  // Check if a review exists for a booking (returns boolean, doesn't throw)
+  async hasReview(bookingId) {
+    try {
+      await this.request(`/booking/${bookingId}`, {
+        method: "GET",
+      });
+      return true; // Review exists
+    } catch {
+      // All errors mean no review exists (404, network issues, etc.)
+      return false;
     }
   }
 }

@@ -56,7 +56,7 @@ const loadGoogleMapsScript = (callback) => {
 const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logoutUser } = useAuth();
+  const { user, logoutUser, isProvider } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [locationInput, setLocationInput] = useState("");
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
@@ -384,7 +384,7 @@ const Header = () => {
           </div>
 
           <div className="hidden md:flex items-center space-x-6">
-            {!isProviderDashboard && (
+            {!isProviderDashboard && !isProvider && (
               <>
                 <div className="relative flex items-center">
                   {isGoogleMapsLoaded ? (
@@ -519,7 +519,7 @@ const Header = () => {
             )}
             {user ? (
               <>
-                {!isProviderDashboard && (
+                {!isProviderDashboard && !isProvider && (
                   <Link to="/my-bookings">
                     <Button
                       variant="outline"
@@ -576,7 +576,7 @@ const Header = () => {
       {isMenuOpen && (
         <div className="md:hidden bg-emerald-800">
           <div className="px-4 pt-4 pb-6 space-y-4">
-            {!isProviderDashboard && (
+            {!isProviderDashboard && !isProvider && (
               <>
                 <div className="relative">
                   {isGoogleMapsLoaded ? (
@@ -733,7 +733,7 @@ const Header = () => {
             )}
             {user ? (
               <div className="space-y-2">
-                {!isProviderDashboard && (
+                {!isProviderDashboard && !isProvider && (
                   <Link to="/my-bookings" className="block w-full">
                     <Button
                       variant="outline"

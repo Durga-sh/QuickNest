@@ -9,7 +9,9 @@ import {
   Edit,
   Eye,
   Bell,
+  Navigation,
 } from "lucide-react";
+import ProviderTrackingDashboard from "../components/ProviderTrackingDashboard";
 
 const ProviderDashboard = () => {
   const navigate = useNavigate();
@@ -269,6 +271,15 @@ const ProviderDashboard = () => {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Tracking Dashboard */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl shadow-blue-500/5 p-8 border border-white/20">
+            <div className="flex items-center space-x-2 mb-6">
+              <Navigation className="h-6 w-6 text-blue-600" />
+              <h3 className="text-xl font-bold text-gray-900">Live Tracking</h3>
+            </div>
+            <ProviderTrackingDashboard />
           </div>
 
           {/* Call to Action for New Providers */}

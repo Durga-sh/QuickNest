@@ -31,6 +31,7 @@ import reviewApiService from "../api/review";
 import VoiceBookingButton, {
   VoiceBookingButtonPresets,
 } from "../components/VoiceBookingButton";
+import RealTimeTrackingMap from "../components/RealTimeTrackingMap";
 import { getToken } from "../utils/tokenManager";
 
 const UserBookings = () => {
@@ -161,10 +162,13 @@ const UserBookings = () => {
       const bookingsWithReviewStatus = await Promise.all(
         allBookings.map(async (booking) => {
           try {
-            await reviewApiService.getReviewByBooking(booking._id);
-            return { ...booking, hasReview: true };
-          } catch {
-            // If review not found, booking doesn't have a review
+            const hasReview = await reviewApiService.hasReview(booking._id);
+            return { ...booking, hasReview };
+          } catch (error) {
+            console.warn(
+              `Unexpected error checking review for booking ${booking._id}:`,
+              error
+            );
             return { ...booking, hasReview: false };
           }
         })
@@ -482,187 +486,234 @@ const UserBookings = () => {
               </div>
             </motion.div>
           ) : (
-            bookings.map((booking) => (
-              <motion.div
-                key={booking._id}
-                className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200 overflow-hidden"
-                variants={cardVariants}
-                whileHover="hover"
-              >
-                <div className="p-8">
-                  <div className="flex items-start justify-between mb-6">
-                    <div>
-                      <div className="flex items-center space-x-3 mb-3">
-                        <h3 className="text-2xl font-semibold text-gray-900">
-                          {booking.service}
-                        </h3>
-                        <motion.span
-                          className={`px-4 py-2 rounded-full text-sm font-medium border flex items-center space-x-2 ${getStatusColor(
-                            booking.status
-                          )}`}
-                          whileHover={{ scale: 1.05 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          {getStatusIcon(booking.status)}
-                          <span>
-                            {booking.status.charAt(0).toUpperCase() +
-                              booking.status.slice(1)}
-                          </span>
-                        </motion.span>
+            bookings
+              .filter((booking) => booking && booking._id && booking.service)
+              .map((booking) => (
+                <motion.div
+                  key={booking._id}
+                  className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200 overflow-hidden"
+                  variants={cardVariants}
+                  whileHover="hover"
+                >
+                  <div className="p-8">
+                    <div className="flex items-start justify-between mb-6">
+                      <div>
+                        <div className="flex items-center space-x-3 mb-3">
+                          <h3 className="text-2xl font-semibold text-gray-900">
+                            {booking.service}
+                          </h3>
+                          <motion.span
+                            className={`px-4 py-2 rounded-full text-sm font-medium border flex items-center space-x-2 ${getStatusColor(
+                              booking.status
+                            )}`}
+                            whileHover={{ scale: 1.05 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            {getStatusIcon(booking.status)}
+                            <span>
+                              {booking.status.charAt(0).toUpperCase() +
+                                booking.status.slice(1)}
+                            </span>
+                          </motion.span>
+                        </div>
+                        <p className="text-gray-600 text-sm">
+                          Booking ID: {booking.bookingId}
+                        </p>
                       </div>
-                      <p className="text-gray-600 text-sm">
-                        Booking ID: {booking.bookingId}
-                      </p>
+                      <div className="text-right">
+                        <p className="text-3xl font-bold text-emerald-600">
+                          {formatPrice(booking.servicePrice)}
+                        </p>
+                        <p className="text-gray-500 text-sm">
+                          {booking.paymentDetails.status === "completed"
+                            ? "Paid"
+                            : "Payment Pending"}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-3xl font-bold text-emerald-600">
-                        {formatPrice(booking.servicePrice)}
-                      </p>
-                      <p className="text-gray-500 text-sm">
-                        {booking.paymentDetails.status === "completed"
-                          ? "Paid"
-                          : "Payment Pending"}
-                      </p>
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                    {/* Provider Info */}
-                    <motion.div
-                      className="col-span-2 flex items-center space-x-4 p-4 bg-gray-50 rounded-xl"
-                      whileHover={{ scale: 1.02 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center">
-                        <User className="h-6 w-6 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <p className="font-semibold text-gray-900">
-                            {booking.provider?.user?.name || "Provider"}
-                          </p>
-                          <div className="flex items-center space-x-1">
-                            <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                            <span className="text-sm text-gray-600">
-                              {booking.provider?.rating?.toFixed(1) || "N/A"}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                      {/* Provider Info */}
+                      <motion.div
+                        className="col-span-2 flex items-center space-x-4 p-4 bg-gray-50 rounded-xl"
+                        whileHover={{ scale: 1.02 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center">
+                          <User className="h-6 w-6 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <p className="font-semibold text-gray-900">
+                              {booking.provider?.user?.name || "Provider"}
+                            </p>
+                            <div className="flex items-center space-x-1">
+                              <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                              <span className="text-sm text-gray-600">
+                                {booking.provider?.rating?.toFixed(1) || "N/A"}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-1 text-sm text-gray-600">
+                            <Mail className="h-4 w-4" />
+                            <span className="truncate">
+                              {booking.provider?.user?.email ||
+                                "No email provided"}
                             </span>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-1 text-sm text-gray-600">
-                          <Mail className="h-4 w-4" />
-                          <span className="truncate">
-                            {booking.provider?.user?.email ||
-                              "No email provided"}
-                          </span>
-                        </div>
-                      </div>
-                    </motion.div>
+                      </motion.div>
 
-                    {/* Date & Time */}
+                      {/* Date & Time */}
+                      <motion.div
+                        className="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl"
+                        whileHover={{ scale: 1.02 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <Calendar className="h-6 w-6 text-emerald-600" />
+                        <div>
+                          <p className="font-semibold text-gray-900">
+                            {formatDate(booking.bookingDate)}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {formatTime(booking.timeSlot.start)} -{" "}
+                            {formatTime(booking.timeSlot.end)}
+                          </p>
+                        </div>
+                      </motion.div>
+
+                      {/* Contact */}
+                      <motion.div
+                        className="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl"
+                        whileHover={{ scale: 1.02 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <Phone className="h-6 w-6 text-emerald-600" />
+                        <div>
+                          <p className="font-semibold text-gray-900">Contact</p>
+                          <p className="text-sm text-gray-600">
+                            {booking.contactPhone}
+                          </p>
+                        </div>
+                      </motion.div>
+                    </div>
+
+                    {/* Address */}
                     <motion.div
-                      className="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl"
-                      whileHover={{ scale: 1.02 }}
+                      className="flex items-start space-x-4 mb-6 p-4 bg-gray-50 rounded-xl"
+                      whileHover={{ scale: 1.01 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <Calendar className="h-6 w-6 text-emerald-600" />
+                      <MapPin className="h-6 w-6 text-emerald-600 mt-1" />
                       <div>
                         <p className="font-semibold text-gray-900">
-                          {formatDate(booking.bookingDate)}
+                          Service Address
                         </p>
                         <p className="text-sm text-gray-600">
-                          {formatTime(booking.timeSlot.start)} -{" "}
-                          {formatTime(booking.timeSlot.end)}
+                          {booking.address}
                         </p>
                       </div>
                     </motion.div>
 
-                    {/* Contact */}
-                    <motion.div
-                      className="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl"
-                      whileHover={{ scale: 1.02 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <Phone className="h-6 w-6 text-emerald-600" />
-                      <div>
-                        <p className="font-semibold text-gray-900">Contact</p>
-                        <p className="text-sm text-gray-600">
-                          {booking.contactPhone}
-                        </p>
-                      </div>
-                    </motion.div>
-                  </div>
-
-                  {/* Address */}
-                  <motion.div
-                    className="flex items-start space-x-4 mb-6 p-4 bg-gray-50 rounded-xl"
-                    whileHover={{ scale: 1.01 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <MapPin className="h-6 w-6 text-emerald-600 mt-1" />
-                    <div>
-                      <p className="font-semibold text-gray-900">
-                        Service Address
-                      </p>
-                      <p className="text-sm text-gray-600">{booking.address}</p>
-                    </div>
-                  </motion.div>
-
-                  {/* Special Instructions */}
-                  {booking.specialInstructions && (
-                    <motion.div
-                      className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 }}
-                    >
-                      <p className="font-semibold text-gray-900 text-sm mb-2">
-                        Special Instructions:
-                      </p>
-                      <p className="text-gray-700 text-sm">
-                        {booking.specialInstructions}
-                      </p>
-                    </motion.div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex items-center justify-between">
-                    <p className="text-gray-500 text-sm">
-                      Booked on {formatDate(booking.createdAt)}
-                    </p>
-                    <div className="flex space-x-3">
-                      <motion.button
-                        onClick={() => handleViewDetails(booking)}
-                        className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-all duration-200 text-sm flex items-center"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
+                    {/* Special Instructions */}
+                    {booking.specialInstructions && (
+                      <motion.div
+                        className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
                       >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
-                      </motion.button>
-                      {/* Allow reviews only for completed bookings */}
-                      {booking.status === "completed" && !booking.hasReview && (
+                        <p className="font-semibold text-gray-900 text-sm mb-2">
+                          Special Instructions:
+                        </p>
+                        <p className="text-gray-700 text-sm">
+                          {booking.specialInstructions}
+                        </p>
+                      </motion.div>
+                    )}
+
+                    {/* Real-time Tracking for In-Progress Bookings */}
+                    {booking.status === "in-progress" && (
+                      <motion.div
+                        className="mb-6"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                      >
+                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <Navigation className="h-5 w-5 text-blue-600" />
+                            <h4 className="font-semibold text-blue-900">
+                              Live Provider Tracking
+                            </h4>
+                          </div>
+                          <p className="text-blue-800 text-sm">
+                            Track your service provider's location in real-time
+                            as they make their way to you.
+                          </p>
+                        </div>
+                        <RealTimeTrackingMap
+                          bookingId={booking._id}
+                          userLocation={
+                            booking.coordinates?.latitude &&
+                            booking.coordinates?.longitude
+                              ? {
+                                  lat: booking.coordinates.latitude,
+                                  lng: booking.coordinates.longitude,
+                                }
+                              : null
+                          }
+                          onTrackingError={(error) => {
+                            // Silently handle tracking errors for better UX
+                            console.warn(
+                              "Tracking not available:",
+                              error.message
+                            );
+                          }}
+                        />
+                      </motion.div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-between">
+                      <p className="text-gray-500 text-sm">
+                        Booked on {formatDate(booking.createdAt)}
+                      </p>
+                      <div className="flex space-x-3">
                         <motion.button
-                          onClick={() => handleReviewClick(booking)}
-                          className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-4 py-2 rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-all duration-200 text-sm flex items-center shadow-md"
+                          onClick={() => handleViewDetails(booking)}
+                          className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-all duration-200 text-sm flex items-center"
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                         >
-                          <Star className="h-4 w-4 mr-2" />
-                          Give Review
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Details
                         </motion.button>
-                      )}
-                      {/* Show if review already exists */}
-                      {booking.hasReview && (
-                        <div className="bg-green-100 text-green-800 px-4 py-2 rounded-lg text-sm flex items-center">
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Review Submitted
-                        </div>
-                      )}
+                        {/* Allow reviews only for completed bookings */}
+                        {booking.status === "completed" &&
+                          !booking.hasReview && (
+                            <motion.button
+                              onClick={() => handleReviewClick(booking)}
+                              className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-4 py-2 rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-all duration-200 text-sm flex items-center shadow-md"
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                            >
+                              <Star className="h-4 w-4 mr-2" />
+                              Give Review
+                            </motion.button>
+                          )}
+                        {/* Show if review already exists */}
+                        {booking.hasReview && (
+                          <div className="bg-green-100 text-green-800 px-4 py-2 rounded-lg text-sm flex items-center">
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Review Submitted
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            ))
+                </motion.div>
+              ))
           )}
         </motion.div>
 

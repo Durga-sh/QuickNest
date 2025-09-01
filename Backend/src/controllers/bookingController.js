@@ -589,9 +589,47 @@ exports.updateBookingStatus = async (req, res) => {
     booking.status = status;
     if (status === "completed") {
       booking.completedAt = new Date();
+      // Stop tracking when service is completed
+      if (booking.tracking && booking.tracking.isActive) {
+        booking.tracking.isActive = false;
+        booking.tracking.endedAt = new Date();
+      }
+    } else if (status === "in-progress") {
+      // Initialize tracking when service starts
+      if (!booking.tracking) {
+        booking.tracking = {
+          isActive: false,
+          startedAt: null,
+          endedAt: null,
+          currentLocation: null,
+          locationHistory: [],
+        };
+      }
+      // Note: Tracking will be activated when provider calls startTracking endpoint
     }
 
     await booking.save();
+
+    // Get Socket.io instance for real-time updates
+    const io = req.app.get("io");
+    if (io) {
+      // Emit status update to tracking room
+      io.to(`tracking_${bookingId}`).emit("serviceStatusReceived", {
+        bookingId,
+        status,
+        message: `Booking ${status} successfully`,
+        timestamp: new Date().toISOString(),
+      });
+
+      // If service completed, stop tracking
+      if (status === "completed") {
+        io.to(`tracking_${bookingId}`).emit("trackingStopped", {
+          bookingId,
+          providerId: provider._id,
+          endedAt: new Date().toISOString(),
+        });
+      }
+    }
 
     console.log(`✅ Booking ${bookingId} status updated to: ${status}`);
 
@@ -604,6 +642,7 @@ exports.updateBookingStatus = async (req, res) => {
         status: booking.status,
         completedAt: booking.completedAt,
         user: booking.user,
+        tracking: booking.tracking,
       },
     });
   } catch (error) {
