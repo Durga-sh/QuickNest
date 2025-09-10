@@ -13,6 +13,8 @@ import {
   AlertCircle,
   Loader,
   RefreshCw,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import socketService from "../services/socketService";
 import trackingApiService from "../api/tracking";
@@ -34,7 +36,17 @@ const mapOptions = {
   streetViewControl: false,
   mapTypeControl: false,
   fullscreenControl: true,
+  gestureHandling: "cooperative",
 };
+
+// Google Maps configuration
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+
+// Check if we have a valid API key
+const hasValidGoogleMapsKey = GOOGLE_MAPS_API_KEY && 
+  GOOGLE_MAPS_API_KEY.length > 20 && 
+  !GOOGLE_MAPS_API_KEY.includes("your_") &&
+  !GOOGLE_MAPS_API_KEY.includes("demo");
 
 const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
   const { user } = useContext(AuthContext);
@@ -48,10 +60,17 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
   const [lastUpdate, setLastUpdate] = useState(null);
   const [showProviderInfo, setShowProviderInfo] = useState(false);
   const [providerStatus, setProviderStatus] = useState("Unknown");
+  const [retryCount, setRetryCount] = useState(0);
+  const [mapLoadTimeout, setMapLoadTimeout] = useState(false);
 
-  // Initialize tracking
-  useEffect(() => {
-    const initializeTracking = async () => {
+  // Auto-retry mechanism
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY = 5000; // 5 seconds
+  const MAP_LOAD_TIMEOUT = 10000; // 10 seconds timeout for map loading
+
+  // Initialize tracking with retry mechanism
+  const initializeTracking = useCallback(
+    async (attempt = 1) => {
       try {
         setLoading(true);
         setError(null);
@@ -81,17 +100,25 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
 
         // Connect to socket for real-time updates
         socketService.connect();
-        socketService.joinTracking(
-          bookingId,
-          "user",
-          user?.id || "current-user"
+
+        // Wait a moment for socket to connect
+        setTimeout(() => {
+          socketService.joinTracking(
+            bookingId,
+            "user",
+            user?.id || "current-user"
+          );
+          setIsConnected(true);
+        }, 1000);
+
+        setRetryCount(0); // Reset retry count on success
+      } catch (err) {
+        console.error(
+          `Failed to initialize tracking (attempt ${attempt}):`,
+          err
         );
 
-        setIsConnected(true);
-      } catch (err) {
-        console.error("Failed to initialize tracking:", err);
-        // For 403 errors, it means user doesn't have permission (expected for non in-progress bookings)
-        // For 404 errors, it means booking not found
+        // Handle specific error types
         if (
           err.message.includes("Access denied") ||
           err.message.includes("not authorized")
@@ -103,14 +130,27 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
           setError("Booking not found");
         } else {
           setError("Unable to load tracking data");
+
+          // Retry logic
+          if (attempt < MAX_RETRIES) {
+            setRetryCount(attempt);
+            setTimeout(() => {
+              initializeTracking(attempt + 1);
+            }, RETRY_DELAY);
+            return;
+          }
         }
 
         if (onTrackingError) onTrackingError(err);
       } finally {
         setLoading(false);
       }
-    };
+    },
+    [bookingId, user?.id, onTrackingError, MAX_RETRIES, RETRY_DELAY]
+  );
 
+  // Initialize tracking
+  useEffect(() => {
     if (bookingId) {
       initializeTracking();
     }
@@ -120,7 +160,7 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
         socketService.leaveTracking(bookingId);
       }
     };
-  }, [bookingId, user?.id, onTrackingError]);
+  }, [bookingId, initializeTracking]);
 
   // Socket event listeners
   useEffect(() => {
@@ -150,7 +190,7 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
 
     const handleTrackingStopped = (data) => {
       if (data.bookingId === bookingId) {
-        console.log("🔴 Tracking stopped:", data);
+        console.log("Tracking stopped:", data);
         setProviderStatus("Service completed");
       }
     };
@@ -164,7 +204,7 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
 
     const handleProviderOffline = (data) => {
       if (data.bookingId === bookingId) {
-        console.log("📴 Provider offline:", data);
+        console.log("Provider offline:", data);
         setError("Provider is currently offline");
         setProviderStatus("Offline");
       }
@@ -209,10 +249,6 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
     }
   }, [map, providerLocation, userLocation]);
 
-  const onMapLoad = useCallback((map) => {
-    setMap(map);
-  }, []);
-
   const refreshTracking = async () => {
     try {
       setError(null);
@@ -234,6 +270,18 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
     }
   };
 
+  const handleMapLoad = useCallback((map) => {
+    setMap(map);
+    console.log("📍 Google Map loaded successfully");
+  }, []);
+
+  const handleMapError = useCallback(() => {
+    console.error("Google Map failed to load");
+    setError(
+      "Failed to load Google Maps. Please check your internet connection."
+    );
+  }, []);
+
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case "on the way":
@@ -253,8 +301,19 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <div className="flex items-center justify-center space-x-2">
           <Loader className="h-5 w-5 animate-spin text-blue-600" />
-          <span className="text-gray-600">Loading tracking data...</span>
+          <span className="text-gray-600">
+            {retryCount > 0
+              ? `Retrying connection... (${retryCount}/${MAX_RETRIES})`
+              : "Loading tracking data..."}
+          </span>
         </div>
+        {retryCount > 0 && (
+          <div className="mt-2 text-center">
+            <p className="text-sm text-orange-600">
+              Having trouble connecting. Please check your internet connection.
+            </p>
+          </div>
+        )}
       </div>
     );
   }
@@ -298,6 +357,11 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
           <span className="text-sm text-gray-600">
             {isConnected ? "Connected" : "Disconnected"}
           </span>
+          {retryCount > 0 && (
+            <span className="text-sm text-orange-600">
+              • Retry attempt {retryCount}/{MAX_RETRIES}
+            </span>
+          )}
           {lastUpdate && (
             <span className="text-sm text-gray-500">
               • Last update: {lastUpdate.toLocaleTimeString()}
@@ -338,97 +402,141 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
       {/* Map */}
       {!loading && (trackingData?.tracking?.isActive || providerLocation) ? (
         <div className="relative">
-          <LoadScript
-            googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ""}
-            loadingElement={
-              <div className="h-96 flex items-center justify-center bg-gray-50">
-                <div className="text-center">
-                  <Loader className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
-                  <p className="text-gray-600">Loading map...</p>
+          {!hasValidGoogleMapsKey ? (
+            // Fallback map when Google Maps API key is not available
+            <div className="h-96 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200 flex items-center justify-center">
+              <div className="text-center p-8">
+                <MapPin className="h-16 w-16 text-blue-500 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                  Live Tracking Active
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  Your service provider is on the way!
+                </p>
+                {providerLocation && (
+                  <div className="bg-white rounded-lg p-4 shadow-sm">
+                    <p className="text-sm text-gray-600">Provider Location:</p>
+                    <p className="font-mono text-blue-600">
+                      {providerLocation.lat.toFixed(6)},{" "}
+                      {providerLocation.lng.toFixed(6)}
+                    </p>
+                    {lastUpdate && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Last updated: {lastUpdate.toLocaleTimeString()}
+                      </p>
+                    )}
+                  </div>
+                )}
+                <div className="mt-4 text-sm text-gray-500">
+                  <p>Google Maps integration available with API key</p>
+                  <p className="text-xs mt-1">Add VITE_GOOGLE_MAPS_API_KEY to .env.local</p>
                 </div>
               </div>
-            }
-          >
-            <GoogleMap
-              mapContainerStyle={mapContainerStyle}
-              center={providerLocation || userLocation || defaultCenter}
-              zoom={14}
-              onLoad={onMapLoad}
-              options={mapOptions}
+            </div>
+          ) : (
+            <LoadScript
+              googleMapsApiKey={GOOGLE_MAPS_API_KEY}
+              libraries={['geometry']} // Only load necessary libraries
+              loadingElement={
+                <div className="h-96 flex items-center justify-center bg-gray-50 rounded-lg">
+                  <div className="text-center">
+                    <Loader className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
+                    <p className="text-gray-600">Loading map...</p>
+                    <p className="text-xs text-gray-500 mt-2">This may take a few seconds</p>
+                  </div>
+                </div>
+              }
+              onLoad={() => {
+                console.log("LoadScript loaded successfully");
+              }}
+              onError={(error) => {
+                console.error("Google Maps LoadScript error:", error);
+                setError("Failed to load Google Maps. Using fallback display.");
+              }}
             >
-              {/* User Location Marker */}
-              {userLocation && (
-                <Marker
-                  position={userLocation}
-                  icon={{
-                    url:
-                      "data:image/svg+xml;charset=UTF-8," +
-                      encodeURIComponent(`
+              <GoogleMap
+                mapContainerStyle={mapContainerStyle}
+                center={providerLocation || userLocation || defaultCenter}
+                zoom={14}
+                onLoad={handleMapLoad}
+                options={mapOptions}
+              >
+                {/* User Location Marker */}
+                {userLocation && (
+                  <Marker
+                    position={userLocation}
+                    icon={{
+                      url:
+                        "data:image/svg+xml;charset=UTF-8," +
+                        encodeURIComponent(`
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="12" cy="12" r="8" fill="#10b981" stroke="white" stroke-width="2"/>
                       <circle cx="12" cy="12" r="3" fill="white"/>
                     </svg>
                   `),
-                    scaledSize: new window.google.maps.Size(24, 24),
-                  }}
-                  title="Your location"
-                />
-              )}
+                      scaledSize: new window.google.maps.Size(24, 24),
+                    }}
+                    title="Your location"
+                  />
+                )}
 
-              {/* Provider Location Marker */}
-              {providerLocation && (
-                <Marker
-                  position={providerLocation}
-                  icon={{
-                    url:
-                      "data:image/svg+xml;charset=UTF-8," +
-                      encodeURIComponent(`
+                {/* Provider Location Marker */}
+                {providerLocation && (
+                  <Marker
+                    position={providerLocation}
+                    icon={{
+                      url:
+                        "data:image/svg+xml;charset=UTF-8," +
+                        encodeURIComponent(`
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#3b82f6" stroke="white" stroke-width="1"/>
                       <circle cx="12" cy="9" r="2.5" fill="white"/>
                     </svg>
                   `),
-                    scaledSize: new window.google.maps.Size(32, 32),
-                  }}
-                  title="Provider location"
-                  onClick={() => setShowProviderInfo(true)}
-                >
-                  {showProviderInfo && (
-                    <InfoWindow onCloseClick={() => setShowProviderInfo(false)}>
-                      <div className="p-2">
-                        <h4 className="font-semibold text-gray-900">
-                          Service Provider
-                        </h4>
-                        <p className="text-sm text-gray-600">
-                          Status: {providerStatus}
-                        </p>
-                        {lastUpdate && (
-                          <p className="text-xs text-gray-500">
-                            Last update: {lastUpdate.toLocaleString()}
+                      scaledSize: new window.google.maps.Size(32, 32),
+                    }}
+                    title="Provider location"
+                    onClick={() => setShowProviderInfo(true)}
+                  >
+                    {showProviderInfo && (
+                      <InfoWindow
+                        onCloseClick={() => setShowProviderInfo(false)}
+                      >
+                        <div className="p-2">
+                          <h4 className="font-semibold text-gray-900">
+                            Service Provider
+                          </h4>
+                          <p className="text-sm text-gray-600">
+                            Status: {providerStatus}
                           </p>
-                        )}
-                      </div>
-                    </InfoWindow>
-                  )}
-                </Marker>
-              )}
+                          {lastUpdate && (
+                            <p className="text-xs text-gray-500">
+                              Last update: {lastUpdate.toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                      </InfoWindow>
+                    )}
+                  </Marker>
+                )}
 
-              {/* Directions */}
-              {directions && (
-                <DirectionsRenderer
-                  directions={directions}
-                  options={{
-                    polylineOptions: {
-                      strokeColor: "#3b82f6",
-                      strokeWeight: 4,
-                      strokeOpacity: 0.8,
-                    },
-                    suppressMarkers: true,
-                  }}
-                />
-              )}
-            </GoogleMap>
-          </LoadScript>
+                {/* Directions */}
+                {directions && (
+                  <DirectionsRenderer
+                    directions={directions}
+                    options={{
+                      polylineOptions: {
+                        strokeColor: "#3b82f6",
+                        strokeWeight: 4,
+                        strokeOpacity: 0.8,
+                      },
+                      suppressMarkers: true,
+                    }}
+                  />
+                )}
+              </GoogleMap>
+            </LoadScript>
+          )}
         </div>
       ) : (
         <div className="h-96 flex items-center justify-center bg-gray-50 rounded-lg border border-gray-200">

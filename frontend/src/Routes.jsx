@@ -16,6 +16,8 @@ import HowItWorksPage from "./pages/HowItWorksPage";
 import ReviewsPage from "./pages/ReviewsPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import TermsOfServicePage from "./pages/TermsOfServicePage";
+import TrackingTestPage from "./pages/TrackingTestPage";
+
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { isAuthenticated, user } = useAuth();
@@ -105,6 +107,7 @@ const AppRoutes = () => {
       <Route path="/reviews" element={<ReviewsPage />} />
       <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
       <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+      <Route path="/tracking-test" element={<TrackingTestPage />} />
     </Routes>
   );
 };

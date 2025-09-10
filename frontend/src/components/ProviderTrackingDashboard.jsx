@@ -1,11 +1,21 @@
 import React, { useState, useEffect } from "react";
-import { MapPin, Play, Square, Navigation, Clock, User } from "lucide-react";
+import {
+  MapPin,
+  Play,
+  Square,
+  Navigation,
+  Clock,
+  User,
+  RefreshCw,
+} from "lucide-react";
 import trackingApiService from "../api/tracking";
+import ProviderLocationTracker from "./ProviderLocationTracker";
 
 const ProviderTrackingDashboard = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeBookingId, setActiveBookingId] = useState(null);
 
   useEffect(() => {
     fetchTrackingBookings();
@@ -17,6 +27,12 @@ const ProviderTrackingDashboard = () => {
       setError(null);
       const response = await trackingApiService.getProviderTrackingBookings();
       setBookings(response.bookings || []);
+
+      // Find if there's an active tracking session
+      const activeBooking = response.bookings?.find(
+        (b) => b.tracking?.isActive
+      );
+      setActiveBookingId(activeBooking?.id || null);
     } catch (err) {
       console.error("Error fetching tracking bookings:", err);
       setError(err.message || "Failed to fetch tracking bookings");
@@ -162,6 +178,22 @@ const ProviderTrackingDashboard = () => {
 
       {/* Bookings List */}
       <div className="p-4">
+        {/* Quick Location Tracker for Active Booking */}
+        {activeBookingId && (
+          <div className="mb-6">
+            <h4 className="text-md font-medium text-gray-800 mb-3">
+              🚀 Quick Location Tracker
+            </h4>
+            <ProviderLocationTracker
+              bookingId={activeBookingId}
+              onLocationUpdate={() => {
+                // Refresh bookings when location updates
+                fetchTrackingBookings();
+              }}
+            />
+          </div>
+        )}
+
         {bookings.length === 0 ? (
           <div className="text-center py-8">
             <Navigation className="h-12 w-12 text-gray-400 mx-auto mb-4" />
