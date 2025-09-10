@@ -45,7 +45,6 @@ const CreateServicePage = () => {
       address: "",
     },
     pricing: [{ service: "", price: "" }],
-    availability: [{ day: "Monday", from: "", to: "" }],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -71,7 +70,7 @@ const CreateServicePage = () => {
             location: response.provider.location,
           }));
         }
-      } catch (error) {
+      } catch {
         // Provider profile doesn't exist, which is fine for new registrations
         console.log("No existing provider profile found");
         setExistingProvider(null);
@@ -294,8 +293,7 @@ const CreateServicePage = () => {
         }
       } else if (field === "pricing") {
         newData.pricing[index][subField] = value;
-      } else if (field === "availability") {
-        newData.availability[index][subField] = value;
+        // availability removed
       }
       return newData;
     });
@@ -333,21 +331,9 @@ const CreateServicePage = () => {
     }
   };
 
-  const addAvailability = () => {
-    setFormData((prev) => ({
-      ...prev,
-      availability: [...prev.availability, { day: "Monday", from: "", to: "" }],
-    }));
-  };
+  // availability removed
 
-  const removeAvailability = (index) => {
-    if (formData.availability.length > 1) {
-      setFormData((prev) => ({
-        ...prev,
-        availability: prev.availability.filter((_, i) => i !== index),
-      }));
-    }
-  };
+  // availability removed
 
   const validateForm = () => {
     setError("");
@@ -400,26 +386,7 @@ const CreateServicePage = () => {
       errors.push("All prices must be positive numbers");
     }
 
-    // Validate availability
-    const hasValidAvailability = formData.availability.some(
-      (a) => a.from && a.to
-    );
-    if (!hasValidAvailability) {
-      errors.push("Please add at least one availability time slot");
-    }
-
-    // Validate time format and logic
-    const invalidTimes = formData.availability.filter((a) => {
-      if (!a.from || !a.to) return false;
-      const fromTime = new Date(`2000-01-01T${a.from}:00`);
-      const toTime = new Date(`2000-01-01T${a.to}:00`);
-      return fromTime >= toTime;
-    });
-    if (invalidTimes.length > 0) {
-      errors.push(
-        "End time must be after start time for all availability slots"
-      );
-    }
+    // Availability validation removed
 
     if (errors.length > 0) {
       setError(errors.join(". "));
@@ -446,13 +413,7 @@ const CreateServicePage = () => {
             service: p.service,
             price: parseFloat(p.price),
           })),
-        availability: formData.availability
-          .filter((a) => a.from && a.to)
-          .map((a) => ({
-            day: a.day,
-            from: a.from,
-            to: a.to,
-          })),
+        // availability removed
       };
 
       // Only include location for new provider registration
@@ -524,7 +485,7 @@ const CreateServicePage = () => {
   // Calculate form completion percentage
   const calculateFormProgress = () => {
     let completedSections = 0;
-    const totalSections = 3; // skills, pricing, availability (location is optional for existing providers)
+    const totalSections = 2; // skills, pricing (location is optional for existing providers)
 
     // Check skills section
     if (formData.skills.some((skill) => skill.trim() !== "")) {
@@ -536,10 +497,7 @@ const CreateServicePage = () => {
       completedSections++;
     }
 
-    // Check availability section
-    if (formData.availability.some((a) => a.from && a.to)) {
-      completedSections++;
-    }
+    // Availability section removed
 
     // Check location section (only for new providers)
     if (
@@ -594,18 +552,14 @@ const CreateServicePage = () => {
             <button
               onClick={() => {
                 setDemoMode(!demoMode);
-                // Reset form when toggling demo mode
                 setError("");
                 setSuccess("");
                 setIsLoadingProfile(true);
-                // Simulate checking for existing provider
                 setTimeout(() => {
                   if (demoMode) {
-                    // Switching to real mode - no existing provider
                     setExistingProvider(null);
                     setIsAddingToExisting(false);
                   } else {
-                    // Switching to demo mode - simulate existing provider
                     setExistingProvider({
                       user: { name: "John Doe", email: "john@example.com" },
                       skills: ["Plumbing", "Electrical Work"],
@@ -964,120 +918,6 @@ const CreateServicePage = () => {
               </div>
             </div>
 
-            {/* Availability Section */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                  <span className="text-orange-600 font-semibold text-sm">
-                    {isAddingToExisting ? "3" : "4"}
-                  </span>
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {isAddingToExisting
-                    ? "Additional Availability"
-                    : "Availability Schedule"}
-                </h3>
-                <span className="text-red-500 text-sm">*</span>
-              </div>
-              <p className="text-gray-600 text-sm ml-10">
-                {isAddingToExisting
-                  ? "Add additional working hours (will be merged with existing schedule)"
-                  : "Set your working hours for each day"}
-              </p>
-              <div className="ml-10 space-y-4">
-                {formData.availability.map((avail, index) => (
-                  <div key={index} className="bg-gray-50 p-4 rounded-lg border">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Day
-                        </label>
-                        <select
-                          value={avail.day}
-                          onChange={(e) =>
-                            handleInputChange(
-                              "availability",
-                              e.target.value,
-                              index,
-                              "day"
-                            )
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          {[
-                            "Monday",
-                            "Tuesday",
-                            "Wednesday",
-                            "Thursday",
-                            "Friday",
-                            "Saturday",
-                            "Sunday",
-                          ].map((day) => (
-                            <option key={day} value={day}>
-                              {day}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          <Clock className="h-4 w-4 inline mr-1" />
-                          From Time
-                        </label>
-                        <input
-                          type="time"
-                          value={avail.from}
-                          onChange={(e) =>
-                            handleInputChange(
-                              "availability",
-                              e.target.value,
-                              index,
-                              "from"
-                            )
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          To Time
-                        </label>
-                        <input
-                          type="time"
-                          value={avail.to}
-                          onChange={(e) =>
-                            handleInputChange(
-                              "availability",
-                              e.target.value,
-                              index,
-                              "to"
-                            )
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <button
-                          onClick={() => removeAvailability(index)}
-                          disabled={formData.availability.length === 1}
-                          className="p-2 text-red-500 hover:text-red-700 disabled:text-gray-300 disabled:cursor-not-allowed"
-                        >
-                          <Minus className="h-5 w-5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                <button
-                  onClick={addAvailability}
-                  className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Add Another Day</span>
-                </button>
-              </div>
-            </div>
-
             {/* Form Summary */}
             <div className="bg-gray-50 rounded-lg p-6 space-y-4">
               <h4 className="font-medium text-gray-900 flex items-center">
@@ -1136,30 +976,7 @@ const CreateServicePage = () => {
                     )}
                   </div>
                 </div>
-                <div>
-                  <span className="text-gray-600 font-medium">
-                    Availability:
-                  </span>
-                  <div className="mt-1">
-                    {formData.availability.filter((a) => a.from && a.to)
-                      .length > 0 ? (
-                      <div className="space-y-1">
-                        {formData.availability
-                          .filter((a) => a.from && a.to)
-                          .map((avail, index) => (
-                            <div key={index} className="text-xs">
-                              <span className="font-medium">{avail.day}:</span>{" "}
-                              {avail.from} - {avail.to}
-                            </div>
-                          ))}
-                      </div>
-                    ) : (
-                      <span className="text-gray-400 italic">
-                        No schedule set
-                      </span>
-                    )}
-                  </div>
-                </div>
+                {/* Availability summary removed */}
                 {!isAddingToExisting && (
                   <div>
                     <span className="text-gray-600 font-medium">Location:</span>
@@ -1248,14 +1065,7 @@ const CreateServicePage = () => {
                   <li>• You can add more services later</li>
                 </ul>
               </div>
-              <div>
-                <h4 className="font-medium text-gray-900 mb-2">Availability</h4>
-                <ul className="space-y-1">
-                  <li>• Set realistic working hours</li>
-                  <li>• You can update your schedule anytime</li>
-                  <li>• Multiple time slots per day are supported</li>
-                </ul>
-              </div>
+              {/* Availability help removed */}
               {!isAddingToExisting && (
                 <>
                   <div>

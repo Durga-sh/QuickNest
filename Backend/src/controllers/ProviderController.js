@@ -4,7 +4,7 @@ const User = require("../model/User");
 // Register a new provider profile OR add services to existing provider
 exports.registerProvider = async (req, res) => {
   try {
-    const { userId, skills, location, pricing, availability } = req.body;
+    const { userId, skills, location, pricing } = req.body;
 
     // Check if user exists and has Provider role
     const user = await User.findById(userId);
@@ -27,17 +27,6 @@ exports.registerProvider = async (req, res) => {
       return res.status(400).json({ message: "Location details are required" });
     }
 
-    // Transform availability structure to match schema
-    const transformedAvailability = availability.map((slot) => ({
-      day: slot.day,
-      timeSlots: [
-        {
-          start: slot.from,
-          end: slot.to,
-        },
-      ],
-    }));
-
     const provider = new Provider({
       userId,
       skills,
@@ -47,7 +36,6 @@ exports.registerProvider = async (req, res) => {
         address: location.address,
       },
       pricing,
-      availability: transformedAvailability,
       status: "pending",
     });
 
@@ -68,7 +56,7 @@ exports.registerProvider = async (req, res) => {
 // Add services to existing provider
 exports.addServicesToProvider = async (req, res, existingProvider = null) => {
   try {
-    const { userId, skills, pricing, availability } = req.body;
+    const { userId, skills, pricing } = req.body;
 
     let provider = existingProvider;
 
@@ -111,35 +99,7 @@ exports.addServicesToProvider = async (req, res, existingProvider = null) => {
       provider.pricing = [...provider.pricing, ...newPricingServices];
     }
 
-    // Merge availability (avoid duplicate days, merge time slots for same day)
-    if (availability && Array.isArray(availability)) {
-      const transformedNewAvailability = availability.map((slot) => ({
-        day: slot.day,
-        timeSlots: [
-          {
-            start: slot.from,
-            end: slot.to,
-          },
-        ],
-      }));
-
-      transformedNewAvailability.forEach((newAvail) => {
-        const existingDayIndex = provider.availability.findIndex(
-          (existing) => existing.day === newAvail.day
-        );
-
-        if (existingDayIndex !== -1) {
-          // Day exists, add new time slots
-          provider.availability[existingDayIndex].timeSlots = [
-            ...provider.availability[existingDayIndex].timeSlots,
-            ...newAvail.timeSlots,
-          ];
-        } else {
-          // New day, add it
-          provider.availability.push(newAvail);
-        }
-      });
-    }
+    // Availability is no longer handled here
 
     await provider.save();
 
@@ -152,7 +112,7 @@ exports.addServicesToProvider = async (req, res, existingProvider = null) => {
         skills: provider.skills,
         location: provider.location,
         pricing: provider.pricing,
-        availability: provider.availability,
+        // availability: provider.availability,
         status: provider.status,
       },
     });
@@ -719,7 +679,7 @@ exports.getProviderStats = async (req, res) => {
       error: error.message,
     });
   }
-}; 
+};
 
 // Get all unique skills from approved providers
 exports.getAvailableSkills = async (req, res) => {
@@ -995,5 +955,3 @@ exports.searchProviders = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-

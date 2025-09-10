@@ -66,46 +66,7 @@ const ProviderSchema = new mongoose.Schema({
       message: "At least one service with price is required",
     },
   },
-  availability: {
-    type: [
-      {
-        day: {
-          type: String,
-          enum: [
-            "Monday",
-            "Tuesday",
-            "Wednesday",
-            "Thursday",
-            "Friday",
-            "Saturday",
-            "Sunday",
-          ],
-          required: true,
-        },
-        timeSlots: [
-          {
-            start: {
-              type: String,
-              required: true,
-              match: /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, // HH:MM format
-            },
-            end: {
-              type: String,
-              required: true,
-              match: /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
-            },
-          },
-        ],
-      },
-    ],
-    required: true,
-    validate: {
-      validator: function (v) {
-        return v.length > 0;
-      },
-      message: "At least one availability slot is required",
-    },
-  },
+  // availability removed, only location is required
   status: {
     type: String,
     enum: ["pending", "approved", "rejected"],

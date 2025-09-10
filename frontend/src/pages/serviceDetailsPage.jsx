@@ -24,9 +24,11 @@ import {
   X,
   SlidersHorizontal,
   Loader2,
+  Eye,
 } from "lucide-react";
 import apiService from "../api/provider";
 import ProviderDetailsModal from "../components/ProvideDetails";
+import ProviderDetailsModal2 from "../components/ProviderDetailsModal";
 import BookingModal from "../components/BookimgModal";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -49,6 +51,9 @@ const ServiceDetailsPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedProviderForBooking, setSelectedProviderForBooking] =
+    useState(null);
+  const [showProviderDetails, setShowProviderDetails] = useState(false);
+  const [selectedProviderForDetails, setSelectedProviderForDetails] =
     useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [locationError, setLocationError] = useState("");
@@ -662,18 +667,24 @@ const ServiceDetailsPage = () => {
   };
 
   // Handle view details
-  const handleViewDetails = (providerId) => {
-    setSelectedProviderId(providerId);
-    setShowModal(true);
+  const handleViewDetails = (provider) => {
+    setSelectedProviderForDetails(provider);
+    setShowProviderDetails(true);
   };
 
   // Handle contact provider
   const handleContactProvider = (provider) => {
-    const message = `Hi ${provider.user?.name}, I'm interested in your services. Please contact me.`;
-    const mailtoLink = `mailto:${
-      provider.user?.email
-    }?subject=Service Inquiry&body=${encodeURIComponent(message)}`;
-    window.open(mailtoLink, "_blank");
+    const phone = provider.user?.phone || provider.phone;
+    if (phone) {
+      window.open(`tel:${phone}`, "_self");
+    } else {
+      // Fallback to email if phone not available
+      const message = `Hi ${provider.user?.name}, I'm interested in your services. Please contact me.`;
+      const mailtoLink = `mailto:${
+        provider.user?.email
+      }?subject=Service Inquiry&body=${encodeURIComponent(message)}`;
+      window.open(mailtoLink, "_blank");
+    }
   };
 
   // Handle book now
@@ -1422,10 +1433,11 @@ const ServiceDetailsPage = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleViewDetails(provider._id)}
+                                onClick={() => handleViewDetails(provider)}
                                 className="hover:bg-emerald-50 hover:text-emerald-700 transition-all duration-200"
                               >
-                                View Profile
+                                <Eye className="w-4 h-4 mr-2" />
+                                View Details
                               </Button>
                             </div>
                           </div>
@@ -1523,6 +1535,17 @@ const ServiceDetailsPage = () => {
             setShowModal(false);
             setSelectedProviderId(null);
           }}
+        />
+        <ProviderDetailsModal2
+          provider={selectedProviderForDetails}
+          isOpen={showProviderDetails}
+          onClose={() => setShowProviderDetails(false)}
+          onBookNow={(provider) => {
+            setShowProviderDetails(false);
+            setSelectedProviderForBooking(provider);
+            setShowBookingModal(true);
+          }}
+          onContact={handleContactProvider}
         />
         <BookingModal
           provider={selectedProviderForBooking}

@@ -6,6 +6,7 @@ import { Card, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import BookingModal from "../components/BookimgModal";
+import ProviderDetailsModal from "../components/ProviderDetailsModal";
 import { Input } from "../components/ui/input";
 import {
   Star,
@@ -26,6 +27,7 @@ import {
   Navigation,
   Target,
   AlertCircle,
+  Eye,
 } from "lucide-react";
 import apiService from "../api/provider";
 
@@ -50,6 +52,9 @@ const ServicesPage = () => {
   const [error, setError] = useState("");
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedProviderForBooking, setSelectedProviderForBooking] =
+    useState(null);
+  const [showProviderDetails, setShowProviderDetails] = useState(false);
+  const [selectedProviderForDetails, setSelectedProviderForDetails] =
     useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
@@ -161,6 +166,20 @@ const ServicesPage = () => {
   const handleBookNow = (provider, service) => {
     setSelectedProviderForBooking({ ...provider, selectedService: service });
     setShowBookingModal(true);
+  };
+
+  const handleViewDetails = (provider) => {
+    setSelectedProviderForDetails(provider);
+    setShowProviderDetails(true);
+  };
+
+  const handleContactProvider = (provider) => {
+    const phone = provider.user?.phone || provider.phone;
+    if (phone) {
+      window.open(`tel:${phone}`, "_self");
+    } else {
+      alert("Phone number not available");
+    }
   };
 
   // Fetch available skills for filter dropdown
@@ -787,15 +806,7 @@ const ServicesPage = () => {
                                 variant="outline"
                                 size="sm"
                                 className="border-2 hover:bg-gray-50 transition-all duration-200"
-                                onClick={() => {
-                                  const phone =
-                                    provider.user?.phone || provider.phone;
-                                  if (phone) {
-                                    window.open(`tel:${phone}`, "_self");
-                                  } else {
-                                    alert("Phone number not available");
-                                  }
-                                }}
+                                onClick={() => handleContactProvider(provider)}
                               >
                                 <Phone className="w-4 h-4 mr-2" />
                                 Contact
@@ -803,12 +814,11 @@ const ServicesPage = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() =>
-                                  navigate(`/provider/${provider._id}`)
-                                }
+                                onClick={() => handleViewDetails(provider)}
                                 className="hover:bg-emerald-50 hover:text-emerald-700 transition-all duration-200"
                               >
-                                View Profile
+                                <Eye className="w-4 h-4 mr-2" />
+                                View Details
                               </Button>
                             </div>
                           </div>
@@ -828,6 +838,18 @@ const ServicesPage = () => {
                 console.log("Booking successful:", booking);
                 setShowBookingModal(false);
               }}
+            />
+
+            <ProviderDetailsModal
+              provider={selectedProviderForDetails}
+              isOpen={showProviderDetails}
+              onClose={() => setShowProviderDetails(false)}
+              onBookNow={(provider) => {
+                setShowProviderDetails(false);
+                setSelectedProviderForBooking(provider);
+                setShowBookingModal(true);
+              }}
+              onContact={handleContactProvider}
             />
           </div>
         </div>
