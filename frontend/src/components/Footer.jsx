@@ -92,9 +92,9 @@ const Footer = () => {
               variants={containerVariants}
             >
               {[
-                { to: "/service", text: "All Services" },
-                { href: "#how-it-works", text: "How it Works" },
-                { href: "#testimonials", text: "Customer Reviews" },
+                { to: "/services", text: "All Services" },
+                { to: "/how-it-works", text: "How it Works" },
+                { to: "/reviews", text: "Customer Reviews" },
                 { to: "/support", text: "Support" },
               ].map((link, index) => (
                 <motion.li
@@ -200,17 +200,24 @@ const Footer = () => {
             whileInView="visible"
             viewport={{ once: true }}
           >
-            {["Privacy Policy", "Terms of Service"].map((text, index) => (
-              <motion.a
-                key={index}
-                href="#"
-                className="text-gray-300 hover:text-emerald-400 text-sm transition-colors"
-                variants={itemVariants}
-                whileHover={{ y: -2 }}
-                transition={{ duration: 0.2 }}
-              >
-                {text}
-              </motion.a>
+            {[
+              { to: "/privacy-policy", text: "Privacy Policy" },
+              { to: "/terms-of-service", text: "Terms of Service" },
+            ].map((link, index) => (
+              <motion.div key={index}>
+                <Link
+                  to={link.to}
+                  className="text-gray-300 hover:text-emerald-400 text-sm transition-colors"
+                >
+                  <motion.span
+                    variants={itemVariants}
+                    whileHover={{ y: -2 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {link.text}
+                  </motion.span>
+                </Link>
+              </motion.div>
             ))}
           </motion.div>
         </motion.div>

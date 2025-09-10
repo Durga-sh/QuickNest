@@ -10,8 +10,12 @@ import ProviderDashboard from "./pages/ProviderDashboardpage";
 import CreateServicePage from "./pages/CreateServicePage";
 import AllServicesPage from "./pages/serviceDetailsPage";
 import UserBookings from "./pages/UserBooking";
-import ServicesPage from "./pages/servicesPage";
 import ProviderBookings from "./pages/ProviderbookingPage";
+import SupportPage from "./pages/SupportPage";
+import HowItWorksPage from "./pages/HowItWorksPage";
+import ReviewsPage from "./pages/ReviewsPage";
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
+import TermsOfServicePage from "./pages/TermsOfServicePage";
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { isAuthenticated, user } = useAuth();
@@ -94,6 +98,13 @@ const AppRoutes = () => {
           </ProviderRestrictedRoute>
         }
       />
+
+      {/* New pages */}
+      <Route path="/support" element={<SupportPage />} />
+      <Route path="/how-it-works" element={<HowItWorksPage />} />
+      <Route path="/reviews" element={<ReviewsPage />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+      <Route path="/terms-of-service" element={<TermsOfServicePage />} />
     </Routes>
   );
 };
