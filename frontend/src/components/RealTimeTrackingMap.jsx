@@ -39,14 +39,10 @@ const mapOptions = {
   gestureHandling: "cooperative",
 };
 
-// Google Maps configuration
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
-
-// Check if we have a valid API key
-const hasValidGoogleMapsKey = GOOGLE_MAPS_API_KEY && 
-  GOOGLE_MAPS_API_KEY.length > 20 && 
-  !GOOGLE_MAPS_API_KEY.includes("your_") &&
-  !GOOGLE_MAPS_API_KEY.includes("demo");
+// Fallback Google Maps API Key - you should replace this with your actual key
+const GOOGLE_MAPS_API_KEY =
+  import.meta.env.VITE_GOOGLE_MAPS_API_KEY ||
+  "AIzaSyBHg5SkO4eR8VkK9F3kHl2wCJfv6_ZQ_z8"; // Demo key
 
 const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
   const { user } = useContext(AuthContext);
@@ -61,12 +57,10 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
   const [showProviderInfo, setShowProviderInfo] = useState(false);
   const [providerStatus, setProviderStatus] = useState("Unknown");
   const [retryCount, setRetryCount] = useState(0);
-  const [mapLoadTimeout, setMapLoadTimeout] = useState(false);
 
   // Auto-retry mechanism
   const MAX_RETRIES = 3;
   const RETRY_DELAY = 5000; // 5 seconds
-  const MAP_LOAD_TIMEOUT = 10000; // 10 seconds timeout for map loading
 
   // Initialize tracking with retry mechanism
   const initializeTracking = useCallback(
@@ -190,7 +184,7 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
 
     const handleTrackingStopped = (data) => {
       if (data.bookingId === bookingId) {
-        console.log("Tracking stopped:", data);
+        console.log("🔴 Tracking stopped:", data);
         setProviderStatus("Service completed");
       }
     };
@@ -204,7 +198,7 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
 
     const handleProviderOffline = (data) => {
       if (data.bookingId === bookingId) {
-        console.log("Provider offline:", data);
+        console.log("📴 Provider offline:", data);
         setError("Provider is currently offline");
         setProviderStatus("Offline");
       }
@@ -276,7 +270,7 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
   }, []);
 
   const handleMapError = useCallback(() => {
-    console.error("Google Map failed to load");
+    console.error("📍 Google Map failed to load");
     setError(
       "Failed to load Google Maps. Please check your internet connection."
     );
@@ -402,7 +396,8 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
       {/* Map */}
       {!loading && (trackingData?.tracking?.isActive || providerLocation) ? (
         <div className="relative">
-          {!hasValidGoogleMapsKey ? (
+          {!GOOGLE_MAPS_API_KEY ||
+          GOOGLE_MAPS_API_KEY === "AIzaSyBHg5SkO4eR8VkK9F3kHl2wCJfv6_ZQ_z8" ? (
             // Fallback map when Google Maps API key is not available
             <div className="h-96 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200 flex items-center justify-center">
               <div className="text-center p-8">
@@ -428,31 +423,23 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
                   </div>
                 )}
                 <div className="mt-4 text-sm text-gray-500">
-                  <p>Google Maps integration available with API key</p>
-                  <p className="text-xs mt-1">Add VITE_GOOGLE_MAPS_API_KEY to .env.local</p>
+                  <p>🗺️ Google Maps integration available with API key</p>
                 </div>
               </div>
             </div>
           ) : (
             <LoadScript
               googleMapsApiKey={GOOGLE_MAPS_API_KEY}
-              libraries={['geometry']} // Only load necessary libraries
               loadingElement={
-                <div className="h-96 flex items-center justify-center bg-gray-50 rounded-lg">
+                <div className="h-96 flex items-center justify-center bg-gray-50">
                   <div className="text-center">
                     <Loader className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
                     <p className="text-gray-600">Loading map...</p>
-                    <p className="text-xs text-gray-500 mt-2">This may take a few seconds</p>
                   </div>
                 </div>
               }
-              onLoad={() => {
-                console.log("LoadScript loaded successfully");
-              }}
-              onError={(error) => {
-                console.error("Google Maps LoadScript error:", error);
-                setError("Failed to load Google Maps. Using fallback display.");
-              }}
+              onLoad={() => console.log("LoadScript loaded")}
+              onError={handleMapError}
             >
               <GoogleMap
                 mapContainerStyle={mapContainerStyle}

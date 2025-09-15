@@ -28,7 +28,7 @@ const ProviderLocationTracker = ({ bookingId, onLocationUpdate }) => {
 
     try {
       setError(null);
-      
+
       // Get initial position
       const position = await getCurrentPosition();
       const location = {
@@ -152,7 +152,8 @@ const ProviderLocationTracker = ({ bookingId, onLocationUpdate }) => {
             <span className="text-sm font-medium">Current Location</span>
           </div>
           <p className="text-blue-700 text-sm mt-1 font-mono">
-            {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)}
+            {currentLocation.latitude.toFixed(6)},{" "}
+            {currentLocation.longitude.toFixed(6)}
           </p>
         </div>
       )}

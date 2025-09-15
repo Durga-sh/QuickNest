@@ -17,7 +17,6 @@ import ReviewsPage from "./pages/ReviewsPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import TermsOfServicePage from "./pages/TermsOfServicePage";
 import TrackingTestPage from "./pages/TrackingTestPage";
-
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { isAuthenticated, user } = useAuth();
