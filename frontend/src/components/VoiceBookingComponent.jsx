@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import {
   Mic,
   MicOff,
@@ -9,7 +9,7 @@ import {
   Loader2,
 } from "lucide-react";
 import voiceAssistantService from "../services/voiceAssistantService";
-import voiceBookingParser from "../utils/voiceBookingParser";
+import voiceBookingAPI from "../api/voiceBooking";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 
@@ -61,32 +61,56 @@ const VoiceBookingComponent = ({ onBookingParsed, onClose }) => {
   };
 
   const processVoiceCommand = async (command) => {
+    setIsProcessing(true);
     try {
-      const parsed = voiceBookingParser.parseVoiceCommand(command);
-      const bookingData = voiceBookingParser.generateBookingData(parsed);
+      // Call backend API to process voice command with AI
+      const response = await voiceBookingAPI.processVoiceCommand(command, true);
 
-      setParsedBooking(bookingData);
+      if (response.success) {
+        const { parsed, suggestions, canAutoBook, autoBookingResult } =
+          response.data;
 
-      // If confidence is high (>= 0.6), automatically proceed with booking
-      if (
-        parsed.confidence >= 0.6 &&
-        bookingData.service &&
-        bookingData.bookingDate
-      ) {
-        setSuggestions([]);
-        speakResponse("Great! I'll book that service for you right away.");
+        setParsedBooking(parsed);
+        setSuggestions(suggestions || []);
 
-        // Automatically proceed with booking
-        await autoBookService(bookingData);
-      } else {
+        // If auto-booking was successful
+        if (autoBookingResult && autoBookingResult.success) {
+          setBookingSuccess(true);
+          speakResponse("Great! Your booking has been created successfully!");
+          toast.success("Voice booking created successfully!");
+
+          // Auto-close after success
+          setTimeout(() => {
+            if (onClose) onClose();
+          }, 2000);
+        }
+        // If high confidence but no auto-booking
+        else if (canAutoBook && parsed.service && parsed.date) {
+          speakResponse(
+            "Great! I understood your request. Processing your booking now."
+          );
+          // Convert parsed data to booking format
+          const bookingData = {
+            service: parsed.service,
+            bookingDate: parsed.date,
+            timeSlot: parsed.time,
+            urgent: parsed.urgent,
+            specialInstructions: parsed.specialInstructions,
+            confidence: parsed.confidence,
+          };
+          await autoBookService(bookingData);
+        }
         // Low confidence, provide suggestions
-        const suggestions = voiceBookingParser.getSuggestions(parsed);
-        setSuggestions(suggestions);
-        speakResponse(
-          `I understood some of your request, but could you please be more specific? ${
-            suggestions[0] || ""
-          }`
-        );
+        else {
+          speakResponse(
+            `I understood some of your request, but could you please be more specific? ${
+              suggestions[0] ||
+              "Please provide more details about the service, date, and time."
+            }`
+          );
+        }
+      } else {
+        throw new Error(response.message || "Failed to process voice command");
       }
     } catch (error) {
       console.error("Error processing voice command:", error);
@@ -94,6 +118,7 @@ const VoiceBookingComponent = ({ onBookingParsed, onClose }) => {
       speakResponse(
         "Sorry, I couldn't understand your request. Please try again."
       );
+      toast.error("Failed to process voice command");
     } finally {
       setIsProcessing(false);
     }

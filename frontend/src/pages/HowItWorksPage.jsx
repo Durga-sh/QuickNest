@@ -1,5 +1,4 @@
-import React from "react";
-// eslint-disable-next-line no-unused-vars
+﻿import React from "react";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -14,7 +13,6 @@ import {
   CreditCard,
   MessageSquare,
 } from "lucide-react";
-
 const HowItWorksPage = () => {
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -26,7 +24,6 @@ const HowItWorksPage = () => {
       },
     },
   };
-
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
@@ -38,7 +35,6 @@ const HowItWorksPage = () => {
       },
     },
   };
-
   const steps = [
     {
       icon: Search,
@@ -73,7 +69,6 @@ const HowItWorksPage = () => {
         "Your feedback helps maintain quality and helps other customers make informed decisions.",
     },
   ];
-
   const features = [
     {
       icon: Shield,
@@ -100,7 +95,6 @@ const HowItWorksPage = () => {
         "Round-the-clock customer support to assist you before, during, and after your service.",
     },
   ];
-
   const forCustomers = [
     "Create an account or log in to get started",
     "Browse services by category or search for specific needs",
@@ -111,7 +105,6 @@ const HowItWorksPage = () => {
     "Track your service provider in real-time",
     "Rate and review after service completion",
   ];
-
   const forProviders = [
     "Register as a service provider on our platform",
     "Complete your professional profile with credentials",
@@ -122,10 +115,9 @@ const HowItWorksPage = () => {
     "Accept jobs that fit your schedule and expertise",
     "Provide excellent service and build your reputation",
   ];
-
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero Section */}
+      {}
       <motion.section
         className="bg-gradient-to-br from-emerald-600 to-blue-700 text-white py-16"
         initial="hidden"
@@ -144,8 +136,7 @@ const HowItWorksPage = () => {
           </motion.div>
         </div>
       </motion.section>
-
-      {/* Main Steps Section */}
+      {}
       <motion.section
         className="py-16"
         initial="hidden"
@@ -162,7 +153,6 @@ const HowItWorksPage = () => {
               From booking to completion, we've made it incredibly easy
             </p>
           </motion.div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {steps.map((step, index) => (
               <motion.div
@@ -172,24 +162,21 @@ const HowItWorksPage = () => {
                 whileHover={{ y: -5, scale: 1.02 }}
                 transition={{ duration: 0.3 }}
               >
-                {/* Step Number */}
+                {}
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-emerald-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">
                   {index + 1}
                 </div>
-
-                {/* Icon */}
+                {}
                 <div className="flex justify-center mb-4 mt-4">
                   <step.icon className="w-12 h-12 text-emerald-600" />
                 </div>
-
-                {/* Content */}
+                {}
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">
                   {step.title}
                 </h3>
                 <p className="text-gray-600 mb-3">{step.description}</p>
                 <p className="text-sm text-gray-500">{step.details}</p>
-
-                {/* Arrow */}
+                {}
                 {index < steps.length - 1 && (
                   <div className="hidden lg:block absolute top-1/2 -right-4 transform -translate-y-1/2">
                     <ArrowRight className="w-6 h-6 text-emerald-600" />
@@ -200,8 +187,7 @@ const HowItWorksPage = () => {
           </div>
         </div>
       </motion.section>
-
-      {/* Features Section */}
+      {}
       <motion.section
         className="py-16 bg-white"
         initial="hidden"
@@ -218,7 +204,6 @@ const HowItWorksPage = () => {
               We're committed to providing the best service experience
             </p>
           </motion.div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {features.map((feature, index) => (
               <motion.div
@@ -240,8 +225,7 @@ const HowItWorksPage = () => {
           </div>
         </div>
       </motion.section>
-
-      {/* Detailed Process Section */}
+      {}
       <motion.section
         className="py-16 bg-gray-50"
         initial="hidden"
@@ -251,7 +235,7 @@ const HowItWorksPage = () => {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            {/* For Customers */}
+            {}
             <motion.div variants={itemVariants}>
               <div className="bg-white rounded-lg shadow-lg p-8">
                 <div className="flex items-center mb-6">
@@ -274,8 +258,7 @@ const HowItWorksPage = () => {
                 </ul>
               </div>
             </motion.div>
-
-            {/* For Providers */}
+            {}
             <motion.div variants={itemVariants}>
               <div className="bg-white rounded-lg shadow-lg p-8">
                 <div className="flex items-center mb-6">
@@ -301,8 +284,7 @@ const HowItWorksPage = () => {
           </div>
         </div>
       </motion.section>
-
-      {/* CTA Section */}
+      {}
       <motion.section
         className="py-16 bg-emerald-600"
         initial="hidden"
@@ -343,5 +325,4 @@ const HowItWorksPage = () => {
     </div>
   );
 };
-
 export default HowItWorksPage;

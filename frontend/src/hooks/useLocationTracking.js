@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+﻿import { useState, useEffect, useRef, useCallback } from "react";
 import socketService from "../services/socketService";
 import trackingApiService from "../api/tracking";
-
 const useLocationTracking = (
   bookingId,
   userType = "provider",
@@ -14,30 +13,23 @@ const useLocationTracking = (
   const watchIdRef = useRef(null);
   const lastLocationRef = useRef(null);
   const locationUpdateIntervalRef = useRef(null);
-
-  // Check if geolocation is supported
   const isGeolocationSupported = "geolocation" in navigator;
-
-  // Request location permission
   const requestLocationPermission = useCallback(async () => {
     if (!isGeolocationSupported) {
       setError("Geolocation is not supported by this browser");
       return false;
     }
-
     try {
       const permission = await navigator.permissions.query({
         name: "geolocation",
       });
       setTrackingPermission(permission.state);
-
       if (permission.state === "denied") {
         setError(
           "Location permission denied. Please enable location access in your browser settings."
         );
         return false;
       }
-
       return true;
     } catch (err) {
       console.error("Error requesting location permission:", err);
@@ -45,15 +37,12 @@ const useLocationTracking = (
       return false;
     }
   }, [isGeolocationSupported]);
-
-  // Get current position
   const getCurrentPosition = useCallback(() => {
     return new Promise((resolve, reject) => {
       if (!isGeolocationSupported) {
         reject(new Error("Geolocation not supported"));
         return;
       }
-
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const location = {
@@ -67,7 +56,6 @@ const useLocationTracking = (
         (error) => {
           console.error("Geolocation error:", error);
           let errorMessage = "Failed to get location";
-
           switch (error.code) {
             case error.PERMISSION_DENIED:
               errorMessage = "Location access denied by user";
@@ -82,7 +70,6 @@ const useLocationTracking = (
               errorMessage = "Unknown location error";
               break;
           }
-
           reject(new Error(errorMessage));
         },
         {
@@ -93,33 +80,21 @@ const useLocationTracking = (
       );
     });
   }, [isGeolocationSupported]);
-
-  // Start location tracking
   const startTracking = useCallback(async () => {
     try {
       setError(null);
-
-      // Request permission first
       const hasPermission = await requestLocationPermission();
       if (!hasPermission) {
         return false;
       }
-
-      // Get initial location
       const initialLocation = await getCurrentPosition();
       setCurrentLocation(initialLocation);
-
-      // Start tracking on backend
       await trackingApiService.startTracking(bookingId, {
         latitude: initialLocation.latitude,
         longitude: initialLocation.longitude,
       });
-
-      // Connect to socket if not already connected
       socketService.connect();
       socketService.joinTracking(bookingId, userType, userId || "current-user");
-
-      // Start watching position changes
       if (navigator.geolocation) {
         watchIdRef.current = navigator.geolocation.watchPosition(
           (position) => {
@@ -129,11 +104,8 @@ const useLocationTracking = (
               accuracy: position.coords.accuracy,
               timestamp: new Date(position.timestamp),
             };
-
             setCurrentLocation(newLocation);
             lastLocationRef.current = newLocation;
-
-            // Emit location update via socket
             socketService.updateLocation(
               bookingId,
               newLocation.latitude,
@@ -151,8 +123,6 @@ const useLocationTracking = (
           }
         );
       }
-
-      // Also send periodic updates to API (fallback)
       locationUpdateIntervalRef.current = setInterval(async () => {
         if (lastLocationRef.current) {
           try {
@@ -165,9 +135,8 @@ const useLocationTracking = (
           }
         }
       }, 10000); // Update every 10 seconds
-
       setIsTracking(true);
-      console.log("🟢 Location tracking started for booking:", bookingId);
+      console.log("ðŸŸ¢ Location tracking started for booking:", bookingId);
       return true;
     } catch (err) {
       console.error("Failed to start tracking:", err);
@@ -181,40 +150,29 @@ const useLocationTracking = (
     requestLocationPermission,
     getCurrentPosition,
   ]);
-
-  // Stop location tracking
   const stopTracking = useCallback(async () => {
     try {
-      // Stop watching position
       if (watchIdRef.current) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
       }
-
-      // Clear interval
       if (locationUpdateIntervalRef.current) {
         clearInterval(locationUpdateIntervalRef.current);
         locationUpdateIntervalRef.current = null;
       }
-
-      // Stop tracking on backend
       if (bookingId) {
         await trackingApiService.stopTracking(bookingId);
         socketService.leaveTracking(bookingId);
       }
-
       setIsTracking(false);
       setCurrentLocation(null);
       lastLocationRef.current = null;
-
-      console.log("🔴 Location tracking stopped for booking:", bookingId);
+      console.log("ðŸ”´ Location tracking stopped for booking:", bookingId);
     } catch (err) {
       console.error("Failed to stop tracking:", err);
       setError(err.message || "Failed to stop location tracking");
     }
   }, [bookingId]);
-
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (watchIdRef.current) {
@@ -225,7 +183,6 @@ const useLocationTracking = (
       }
     };
   }, []);
-
   return {
     isTracking,
     currentLocation,
@@ -238,5 +195,4 @@ const useLocationTracking = (
     requestLocationPermission,
   };
 };
-
 export default useLocationTracking;

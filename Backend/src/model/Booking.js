@@ -1,6 +1,4 @@
-// Backend/src/model/Booking.js
-const mongoose = require("mongoose");
-
+﻿const mongoose = require("mongoose");
 const bookingSchema = new mongoose.Schema(
   {
     bookingId: {
@@ -87,7 +85,6 @@ const bookingSchema = new mongoose.Schema(
     completedAt: {
       type: Date,
     },
-    // Real-time tracking fields
     tracking: {
       isActive: {
         type: Boolean,
@@ -115,13 +112,23 @@ const bookingSchema = new mongoose.Schema(
         },
       ],
     },
+    isVoiceBooking: {
+      type: Boolean,
+      default: false,
+    },
+    voiceCommand: {
+      type: String,
+    },
+    aiConfidence: {
+      type: Number,
+      min: 0,
+      max: 1,
+    },
   },
   {
     timestamps: true,
   }
 );
-
-// Generate booking ID before saving
 bookingSchema.pre("save", async function (next) {
   if (!this.bookingId) {
     const count = await mongoose.model("Booking").countDocuments();
@@ -129,5 +136,4 @@ bookingSchema.pre("save", async function (next) {
   }
   next();
 });
-
 module.exports = mongoose.model("Booking", bookingSchema);

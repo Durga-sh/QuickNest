@@ -1,9 +1,8 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { Mic, MicOff, Zap, CheckCircle, Loader2 } from "lucide-react";
 import useVoiceAssistant from "../hooks/useVoiceAssistant";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
-
 const VoiceBookingButton = ({
   onBookingParsed,
   variant = "primary",
@@ -15,7 +14,6 @@ const VoiceBookingButton = ({
   const [showTooltip, setShowTooltip] = useState(false);
   const [isAutoBooking, setIsAutoBooking] = useState(false);
   const navigate = useNavigate();
-
   const {
     isListening,
     isProcessing,
@@ -34,13 +32,11 @@ const VoiceBookingButton = ({
     confidenceThreshold: 0.6, // Auto-book at 60% confidence
     onResult: async (bookingData, parsed) => {
       if (hasValidBooking && parsed.confidence >= 0.6) {
-        // Auto-book immediately for high confidence
         setIsAutoBooking(true);
         try {
           if (onBookingParsed) {
             onBookingParsed(bookingData);
           } else {
-            // Navigate to services with pre-filled data
             const queryParams = new URLSearchParams({
               service: bookingData.service || "",
               autoBook: "true",
@@ -50,7 +46,6 @@ const VoiceBookingButton = ({
               urgent: bookingData.urgent ? "true" : "false",
               confidence: parsed.confidence.toString(),
             });
-
             navigate(`/services?${queryParams.toString()}`);
             toast.success(
               "Voice booking processed! Redirecting to services..."
@@ -65,7 +60,6 @@ const VoiceBookingButton = ({
       }
     },
   });
-
   const handleClick = () => {
     if (isListening) {
       stopListening();
@@ -73,17 +67,14 @@ const VoiceBookingButton = ({
       startListening();
     }
   };
-
   const getButtonStyles = () => {
     const baseStyles =
       "inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed";
-
     const sizeStyles = {
       small: "px-3 py-2 text-sm",
       medium: "px-4 py-3 text-sm",
       large: "px-6 py-4 text-base",
     };
-
     const variantStyles = {
       primary: isListening
         ? "bg-red-600 hover:bg-red-700 text-white focus:ring-red-500 shadow-lg animate-pulse"
@@ -101,10 +92,8 @@ const VoiceBookingButton = ({
         ? "text-green-600 hover:text-green-700 hover:bg-green-50"
         : "text-purple-600 hover:text-purple-700 hover:bg-purple-50",
     };
-
     return `${baseStyles} ${sizeStyles[size]} ${variantStyles[variant]} ${className}`;
   };
-
   const getIconSize = () => {
     switch (size) {
       case "small":
@@ -115,7 +104,6 @@ const VoiceBookingButton = ({
         return "w-5 h-5";
     }
   };
-
   if (!isSupported) {
     return (
       <div className="relative">
@@ -138,7 +126,6 @@ const VoiceBookingButton = ({
       </div>
     );
   }
-
   return (
     <div className="relative">
       <button
@@ -159,7 +146,6 @@ const VoiceBookingButton = ({
         ) : (
           <Mic className={getIconSize()} />
         )}
-
         {showLabel && size !== "small" && (
           <span className="ml-2">
             {isProcessing
@@ -171,13 +157,11 @@ const VoiceBookingButton = ({
               : "Voice Booking"}
           </span>
         )}
-
         {isListening && variant === "primary" && (
           <div className="absolute inset-0 rounded-lg bg-red-500 opacity-20 animate-ping"></div>
         )}
       </button>
-
-      {/* Tooltip */}
+      {}
       {showTooltip && !isListening && !isProcessing && !isAutoBooking && (
         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 text-xs text-white bg-gray-800 rounded-lg shadow-lg whitespace-nowrap z-50">
           <div className="text-center">
@@ -189,13 +173,12 @@ const VoiceBookingButton = ({
           </div>
         </div>
       )}
-
-      {/* Voice Status Overlay */}
+      {}
       {(isListening || transcript || error || suggestions.length > 0) &&
         !isAutoBooking && (
           <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-80 max-w-sm">
             <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50">
-              {/* Listening Status */}
+              {}
               {isListening && (
                 <div className="flex items-center space-x-2 text-green-600 mb-2">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -204,23 +187,20 @@ const VoiceBookingButton = ({
                   </span>
                 </div>
               )}
-
-              {/* Transcript */}
+              {}
               {transcript && (
                 <div className="mb-3">
                   <p className="text-xs text-gray-500 mb-1">You said:</p>
                   <p className="text-sm text-gray-800 italic">"{transcript}"</p>
                 </div>
               )}
-
-              {/* Error */}
+              {}
               {error && (
                 <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
                   {error}
                 </div>
               )}
-
-              {/* Auto-booking Success */}
+              {}
               {hasValidBooking && confidence >= 0.6 && (
                 <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded">
                   <div className="flex items-center space-x-1 mb-1">
@@ -235,8 +215,7 @@ const VoiceBookingButton = ({
                   </div>
                 </div>
               )}
-
-              {/* Suggestions for low confidence */}
+              {}
               {suggestions.length > 0 && confidence < 0.6 && (
                 <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded">
                   <p className="text-xs text-yellow-800 font-medium mb-1">
@@ -244,13 +223,12 @@ const VoiceBookingButton = ({
                   </p>
                   <ul className="text-xs text-yellow-700 space-y-1">
                     {suggestions.map((suggestion, index) => (
-                      <li key={index}>• {suggestion}</li>
+                      <li key={index}>â€¢ {suggestion}</li>
                     ))}
                   </ul>
                 </div>
               )}
-
-              {/* Parsed Booking Preview */}
+              {}
               {parsedBooking && confidence > 0.3 && confidence < 0.6 && (
                 <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded">
                   <p className="text-xs text-blue-800 font-medium mb-1">
@@ -272,8 +250,7 @@ const VoiceBookingButton = ({
                   </div>
                 </div>
               )}
-
-              {/* Action Buttons */}
+              {}
               <div className="flex space-x-2">
                 {suggestions.length > 0 && (
                   <button
@@ -283,7 +260,6 @@ const VoiceBookingButton = ({
                     Try Again
                   </button>
                 )}
-
                 <button
                   onClick={stopListening}
                   className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs hover:bg-gray-300 transition-colors"
@@ -294,8 +270,7 @@ const VoiceBookingButton = ({
             </div>
           </div>
         )}
-
-      {/* Auto-booking Status */}
+      {}
       {isAutoBooking && (
         <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-80 max-w-sm">
           <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50">
@@ -314,10 +289,7 @@ const VoiceBookingButton = ({
     </div>
   );
 };
-
-// Preset variants for common use cases
 export const VoiceBookingButtonPresets = {
-  // Floating action button
   FloatingButton: (props) => (
     <VoiceBookingButton
       variant="primary"
@@ -327,8 +299,6 @@ export const VoiceBookingButtonPresets = {
       {...props}
     />
   ),
-
-  // Header button
   HeaderButton: (props) => (
     <VoiceBookingButton
       variant="secondary"
@@ -338,8 +308,6 @@ export const VoiceBookingButtonPresets = {
       {...props}
     />
   ),
-
-  // Minimal icon button
   IconButton: (props) => (
     <VoiceBookingButton
       variant="minimal"
@@ -349,8 +317,6 @@ export const VoiceBookingButtonPresets = {
       {...props}
     />
   ),
-
-  // Large call-to-action button
   CTAButton: (props) => (
     <VoiceBookingButton
       variant="primary"
@@ -361,5 +327,4 @@ export const VoiceBookingButtonPresets = {
     />
   ),
 };
-
 export default VoiceBookingButton;

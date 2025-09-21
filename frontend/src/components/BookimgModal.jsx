@@ -1,5 +1,4 @@
-// Hyperlocal Service Marketplace/src/components/BookingModal.jsx
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
   X,
   Calendar,
@@ -10,7 +9,6 @@ import {
   CreditCard,
 } from "lucide-react";
 import bookingApiService from "../api/booking";
-
 const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
   const [formData, setFormData] = useState({
     service: "",
@@ -24,9 +22,7 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
   if (!isOpen || !provider) return null;
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     if (name.includes(".")) {
@@ -45,7 +41,6 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
       }));
     }
   };
-
   const handleServiceChange = (e) => {
     const selectedService = provider.pricing.find(
       (p) => p.service === e.target.value
@@ -56,18 +51,15 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
       servicePrice: selectedService ? selectedService.price : 0,
     }));
   };
-
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
       setError("Geolocation is not supported by your browser.");
       return;
     }
-
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const lat = position.coords.latitude.toString();
         const lon = position.coords.longitude.toString();
-
         try {
           const response = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
@@ -97,7 +89,6 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
       }
     );
   };
-
   const timeSlots = [
     "09:00-10:00",
     "10:00-11:00",
@@ -109,7 +100,6 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
     "16:00-17:00",
     "17:00-18:00",
   ];
-
   const handleTimeSlotChange = (e) => {
     const [start, end] = e.target.value.split("-");
     setFormData((prev) => ({
@@ -117,7 +107,6 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
       timeSlot: { start, end },
     }));
   };
-
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
       const script = document.createElement("script");
@@ -127,13 +116,11 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
       document.body.appendChild(script);
     });
   };
-
   const handlePayment = async (orderData) => {
     const isLoaded = await loadRazorpayScript();
     if (!isLoaded) {
       throw new Error("Razorpay SDK failed to load");
     }
-
     return new Promise((resolve, reject) => {
       const options = {
         key: orderData.key,
@@ -164,19 +151,15 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
           },
         },
       };
-
       const rzp = new window.Razorpay(options);
       rzp.open();
     });
   };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
-
     try {
-      // Validate form
       if (
         !formData.service ||
         !formData.bookingDate ||
@@ -185,25 +168,17 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
       ) {
         throw new Error("Please fill in all required fields");
       }
-
-      // Create order
       console.log("Provider ID:", provider._id);
       const bookingData = {
         providerId: provider._id,
         ...formData,
       };
       console.log("Booking Data:", bookingData);
-
       const orderResponse = await bookingApiService.createOrder(bookingData);
-
-      // Open Razorpay payment
       const paymentResponse = await handlePayment(orderResponse);
-
-      // Verify payment
       const verificationResponse = await bookingApiService.verifyPayment(
         paymentResponse
       );
-
       if (verificationResponse.success) {
         onBookingSuccess(verificationResponse.booking);
         onClose();
@@ -214,24 +189,21 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
       setLoading(false);
     }
   };
-
   const formatPrice = (price) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
     }).format(price);
   };
-
   const today = new Date().toISOString().split("T")[0];
   const selectedTimeSlot =
     formData.timeSlot.start && formData.timeSlot.end
       ? `${formData.timeSlot.start}-${formData.timeSlot.end}`
       : "";
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
-        {/* Header */}
+        {}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-2xl font-bold text-gray-900">Book Service</h2>
           <button
@@ -241,8 +213,7 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
             <X className="h-6 w-6 text-gray-500" />
           </button>
         </div>
-
-        {/* Content */}
+        {}
         <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
             {error && (
@@ -250,15 +221,13 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
                 <p className="text-red-700">{error}</p>
               </div>
             )}
-
-            {/* Provider Info */}
+            {}
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="font-semibold text-gray-900 mb-2">
                 {provider.user?.name}
               </h3>
             </div>
-
-            {/* Service Selection */}
+            {}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <DollarSign className="h-4 w-4 inline mr-1" />
@@ -284,8 +253,7 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
                 </p>
               )}
             </div>
-
-            {/* Date and Time */}
+            {}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -323,8 +291,7 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
                 </select>
               </div>
             </div>
-
-            {/* Address */}
+            {}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <MapPin className="h-4 w-4 inline mr-1" />
@@ -347,8 +314,7 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
                 Use Current Location
               </button>
             </div>
-
-            {/* Contact Phone */}
+            {}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Phone className="h-4 w-4 inline mr-1" />
@@ -364,8 +330,7 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </div>
-
-            {/* Special Instructions */}
+            {}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Special Instructions
@@ -379,8 +344,7 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </div>
-
-            {/* Submit Button */}
+            {}
             <button
               type="submit"
               disabled={
@@ -403,5 +367,4 @@ const BookingModal = ({ provider, isOpen, onClose, onBookingSuccess }) => {
     </div>
   );
 };
-
 export default BookingModal;

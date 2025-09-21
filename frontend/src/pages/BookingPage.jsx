@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-
+﻿import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Calendar,
@@ -17,9 +16,7 @@ import {
   Droplets,
   Bug,
 } from "lucide-react";
-
 const services = [
-  // Beauty & Grooming
   {
     id: "salon-women",
     name: "Salon for Women",
@@ -108,8 +105,6 @@ const services = [
     color: "from-pink-500 to-rose-500",
     image: "/placeholder.svg?height=200&width=300&text=Bridal+Makeup",
   },
-
-  // Home Cleaning
   {
     id: "deep-cleaning",
     name: "Full Home Deep Cleaning",
@@ -198,8 +193,6 @@ const services = [
     color: "from-blue-500 to-cyan-500",
     image: "/placeholder.svg?height=200&width=300&text=Sofa+Carpet+Cleaning",
   },
-
-  // Appliance Repair
   {
     id: "ac-service",
     name: "AC Service & Repair",
@@ -278,8 +271,6 @@ const services = [
     color: "from-orange-500 to-red-500",
     image: "/placeholder.svg?height=200&width=300&text=Microwave+Repair",
   },
-
-  // Electrical Services
   {
     id: "electrician",
     name: "Electrician Services",
@@ -359,8 +350,6 @@ const services = [
     color: "from-yellow-500 to-orange-500",
     image: "/placeholder.svg?height=200&width=300&text=Home+Wiring+Services",
   },
-
-  // Plumbing Services
   {
     id: "plumber",
     name: "Plumber Services",
@@ -437,8 +426,6 @@ const services = [
     color: "from-blue-600 to-indigo-600",
     image: "/placeholder.svg?height=200&width=300&text=Water+Tank+Cleaning",
   },
-
-  // Pest Control
   {
     id: "general-pest",
     name: "General Pest Control",
@@ -527,7 +514,6 @@ const services = [
     image: "/placeholder.svg?height=200&width=300&text=Bed+Bug+Treatment",
   },
 ];
-
 const timeSlots = [
   "09:00 AM",
   "10:00 AM",
@@ -542,7 +528,6 @@ const timeSlots = [
   "07:00 PM",
   "08:00 PM",
 ];
-
 export default function Booking() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -554,11 +539,8 @@ export default function Booking() {
     time: "",
     price: 0,
   });
-
   const [errors, setErrors] = useState({});
-
   useEffect(() => {
-    // Check if there's a selected service from localStorage
     const selectedService = localStorage.getItem("selectedService");
     if (selectedService) {
       const serviceData = JSON.parse(selectedService);
@@ -567,18 +549,15 @@ export default function Booking() {
         service: serviceData.service,
         price: serviceData.price,
       }));
-      // Clear the localStorage after using it
       localStorage.removeItem("selectedService");
     }
   }, []);
-
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
     }
   };
-
   const handleServiceChange = (serviceName) => {
     const selectedService = services.find((s) => s.name === serviceName);
     setFormData((prev) => ({
@@ -590,30 +569,24 @@ export default function Booking() {
       setErrors((prev) => ({ ...prev, service: "" }));
     }
   };
-
   const validateForm = () => {
     const newErrors = {};
-
     if (!formData.name.trim()) newErrors.name = "Name is required";
     if (!formData.phone.trim()) newErrors.phone = "Phone is required";
     if (!formData.address.trim()) newErrors.address = "Address is required";
     if (!formData.service) newErrors.service = "Service selection is required";
     if (!formData.date) newErrors.date = "Date is required";
     if (!formData.time) newErrors.time = "Time is required";
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
   const handleSubmit = (e) => {
     e.preventDefault();
     if (validateForm()) {
-      // Store booking data and navigate to payment
       localStorage.setItem("bookingData", JSON.stringify(formData));
       navigate("/payment");
     }
   };
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -623,7 +596,7 @@ export default function Booking() {
       className="relative z-10 min-h-screen flex items-center justify-center p-4 py-8 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50"
     >
       <div className="w-full max-w-4xl">
-        {/* Header */}
+        {}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -643,8 +616,7 @@ export default function Booking() {
             Professional home services at your doorstep
           </p>
         </motion.div>
-
-        {/* Main Form Card */}
+        {}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -652,7 +624,7 @@ export default function Booking() {
           className="bg-white/80 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/50"
         >
           <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Personal Information */}
+            {}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <motion.div
                 whileHover={{ scale: 1.02 }}
@@ -675,7 +647,6 @@ export default function Booking() {
                   </p>
                 )}
               </motion.div>
-
               <motion.div
                 whileHover={{ scale: 1.02 }}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
@@ -698,8 +669,7 @@ export default function Booking() {
                 )}
               </motion.div>
             </div>
-
-            {/* Address */}
+            {}
             <motion.div
               whileHover={{ scale: 1.01 }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
@@ -721,8 +691,7 @@ export default function Booking() {
                 </p>
               )}
             </motion.div>
-
-            {/* Service Selection */}
+            {}
             <motion.div>
               <label className="block text-gray-700 font-semibold mb-4 text-sm uppercase tracking-wide">
                 <Briefcase className="inline w-4 h-4 mr-2 text-blue-600" />
@@ -747,7 +716,7 @@ export default function Booking() {
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="text-blue-600 font-bold text-lg">
-                        ₹{service.price}
+                        â‚¹{service.price}
                       </div>
                       <div className="flex items-center text-yellow-500 text-xs">
                         <Star className="w-3 h-3 mr-1 fill-current" />
@@ -766,8 +735,7 @@ export default function Booking() {
                 </p>
               )}
             </motion.div>
-
-            {/* Date and Time */}
+            {}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <motion.div
                 whileHover={{ scale: 1.02 }}
@@ -790,7 +758,6 @@ export default function Booking() {
                   </p>
                 )}
               </motion.div>
-
               <motion.div
                 whileHover={{ scale: 1.02 }}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
@@ -818,8 +785,7 @@ export default function Booking() {
                 )}
               </motion.div>
             </div>
-
-            {/* Price Display */}
+            {}
             {formData.service && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -831,7 +797,7 @@ export default function Booking() {
                     Service Cost
                   </div>
                   <div className="text-4xl font-bold text-blue-600">
-                    ₹{formData.price}
+                    â‚¹{formData.price}
                   </div>
                   <div className="text-gray-500 text-sm mt-2">
                     *Inclusive of all taxes
@@ -839,15 +805,14 @@ export default function Booking() {
                 </div>
               </motion.div>
             )}
-
-            {/* Submit Button */}
+            {}
             <motion.button
               type="submit"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="w-full py-5 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-blue-300 text-lg font-bold"
             >
-              Continue to Payment →
+              Continue to Payment â†’
             </motion.button>
           </form>
         </motion.div>

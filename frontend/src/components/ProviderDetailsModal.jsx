@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import {
   X,
   Star,
@@ -13,7 +13,6 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { Button } from "./ui/button";
-
 const ProviderDetailsModal = ({
   provider,
   isOpen,
@@ -22,7 +21,6 @@ const ProviderDetailsModal = ({
   onContact,
 }) => {
   if (!isOpen || !provider) return null;
-
   const formatAvailability = (availability) => {
     if (!availability || availability.length === 0) return "Not specified";
     return availability
@@ -34,7 +32,6 @@ const ProviderDetailsModal = ({
       })
       .join(" | ");
   };
-
   const renderStars = (rating) => {
     return [...Array(5)].map((_, i) => (
       <Star
@@ -47,11 +44,10 @@ const ProviderDetailsModal = ({
       />
     ));
   };
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
+        {}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-2xl relative">
           <button
             onClick={onClose}
@@ -59,7 +55,6 @@ const ProviderDetailsModal = ({
           >
             <X className="w-5 h-5" />
           </button>
-
           <div className="flex items-start space-x-4">
             <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
               <User className="w-8 h-8 text-white" />
@@ -81,10 +76,9 @@ const ProviderDetailsModal = ({
             </div>
           </div>
         </div>
-
-        {/* Content */}
+        {}
         <div className="p-6 space-y-6">
-          {/* Contact Information */}
+          {}
           <div className="bg-gray-50 rounded-xl p-4">
             <h3 className="text-lg font-semibold mb-3 flex items-center">
               <Phone className="w-5 h-5 mr-2 text-blue-600" />
@@ -111,8 +105,7 @@ const ProviderDetailsModal = ({
               </div>
             </div>
           </div>
-
-          {/* Skills & Expertise */}
+          {}
           <div>
             <h3 className="text-lg font-semibold mb-3 flex items-center">
               <Award className="w-5 h-5 mr-2 text-blue-600" />
@@ -129,8 +122,7 @@ const ProviderDetailsModal = ({
               ))}
             </div>
           </div>
-
-          {/* Services & Pricing */}
+          {}
           <div>
             <h3 className="text-lg font-semibold mb-3 flex items-center">
               <DollarSign className="w-5 h-5 mr-2 text-blue-600" />
@@ -147,15 +139,14 @@ const ProviderDetailsModal = ({
                       {service.service}
                     </h4>
                     <span className="text-lg font-bold text-green-600">
-                      ₹{service.price}
+                      â‚¹{service.price}
                     </span>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-
-          {/* Availability */}
+          {}
           {provider.availability && provider.availability.length > 0 && (
             <div>
               <h3 className="text-lg font-semibold mb-3 flex items-center">
@@ -169,8 +160,7 @@ const ProviderDetailsModal = ({
               </div>
             </div>
           )}
-
-          {/* Reviews Section */}
+          {}
           {provider.reviews && provider.reviews.length > 0 && (
             <div>
               <h3 className="text-lg font-semibold mb-3 flex items-center">
@@ -197,8 +187,7 @@ const ProviderDetailsModal = ({
               </div>
             </div>
           )}
-
-          {/* Action Buttons */}
+          {}
           <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
             <Button
               onClick={() => onBookNow(provider)}
@@ -228,5 +217,4 @@ const ProviderDetailsModal = ({
     </div>
   );
 };
-
 export default ProviderDetailsModal;

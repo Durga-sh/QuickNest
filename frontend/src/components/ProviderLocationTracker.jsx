@@ -1,54 +1,40 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { MapPin, Play, Square, AlertCircle, Loader, Wifi } from "lucide-react";
 import trackingApiService from "../api/tracking";
-
 const ProviderLocationTracker = ({ bookingId, onLocationUpdate }) => {
   const [isTracking, setIsTracking] = useState(false);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [error, setError] = useState(null);
   const [watchId, setWatchId] = useState(null);
-
-  // Check if geolocation is supported
   const isGeolocationSupported = "geolocation" in navigator;
-
   useEffect(() => {
-    // Cleanup on unmount
     return () => {
       if (watchId) {
         navigator.geolocation.clearWatch(watchId);
       }
     };
   }, [watchId]);
-
   const startTracking = async () => {
     if (!isGeolocationSupported) {
       setError("Geolocation is not supported by this browser");
       return;
     }
-
     try {
       setError(null);
-
-      // Get initial position
       const position = await getCurrentPosition();
       const location = {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
       };
-
-      // Start tracking on backend
       await trackingApiService.startTracking(bookingId, location);
       setCurrentLocation(location);
       setIsTracking(true);
-
-      // Start watching position
       const id = navigator.geolocation.watchPosition(
         async (position) => {
           const newLocation = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
           };
-
           try {
             await trackingApiService.updateLocation(bookingId, newLocation);
             setCurrentLocation(newLocation);
@@ -69,21 +55,18 @@ const ProviderLocationTracker = ({ bookingId, onLocationUpdate }) => {
           maximumAge: 30000,
         }
       );
-
       setWatchId(id);
     } catch (err) {
       setError(err.message || "Failed to start tracking");
       setIsTracking(false);
     }
   };
-
   const stopTracking = async () => {
     try {
       if (watchId) {
         navigator.geolocation.clearWatch(watchId);
         setWatchId(null);
       }
-
       await trackingApiService.stopTracking(bookingId);
       setIsTracking(false);
       setCurrentLocation(null);
@@ -91,7 +74,6 @@ const ProviderLocationTracker = ({ bookingId, onLocationUpdate }) => {
       setError(err.message || "Failed to stop tracking");
     }
   };
-
   const getCurrentPosition = () => {
     return new Promise((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(resolve, reject, {
@@ -101,7 +83,6 @@ const ProviderLocationTracker = ({ bookingId, onLocationUpdate }) => {
       });
     });
   };
-
   if (!isGeolocationSupported) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -115,7 +96,6 @@ const ProviderLocationTracker = ({ bookingId, onLocationUpdate }) => {
       </div>
     );
   }
-
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4">
       <div className="flex items-center justify-between mb-4">
@@ -134,7 +114,6 @@ const ProviderLocationTracker = ({ bookingId, onLocationUpdate }) => {
           </span>
         </div>
       </div>
-
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
           <div className="flex items-center space-x-2 text-red-800">
@@ -144,7 +123,6 @@ const ProviderLocationTracker = ({ bookingId, onLocationUpdate }) => {
           <p className="text-red-700 text-sm mt-1">{error}</p>
         </div>
       )}
-
       {currentLocation && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
           <div className="flex items-center space-x-2 text-blue-800">
@@ -157,7 +135,6 @@ const ProviderLocationTracker = ({ bookingId, onLocationUpdate }) => {
           </p>
         </div>
       )}
-
       <div className="flex space-x-3">
         {!isTracking ? (
           <button
@@ -177,13 +154,11 @@ const ProviderLocationTracker = ({ bookingId, onLocationUpdate }) => {
           </button>
         )}
       </div>
-
       <div className="mt-3 text-xs text-gray-500">
-        <p>📍 Real-time location sharing with customers</p>
-        <p>🔒 Location data is only shared during active bookings</p>
+        <p>ðŸ“ Real-time location sharing with customers</p>
+        <p>ðŸ”’ Location data is only shared during active bookings</p>
       </div>
     </div>
   );
 };
-
 export default ProviderLocationTracker;

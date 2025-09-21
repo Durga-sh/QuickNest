@@ -1,11 +1,9 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-// eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
 import { login } from "../../api/auth";
 import { useAuth } from "../../hooks/useAuth";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
-
 const LoginForm = () => {
   const [formData, setFormData] = useState({
     email: "",
@@ -16,23 +14,19 @@ const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { loginUser } = useAuth();
-
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
   };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setFormError("");
-
     try {
       const { user, token } = await login(formData);
       loginUser(user, token);
-      // Check if user is a provider and redirect accordingly
       if (user.role === "provider") {
         navigate("/provider-dashboard");
       } else {
@@ -45,7 +39,6 @@ const LoginForm = () => {
       setIsLoading(false);
     }
   };
-
   return (
     <div className="w-full">
       <motion.h2
@@ -56,7 +49,6 @@ const LoginForm = () => {
       >
         Login to Your Account
       </motion.h2>
-
       {formError && (
         <motion.div
           className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-6"
@@ -67,7 +59,6 @@ const LoginForm = () => {
           {formError}
         </motion.div>
       )}
-
       <form onSubmit={handleSubmit} className="space-y-6">
         <motion.div
           className="form-group"
@@ -95,7 +86,6 @@ const LoginForm = () => {
             />
           </div>
         </motion.div>
-
         <motion.div
           className="form-group"
           initial={{ opacity: 0, x: -20 }}
@@ -123,7 +113,7 @@ const LoginForm = () => {
               onChange={handleChange}
               required
               className="w-full bg-gray-50 border border-gray-300 rounded-lg px-12 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200"
-              placeholder="••••••••"
+              placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
             />
             <button
               type="button"
@@ -138,7 +128,6 @@ const LoginForm = () => {
             </button>
           </div>
         </motion.div>
-
         <motion.button
           type="submit"
           className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white py-3 rounded-lg transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
@@ -178,7 +167,6 @@ const LoginForm = () => {
           )}
         </motion.button>
       </form>
-
       <motion.div
         className="mt-6 text-center text-gray-600"
         initial={{ opacity: 0 }}
@@ -196,5 +184,4 @@ const LoginForm = () => {
     </div>
   );
 };
-
 export default LoginForm;

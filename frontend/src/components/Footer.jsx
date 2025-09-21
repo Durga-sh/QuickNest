@@ -1,10 +1,7 @@
-"use client";
-
+﻿"use client";
 import { Link } from "react-router-dom";
 import { Home } from "lucide-react";
-// eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
-
 const Footer = () => {
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -16,7 +13,6 @@ const Footer = () => {
       },
     },
   };
-
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
@@ -28,7 +24,6 @@ const Footer = () => {
       },
     },
   };
-
   const iconVariants = {
     hover: {
       scale: 1.1,
@@ -39,7 +34,6 @@ const Footer = () => {
       },
     },
   };
-
   return (
     <motion.footer
       className="bg-gray-800 text-white w-full"
@@ -79,7 +73,6 @@ const Footer = () => {
               platform.
             </motion.p>
           </motion.div>
-
           <motion.div variants={itemVariants}>
             <motion.h3
               className="text-lg font-semibold mb-4 text-emerald-400"
@@ -123,7 +116,6 @@ const Footer = () => {
               ))}
             </motion.ul>
           </motion.div>
-
           <motion.div variants={itemVariants}>
             <motion.h3
               className="text-lg font-semibold mb-4 text-emerald-400"
@@ -179,7 +171,6 @@ const Footer = () => {
             </motion.ul>
           </motion.div>
         </motion.div>
-
         <motion.div
           className="mt-8 pt-8 border-t border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between"
           initial={{ opacity: 0, y: 20 }}
@@ -192,7 +183,7 @@ const Footer = () => {
             whileHover={{ scale: 1.02 }}
             transition={{ duration: 0.2 }}
           >
-            © 2025 QuickNest. All rights reserved.
+            Â© 2025 QuickNest. All rights reserved.
           </motion.p>
           <motion.div
             className="flex space-x-4 mt-4 sm:mt-0"
@@ -226,5 +217,4 @@ const Footer = () => {
     </motion.footer>
   );
 };
-
 export default Footer;

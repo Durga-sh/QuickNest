@@ -1,7 +1,5 @@
-
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { Mic, MicOff, AlertCircle } from "lucide-react";
-
 const VoiceBookingSafeWrapper = ({
   onBookingParsed,
   variant = "primary",
@@ -14,9 +12,7 @@ const VoiceBookingSafeWrapper = ({
   const [transcript, setTranscript] = useState("");
   const [error, setError] = useState("");
   const [recognition, setRecognition] = useState(null);
-
   useEffect(() => {
-    // Check browser support
     const checkSupport = () => {
       try {
         const hasRecognition = !!(
@@ -29,58 +25,47 @@ const VoiceBookingSafeWrapper = ({
         return false;
       }
     };
-
     const supported = checkSupport();
     setIsSupported(supported);
-
     if (supported) {
       try {
         const SpeechRecognition =
           window.SpeechRecognition || window.webkitSpeechRecognition;
         const recognitionInstance = new SpeechRecognition();
-
         recognitionInstance.continuous = false;
         recognitionInstance.interimResults = true;
         recognitionInstance.lang = "en-US";
-
         recognitionInstance.onstart = () => {
           setIsListening(true);
           setError("");
         };
-
         recognitionInstance.onresult = (event) => {
           let finalTranscript = "";
-
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
               finalTranscript += transcript;
             }
           }
-
           if (finalTranscript) {
             setTranscript(finalTranscript);
             processVoiceCommand(finalTranscript);
           }
         };
-
         recognitionInstance.onerror = (event) => {
           console.error("Speech recognition error:", event.error);
           setError(`Voice recognition error: ${event.error}`);
           setIsListening(false);
         };
-
         recognitionInstance.onend = () => {
           setIsListening(false);
         };
-
         setRecognition(recognitionInstance);
       } catch (error) {
         console.error("Failed to initialize speech recognition:", error);
         setIsSupported(false);
       }
     }
-
     return () => {
       if (recognition) {
         try {
@@ -91,14 +76,9 @@ const VoiceBookingSafeWrapper = ({
       }
     };
   }, []);
-
   const processVoiceCommand = (command) => {
     console.log("Processing voice command:", command);
-
-    // Simple parsing logic
     const normalizedText = command.toLowerCase().trim();
-
-    // Extract service
     const serviceKeywords = {
       electrician: ["electrician", "electrical", "electric"],
       plumber: ["plumber", "plumbing", "pipe", "water"],
@@ -107,7 +87,6 @@ const VoiceBookingSafeWrapper = ({
       mechanic: ["mechanic", "car", "vehicle", "auto"],
       painter: ["painter", "paint", "wall"],
     };
-
     let service = "";
     for (const [serviceType, keywords] of Object.entries(serviceKeywords)) {
       if (keywords.some((keyword) => normalizedText.includes(keyword))) {
@@ -115,29 +94,22 @@ const VoiceBookingSafeWrapper = ({
         break;
       }
     }
-
-    // Extract date
     let date = new Date();
     if (normalizedText.includes("tomorrow")) {
       date.setDate(date.getDate() + 1);
     }
-
-    // Extract time
     let timeSlot = { start: "09:00", end: "10:00" };
     const timeMatch = normalizedText.match(/(\d{1,2})\s*(am|pm)/i);
     if (timeMatch) {
       let hour = parseInt(timeMatch[1]);
       const period = timeMatch[2].toLowerCase();
-
       if (period === "pm" && hour !== 12) hour += 12;
       if (period === "am" && hour === 12) hour = 0;
-
       timeSlot = {
         start: `${hour.toString().padStart(2, "0")}:00`,
         end: `${(hour + 1).toString().padStart(2, "0")}:00`,
       };
     }
-
     const bookingData = {
       service,
       serviceDisplay: service
@@ -148,7 +120,6 @@ const VoiceBookingSafeWrapper = ({
       originalCommand: command,
       confidence: service ? 0.8 : 0.3,
     };
-
     if (service && onBookingParsed) {
       onBookingParsed(bookingData);
       speak(
@@ -163,7 +134,6 @@ const VoiceBookingSafeWrapper = ({
       );
     }
   };
-
   const speak = (text) => {
     try {
       if (window.speechSynthesis) {
@@ -176,10 +146,8 @@ const VoiceBookingSafeWrapper = ({
       console.error("Error in speech synthesis:", error);
     }
   };
-
   const startListening = () => {
     if (!recognition) return;
-
     try {
       setError("");
       setTranscript("");
@@ -190,27 +158,22 @@ const VoiceBookingSafeWrapper = ({
       setError("Failed to start voice recognition");
     }
   };
-
   const stopListening = () => {
     if (!recognition) return;
-
     try {
       recognition.stop();
     } catch (error) {
       console.error("Error stopping recognition:", error);
     }
   };
-
   const getButtonStyles = () => {
     const baseStyles =
       "inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed";
-
     const sizeStyles = {
       small: "px-3 py-2 text-sm",
       medium: "px-4 py-3 text-sm",
       large: "px-6 py-4 text-base",
     };
-
     const variantStyles = {
       primary: isListening
         ? "bg-red-600 hover:bg-red-700 text-white focus:ring-red-500 shadow-lg animate-pulse"
@@ -219,10 +182,8 @@ const VoiceBookingSafeWrapper = ({
         ? "bg-red-100 text-red-700 hover:bg-red-200 border border-red-300"
         : "bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-300",
     };
-
     return `${baseStyles} ${sizeStyles[size]} ${variantStyles[variant]} ${className}`;
   };
-
   if (!isSupported) {
     return (
       <button
@@ -237,7 +198,6 @@ const VoiceBookingSafeWrapper = ({
       </button>
     );
   }
-
   return (
     <div className="relative">
       <button
@@ -255,8 +215,7 @@ const VoiceBookingSafeWrapper = ({
           </span>
         )}
       </button>
-
-      {/* Status overlay */}
+      {}
       {(isListening || transcript || error) && (
         <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-80 max-w-sm">
           <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50">
@@ -266,21 +225,18 @@ const VoiceBookingSafeWrapper = ({
                 <span className="text-sm font-medium">Listening...</span>
               </div>
             )}
-
             {transcript && (
               <div className="mb-3">
                 <p className="text-xs text-gray-500 mb-1">You said:</p>
                 <p className="text-sm text-gray-800 italic">"{transcript}"</p>
               </div>
             )}
-
             {error && (
               <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700 flex items-center space-x-2">
                 <AlertCircle className="w-4 h-4" />
                 <span>{error}</span>
               </div>
             )}
-
             <button
               onClick={() => {
                 setTranscript("");
@@ -297,8 +253,6 @@ const VoiceBookingSafeWrapper = ({
     </div>
   );
 };
-
-// Preset variants
 export const VoiceBookingSafePresets = {
   FloatingButton: (props) => (
     <VoiceBookingSafeWrapper
@@ -310,5 +264,4 @@ export const VoiceBookingSafePresets = {
     />
   ),
 };
-
 export default VoiceBookingSafeWrapper;

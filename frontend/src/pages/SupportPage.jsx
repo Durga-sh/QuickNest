@@ -1,5 +1,4 @@
-import React, { useState } from "react";
-// eslint-disable-next-line no-unused-vars
+﻿import React, { useState } from "react";
 import { motion } from "framer-motion";
 import {
   Phone,
@@ -10,7 +9,6 @@ import {
   Send,
   MapPin,
 } from "lucide-react";
-
 const SupportPage = () => {
   const [formData, setFormData] = useState({
     name: "",
@@ -19,17 +17,14 @@ const SupportPage = () => {
     message: "",
     category: "general",
   });
-
   const handleInputChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
   };
-
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Handle form submission logic here
     console.log("Support form submitted:", formData);
     alert("Thank you for contacting us! We'll get back to you soon.");
     setFormData({
@@ -40,7 +35,6 @@ const SupportPage = () => {
       category: "general",
     });
   };
-
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -51,7 +45,6 @@ const SupportPage = () => {
       },
     },
   };
-
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
@@ -63,7 +56,6 @@ const SupportPage = () => {
       },
     },
   };
-
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <motion.div
@@ -72,7 +64,7 @@ const SupportPage = () => {
         animate="visible"
         variants={containerVariants}
       >
-        {/* Header */}
+        {}
         <motion.div className="text-center mb-12" variants={itemVariants}>
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
             How Can We Help You?
@@ -82,15 +74,13 @@ const SupportPage = () => {
             service team for any questions, concerns, or assistance you need.
           </p>
         </motion.div>
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-          {/* Contact Information */}
+          {}
           <motion.div className="lg:col-span-1" variants={itemVariants}>
             <div className="bg-white rounded-lg shadow-lg p-6">
               <h2 className="text-2xl font-semibold text-gray-900 mb-6">
                 Contact Information
               </h2>
-
               <div className="space-y-4">
                 <div className="flex items-center">
                   <Phone className="w-5 h-5 text-emerald-500 mr-3" />
@@ -99,7 +89,6 @@ const SupportPage = () => {
                     <p className="text-gray-600">+91 7205882737</p>
                   </div>
                 </div>
-
                 <div className="flex items-center">
                   <Mail className="w-5 h-5 text-emerald-500 mr-3" />
                   <div>
@@ -107,7 +96,6 @@ const SupportPage = () => {
                     <p className="text-gray-600">support@quicknest.com</p>
                   </div>
                 </div>
-
                 <div className="flex items-center">
                   <MessageCircle className="w-5 h-5 text-emerald-500 mr-3" />
                   <div>
@@ -115,7 +103,6 @@ const SupportPage = () => {
                     <p className="text-gray-600">Available 24/7</p>
                   </div>
                 </div>
-
                 <div className="flex items-center">
                   <MapPin className="w-5 h-5 text-emerald-500 mr-3" />
                   <div>
@@ -126,7 +113,6 @@ const SupportPage = () => {
                   </div>
                 </div>
               </div>
-
               <div className="mt-8 p-4 bg-emerald-50 rounded-lg">
                 <div className="flex items-center mb-2">
                   <Clock className="w-5 h-5 text-emerald-500 mr-2" />
@@ -140,14 +126,12 @@ const SupportPage = () => {
               </div>
             </div>
           </motion.div>
-
-          {/* Contact Form */}
+          {}
           <motion.div className="lg:col-span-2" variants={itemVariants}>
             <div className="bg-white rounded-lg shadow-lg p-6">
               <h2 className="text-2xl font-semibold text-gray-900 mb-6">
                 Send us a Message
               </h2>
-
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -168,7 +152,6 @@ const SupportPage = () => {
                       placeholder="Your full name"
                     />
                   </div>
-
                   <div>
                     <label
                       htmlFor="email"
@@ -188,7 +171,6 @@ const SupportPage = () => {
                     />
                   </div>
                 </div>
-
                 <div>
                   <label
                     htmlFor="category"
@@ -211,7 +193,6 @@ const SupportPage = () => {
                     <option value="feedback">Feedback & Suggestions</option>
                   </select>
                 </div>
-
                 <div>
                   <label
                     htmlFor="subject"
@@ -230,7 +211,6 @@ const SupportPage = () => {
                     placeholder="Brief description of your inquiry"
                   />
                 </div>
-
                 <div>
                   <label
                     htmlFor="message"
@@ -249,7 +229,6 @@ const SupportPage = () => {
                     placeholder="Please provide details about your inquiry..."
                   />
                 </div>
-
                 <motion.button
                   type="submit"
                   className="w-full bg-emerald-600 text-white py-3 px-4 rounded-md hover:bg-emerald-700 transition-colors duration-200 flex items-center justify-center"
@@ -263,8 +242,7 @@ const SupportPage = () => {
             </div>
           </motion.div>
         </div>
-
-        {/* FAQ Section */}
+        {}
         <motion.div
           className="bg-white rounded-lg shadow-lg p-6"
           variants={itemVariants}
@@ -275,7 +253,6 @@ const SupportPage = () => {
               Frequently Asked Questions
             </h2>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[
               {
@@ -327,5 +304,4 @@ const SupportPage = () => {
     </div>
   );
 };
-
 export default SupportPage;

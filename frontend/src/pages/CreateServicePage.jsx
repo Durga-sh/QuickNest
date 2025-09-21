@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   Plus,
@@ -15,7 +15,6 @@ import {
 import { useAuth } from "../hooks/useAuth";
 import apiService from "../api/provider";
 import { useNavigate } from "react-router-dom";
-// Define available service types for dropdowns
 const serviceTypes = [
   "Plumbing",
   "Electrical Work",
@@ -28,10 +27,7 @@ const serviceTypes = [
   "Appliance Repair",
   "Pest Control",
 ];
-
-// Replace with your actual Google Geocoding API key
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-
 const CreateServicePage = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -52,26 +48,21 @@ const CreateServicePage = () => {
   const [geolocationError, setGeolocationError] = useState("");
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const autocompleteRef = useRef(null);
-
-  // Check for existing provider profile on component mount
   useEffect(() => {
     const checkExistingProvider = async () => {
       if (!isAuthenticated) return;
-
       setIsLoadingProfile(true);
       try {
         const response = await apiService.getProviderProfile();
         if (response.success && response.provider) {
           setExistingProvider(response.provider);
           setIsAddingToExisting(true);
-          // Pre-fill location data from existing profile
           setFormData((prev) => ({
             ...prev,
             location: response.provider.location,
           }));
         }
       } catch {
-        // Provider profile doesn't exist, which is fine for new registrations
         console.log("No existing provider profile found");
         setExistingProvider(null);
         setIsAddingToExisting(false);
@@ -79,31 +70,24 @@ const CreateServicePage = () => {
         setIsLoadingProfile(false);
       }
     };
-
     if (demoMode) {
       checkExistingProvider();
     } else {
       setIsLoadingProfile(false);
     }
   }, [isAuthenticated, demoMode]);
-
-  // Initialize Google Places Autocomplete
   useEffect(() => {
-    // Mock Google Maps functionality for demonstration
     if (!GOOGLE_API_KEY || GOOGLE_API_KEY === "YOUR_GOOGLE_API_KEY") {
       console.log(
         "Google Maps API key not configured - using mock functionality"
       );
       return;
     }
-
     const loadGoogleScript = () => {
-      // Check if script already exists
       if (document.querySelector('script[src*="maps.googleapis.com"]')) {
         initAutocomplete();
         return;
       }
-
       const script = document.createElement("script");
       script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_API_KEY}&libraries=places`;
       script.async = true;
@@ -114,7 +98,6 @@ const CreateServicePage = () => {
       };
       document.head.appendChild(script);
     };
-
     const initAutocomplete = () => {
       if (
         window.google &&
@@ -146,21 +129,16 @@ const CreateServicePage = () => {
         });
       }
     };
-
     if (!isLoadingProfile) {
       loadGoogleScript();
     }
-
     return () => {
-      // Clean up script on unmount
       const scripts = document.querySelectorAll(
         'script[src*="maps.googleapis.com"]'
       );
       scripts.forEach((script) => script.remove());
     };
   }, [isLoadingProfile]);
-
-  // Check if user is authenticated
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -181,8 +159,6 @@ const CreateServicePage = () => {
       </div>
     );
   }
-
-  // Show loading state while checking for existing profile
   if (isLoadingProfile) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -193,8 +169,6 @@ const CreateServicePage = () => {
       </div>
     );
   }
-
-  // Handle getting current location
   const handleGetCurrentLocation = () => {
     if (navigator.geolocation) {
       setGeolocationError("Getting your location...");
@@ -209,7 +183,6 @@ const CreateServicePage = () => {
             },
           }));
           setGeolocationError("");
-          // Fetch address using reverse geocoding
           fetchAddressFromCoordinates(latitude, longitude);
         },
         (error) => {
@@ -238,11 +211,8 @@ const CreateServicePage = () => {
       setGeolocationError("Geolocation is not supported by this browser.");
     }
   };
-
-  // Fetch address using reverse geocoding
   const fetchAddressFromCoordinates = async (lat, lng) => {
     if (!GOOGLE_API_KEY || GOOGLE_API_KEY === "YOUR_GOOGLE_API_KEY") {
-      // Mock address for demonstration
       const mockAddress = `${lat.toFixed(4)}, ${lng.toFixed(
         4
       )} (Mock Address - Configure Google API Key)`;
@@ -256,7 +226,6 @@ const CreateServicePage = () => {
       setGeolocationError("");
       return;
     }
-
     try {
       const response = await fetch(
         `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_API_KEY}`
@@ -279,7 +248,6 @@ const CreateServicePage = () => {
       console.error("Geocoding error:", err);
     }
   };
-
   const handleInputChange = (field, value, index = null, subField = null) => {
     setFormData((prev) => {
       const newData = { ...prev };
@@ -293,19 +261,16 @@ const CreateServicePage = () => {
         }
       } else if (field === "pricing") {
         newData.pricing[index][subField] = value;
-        // availability removed
       }
       return newData;
     });
   };
-
   const addSkill = () => {
     setFormData((prev) => ({
       ...prev,
       skills: [...prev.skills, ""],
     }));
   };
-
   const removeSkill = (index) => {
     if (formData.skills.length > 1) {
       setFormData((prev) => ({
@@ -314,14 +279,12 @@ const CreateServicePage = () => {
       }));
     }
   };
-
   const addPricing = () => {
     setFormData((prev) => ({
       ...prev,
       pricing: [...prev.pricing, { service: "", price: "" }],
     }));
   };
-
   const removePricing = (index) => {
     if (formData.pricing.length > 1) {
       setFormData((prev) => ({
@@ -330,22 +293,13 @@ const CreateServicePage = () => {
       }));
     }
   };
-
-  // availability removed
-
-  // availability removed
-
   const validateForm = () => {
     setError("");
     const errors = [];
-
-    // Validate skills
     const hasValidSkills = formData.skills.some((skill) => skill.trim() !== "");
     if (!hasValidSkills) {
       errors.push("Please select at least one skill");
     }
-
-    // For existing providers, location validation is optional
     if (!isAddingToExisting) {
       if (!formData.location.address.trim()) {
         errors.push("Please enter or select an address");
@@ -358,8 +312,6 @@ const CreateServicePage = () => {
           "Please enter or fetch both longitude and latitude coordinates"
         );
       }
-
-      // Validate coordinate ranges
       const lng = parseFloat(formData.location.coordinates[0]);
       const lat = parseFloat(formData.location.coordinates[1]);
       if (lng < -180 || lng > 180) {
@@ -369,40 +321,29 @@ const CreateServicePage = () => {
         errors.push("Latitude must be between -90 and 90");
       }
     }
-
-    // Validate pricing
     const hasValidPricing = formData.pricing.some(
       (p) => p.service.trim() && p.price
     );
     if (!hasValidPricing) {
       errors.push("Please select at least one service with pricing");
     }
-
-    // Validate price values
     const invalidPrices = formData.pricing.filter(
       (p) => p.price && (isNaN(p.price) || parseFloat(p.price) <= 0)
     );
     if (invalidPrices.length > 0) {
       errors.push("All prices must be positive numbers");
     }
-
-    // Availability validation removed
-
     if (errors.length > 0) {
       setError(errors.join(". "));
       return false;
     }
-
     return true;
   };
-
   const handleSubmit = async () => {
     if (!validateForm()) return;
-
     setIsSubmitting(true);
     setError("");
     setSuccess("");
-
     try {
       const serviceData = {
         userId: user.id,
@@ -413,10 +354,7 @@ const CreateServicePage = () => {
             service: p.service,
             price: parseFloat(p.price),
           })),
-        // availability removed
       };
-
-      // Only include location for new provider registration
       if (!isAddingToExisting) {
         serviceData.location = {
           coordinates: [
@@ -426,26 +364,19 @@ const CreateServicePage = () => {
           address: formData.location.address.trim(),
         };
       }
-
       console.log("Service data being sent:", serviceData);
-
       let response;
       if (isAddingToExisting) {
-        // Add services to existing provider
         response = await apiService.addServicesToProvider(serviceData);
-        setSuccess("✅ Services added to your provider profile successfully!");
+        setSuccess("âœ… Services added to your provider profile successfully!");
       } else {
-        // Create new provider profile
         response = await apiService.registerProvider(serviceData);
         setSuccess(
-          "✅ Provider profile created successfully! Awaiting admin approval."
+          "âœ… Provider profile created successfully! Awaiting admin approval."
         );
       }
-
       console.log("Provider operation response:", response);
-
       if (response.success) {
-        // Clear form on success
         setFormData({
           skills: [""],
           location: {
@@ -455,8 +386,6 @@ const CreateServicePage = () => {
           pricing: [{ service: "", price: "" }],
           availability: [{ day: "Monday", from: "", to: "" }],
         });
-
-        // Navigate after delay to show success message
         setTimeout(() => {
           navigate("/provider-dashboard");
         }, 3000);
@@ -464,42 +393,30 @@ const CreateServicePage = () => {
     } catch (error) {
       console.error("Error with provider operation:", error);
       setError(
-        `❌ ${error.message || "Error processing request. Please try again."}`
+        `âŒ ${error.message || "Error processing request. Please try again."}`
       );
     } finally {
       setIsSubmitting(false);
     }
   };
-
   const goBack = () => {
     navigate(-1);
   };
-
   const pageTitle = isAddingToExisting
     ? "Add New Services"
     : "Create Provider Service";
   const submitButtonText = isAddingToExisting
     ? "Add Services"
     : "Create Provider Profile";
-
-  // Calculate form completion percentage
   const calculateFormProgress = () => {
     let completedSections = 0;
     const totalSections = 2; // skills, pricing (location is optional for existing providers)
-
-    // Check skills section
     if (formData.skills.some((skill) => skill.trim() !== "")) {
       completedSections++;
     }
-
-    // Check pricing section
     if (formData.pricing.some((p) => p.service.trim() && p.price)) {
       completedSections++;
     }
-
-    // Availability section removed
-
-    // Check location section (only for new providers)
     if (
       isAddingToExisting ||
       (formData.location.address &&
@@ -508,13 +425,11 @@ const CreateServicePage = () => {
     ) {
       completedSections++;
     }
-
     return Math.round((completedSections / totalSections) * 100);
   };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Header */}
+      {}
       <div className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -538,8 +453,7 @@ const CreateServicePage = () => {
           </div>
         </div>
       </div>
-
-      {/* Demo Mode Toggle */}
+      {}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="bg-white/70 backdrop-blur-sm border border-white/20 rounded-2xl p-6 mb-6 shadow-xl shadow-blue-500/5">
           <div className="flex items-center justify-between">
@@ -584,11 +498,10 @@ const CreateServicePage = () => {
           </div>
         </div>
       </div>
-
-      {/* Main Content */}
+      {}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl shadow-blue-500/10 overflow-hidden border border-white/20">
-          {/* Form Header */}
+          {}
           <div className="bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 px-8 py-8 relative overflow-hidden">
             <div className="absolute inset-0 bg-black/10"></div>
             <div className="relative z-10">
@@ -602,8 +515,7 @@ const CreateServicePage = () => {
                   ? "Add more services and skills to expand your offerings"
                   : "Fill out the form below to create your provider profile"}
               </p>
-
-              {/* Progress Indicator */}
+              {}
               <div className="mt-6">
                 <div className="flex items-center justify-between text-sm text-white mb-3">
                   <span className="font-medium">Form Progress</span>
@@ -639,8 +551,7 @@ const CreateServicePage = () => {
               )}
             </div>
           </div>
-
-          {/* Error/Success Messages */}
+          {}
           {error && (
             <div className="mx-8 mt-6 p-6 bg-red-50/80 backdrop-blur-sm border border-red-200/50 rounded-2xl shadow-lg">
               <div className="flex items-center space-x-3">
@@ -673,10 +584,9 @@ const CreateServicePage = () => {
               </div>
             </div>
           )}
-
-          {/* Form Body */}
+          {}
           <div className="px-8 py-8 space-y-8">
-            {/* Skills Section */}
+            {}
             <div className="space-y-6">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
@@ -731,8 +641,7 @@ const CreateServicePage = () => {
                 </button>
               </div>
             </div>
-
-            {/* Location Section - Only show for new providers */}
+            {}
             {!isAddingToExisting && (
               <div className="space-y-4">
                 <div className="flex items-center space-x-2">
@@ -823,8 +732,7 @@ const CreateServicePage = () => {
                 </div>
               </div>
             )}
-
-            {/* Pricing Section */}
+            {}
             <div className="space-y-4">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
@@ -917,8 +825,7 @@ const CreateServicePage = () => {
                 </button>
               </div>
             </div>
-
-            {/* Form Summary */}
+            {}
             <div className="bg-gray-50 rounded-lg p-6 space-y-4">
               <h4 className="font-medium text-gray-900 flex items-center">
                 <Info className="h-5 w-5 mr-2 text-blue-500" />
@@ -976,7 +883,7 @@ const CreateServicePage = () => {
                     )}
                   </div>
                 </div>
-                {/* Availability summary removed */}
+                {}
                 {!isAddingToExisting && (
                   <div>
                     <span className="text-gray-600 font-medium">Location:</span>
@@ -995,8 +902,7 @@ const CreateServicePage = () => {
                 )}
               </div>
             </div>
-
-            {/* Submit Section */}
+            {}
             <div className="border-t pt-8">
               <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
                 <button
@@ -1046,8 +952,7 @@ const CreateServicePage = () => {
             </div>
           </div>
         </div>
-
-        {/* Help Section */}
+        {}
         <div className="mt-8 bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="px-8 py-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
@@ -1060,20 +965,20 @@ const CreateServicePage = () => {
                   Skills & Services
                 </h4>
                 <ul className="space-y-1">
-                  <li>• Select skills that match your expertise</li>
-                  <li>• Price your services competitively</li>
-                  <li>• You can add more services later</li>
+                  <li>â€¢ Select skills that match your expertise</li>
+                  <li>â€¢ Price your services competitively</li>
+                  <li>â€¢ You can add more services later</li>
                 </ul>
               </div>
-              {/* Availability help removed */}
+              {}
               {!isAddingToExisting && (
                 <>
                   <div>
                     <h4 className="font-medium text-gray-900 mb-2">Location</h4>
                     <ul className="space-y-1">
-                      <li>• Use "Current Location" for accuracy</li>
-                      <li>• Address helps customers find you</li>
-                      <li>• Coordinates enable distance-based search</li>
+                      <li>â€¢ Use "Current Location" for accuracy</li>
+                      <li>â€¢ Address helps customers find you</li>
+                      <li>â€¢ Coordinates enable distance-based search</li>
                     </ul>
                   </div>
                   <div>
@@ -1081,9 +986,9 @@ const CreateServicePage = () => {
                       Approval Process
                     </h4>
                     <ul className="space-y-1">
-                      <li>• Admin review typically takes 24-48 hours</li>
-                      <li>• You'll be notified via email</li>
-                      <li>• Complete profiles are approved faster</li>
+                      <li>â€¢ Admin review typically takes 24-48 hours</li>
+                      <li>â€¢ You'll be notified via email</li>
+                      <li>â€¢ Complete profiles are approved faster</li>
                     </ul>
                   </div>
                 </>
@@ -1095,5 +1000,4 @@ const CreateServicePage = () => {
     </div>
   );
 };
-
 export default CreateServicePage;

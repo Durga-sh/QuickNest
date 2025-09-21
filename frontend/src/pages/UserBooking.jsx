@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
-// eslint-disable-next-line no-unused-vars
+﻿import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar,
@@ -28,17 +27,19 @@ import {
 import bookingApiService from "../api/booking";
 import apiService from "../api/provider";
 import reviewApiService from "../api/review";
+import voiceBookingAPI from "../api/voiceBooking";
 import VoiceBookingButton, {
   VoiceBookingButtonPresets,
 } from "../components/VoiceBookingButton";
 import RealTimeTrackingMap from "../components/RealTimeTrackingMap";
 import { getToken } from "../utils/tokenManager";
-
 const UserBookings = () => {
   const [bookings, setBookings] = useState([]);
+  const [voiceBookings, setVoiceBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [bookingTypeFilter, setBookingTypeFilter] = useState("all"); // all, regular, voice
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -54,8 +55,6 @@ const UserBookings = () => {
     total: 0,
     pages: 0,
   });
-
-  // Check authentication on component mount
   useEffect(() => {
     const token = getToken();
     if (!token) {
@@ -63,8 +62,6 @@ const UserBookings = () => {
       setLoading(false);
     }
   }, []);
-
-  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -74,7 +71,6 @@ const UserBookings = () => {
       },
     },
   };
-
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
@@ -86,7 +82,6 @@ const UserBookings = () => {
       },
     },
   };
-
   const cardVariants = {
     hidden: { opacity: 0, scale: 0.95 },
     visible: {
@@ -106,7 +101,6 @@ const UserBookings = () => {
       },
     },
   };
-
   const modalVariants = {
     hidden: { opacity: 0, scale: 0.8 },
     visible: {
@@ -125,7 +119,6 @@ const UserBookings = () => {
       },
     },
   };
-
   const fetchBookings = useCallback(async () => {
     const token = getToken();
     if (!token) {
@@ -133,20 +126,15 @@ const UserBookings = () => {
       setLoading(false);
       return;
     }
-
     try {
       setLoading(true);
       setError("");
       console.log("Fetching bookings...");
-
       const response = await bookingApiService.getUserBookings(
         pagination.page,
         pagination.limit
       );
-
       console.log("API Response:", response);
-
-      // Handle different response structures
       let allBookings = [];
       if (response.bookings) {
         allBookings = response.bookings;
@@ -155,10 +143,7 @@ const UserBookings = () => {
       } else if (response.data && Array.isArray(response.data)) {
         allBookings = response.data;
       }
-
       console.log("All bookings:", allBookings);
-
-      // Check for existing reviews for each booking
       const bookingsWithReviewStatus = await Promise.all(
         allBookings.map(async (booking) => {
           try {
@@ -173,17 +158,13 @@ const UserBookings = () => {
           }
         })
       );
-
       let filteredBookings = bookingsWithReviewStatus;
       if (statusFilter !== "all") {
         filteredBookings = bookingsWithReviewStatus.filter(
           (booking) => booking.status === statusFilter
         );
       }
-
       setBookings(filteredBookings);
-
-      // Handle pagination
       if (response.pagination) {
         setPagination(response.pagination);
       } else {
@@ -200,15 +181,45 @@ const UserBookings = () => {
       setLoading(false);
     }
   }, [pagination.page, pagination.limit, statusFilter]);
-
+  const fetchVoiceBookings = useCallback(async () => {
+    try {
+      const response = await voiceBookingAPI.getVoiceBookings(1, 50); // Get more voice bookings
+      if (response.success) {
+        setVoiceBookings(response.bookings || []);
+      }
+    } catch (error) {
+      console.error("Error fetching voice bookings:", error);
+    }
+  }, []);
   useEffect(() => {
-    // Only fetch if user is authenticated
     const token = getToken();
     if (token) {
       fetchBookings();
+      fetchVoiceBookings(); // Also fetch voice bookings
     }
-  }, [fetchBookings]);
-
+  }, [fetchBookings, fetchVoiceBookings]);
+  const getCombinedBookings = () => {
+    let allBookings = [...bookings];
+    const formattedVoiceBookings = voiceBookings.map((booking) => ({
+      ...booking,
+      isVoiceBooking: true,
+      hasReview: false, // Voice bookings might not have reviews
+    }));
+    if (bookingTypeFilter === "voice") {
+      allBookings = formattedVoiceBookings;
+    } else if (bookingTypeFilter === "regular") {
+      allBookings = bookings.filter((b) => !b.isVoiceBooking);
+    } else {
+      const regularBookingIds = new Set(bookings.map((b) => b._id));
+      const uniqueVoiceBookings = formattedVoiceBookings.filter(
+        (vb) => !regularBookingIds.has(vb._id)
+      );
+      allBookings = [...bookings, ...uniqueVoiceBookings];
+    }
+    return allBookings.sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
+  };
   const fetchProviderDetails = async (providerId) => {
     try {
       const provider = await apiService.getProviderById(providerId);
@@ -218,38 +229,29 @@ const UserBookings = () => {
       setError("Failed to load provider details");
     }
   };
-
   const handleViewDetails = (booking) => {
     setSelectedBooking(booking);
     fetchProviderDetails(booking.provider._id);
     setShowDetailsModal(true);
   };
-
   const handleReviewClick = (booking) => {
     setSelectedBooking(booking);
     setShowReviewModal(true);
   };
-
   const handleReviewSubmit = async () => {
     if (!reviewData.rating || reviewData.rating < 1) {
       alert("Please select a rating");
       return;
     }
-
     try {
       setSubmittingReview(true);
-
-      // Submit review using the API service
       const response = await reviewApiService.submitReview({
         bookingId: selectedBooking._id,
         providerId: selectedBooking.provider._id,
         rating: reviewData.rating,
         comment: reviewData.comment,
       });
-
       console.log("Review submitted successfully:", response);
-
-      // Update the booking to show it's been reviewed
       setBookings((prev) =>
         prev.map((booking) =>
           booking._id === selectedBooking._id
@@ -257,7 +259,6 @@ const UserBookings = () => {
             : booking
         )
       );
-
       setShowReviewModal(false);
       setReviewData({ rating: 0, comment: "" });
       alert("Review submitted successfully!");
@@ -268,14 +269,12 @@ const UserBookings = () => {
       setSubmittingReview(false);
     }
   };
-
   const formatPrice = (price) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
     }).format(price);
   };
-
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString("en-IN", {
       year: "numeric",
@@ -283,7 +282,6 @@ const UserBookings = () => {
       day: "numeric",
     });
   };
-
   const formatTime = (time) => {
     return new Date(`2000-01-01T${time}`).toLocaleTimeString("en-IN", {
       hour: "2-digit",
@@ -291,7 +289,6 @@ const UserBookings = () => {
       hour12: true,
     });
   };
-
   const getStatusColor = (status) => {
     switch (status) {
       case "pending":
@@ -308,7 +305,6 @@ const UserBookings = () => {
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
-
   const getStatusIcon = (status) => {
     switch (status) {
       case "pending":
@@ -325,11 +321,9 @@ const UserBookings = () => {
         return <AlertCircle className="w-4 h-4" />;
     }
   };
-
   const handlePageChange = (newPage) => {
     setPagination((prev) => ({ ...prev, page: newPage }));
   };
-
   const StarRating = ({ rating, onRatingChange, readOnly = false }) => {
     return (
       <div className="flex space-x-1">
@@ -351,7 +345,6 @@ const UserBookings = () => {
       </div>
     );
   };
-
   if (loading && bookings.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center">
@@ -369,11 +362,10 @@ const UserBookings = () => {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white py-8 px-4 sm:px-6 lg:px-8 relative">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
+        {}
         <motion.div
           className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200 p-8 mb-8"
           initial={{ opacity: 0, y: -20 }}
@@ -414,8 +406,7 @@ const UserBookings = () => {
             </motion.button>
           </div>
         </motion.div>
-
-        {/* Filters */}
+        {}
         <motion.div
           className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200 p-6 mb-8"
           initial={{ opacity: 0, y: 20 }}
@@ -436,10 +427,18 @@ const UserBookings = () => {
               <option value="completed">Completed</option>
               <option value="cancelled">Cancelled</option>
             </select>
+            <select
+              value={bookingTypeFilter}
+              onChange={(e) => setBookingTypeFilter(e.target.value)}
+              className="border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 bg-white"
+            >
+              <option value="all">All Types</option>
+              <option value="regular">Regular Bookings</option>
+              <option value="voice">Voice Bookings</option>
+            </select>
           </div>
         </motion.div>
-
-        {/* Error Message */}
+        {}
         {error && (
           <motion.div
             className="bg-red-50 border border-red-200 rounded-xl p-6 mb-8"
@@ -453,15 +452,14 @@ const UserBookings = () => {
             </p>
           </motion.div>
         )}
-
-        {/* Bookings List */}
+        {}
         <motion.div
           className="space-y-6"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
-          {bookings.length === 0 ? (
+          {getCombinedBookings().length === 0 ? (
             <motion.div
               className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200 p-12 text-center"
               variants={itemVariants}
@@ -486,7 +484,7 @@ const UserBookings = () => {
               </div>
             </motion.div>
           ) : (
-            bookings
+            getCombinedBookings()
               .filter((booking) => booking && booking._id && booking.service)
               .map((booking) => (
                 <motion.div
@@ -515,6 +513,26 @@ const UserBookings = () => {
                                 booking.status.slice(1)}
                             </span>
                           </motion.span>
+                          {booking.isVoiceBooking && (
+                            <motion.span
+                              className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200 flex items-center space-x-1"
+                              whileHover={{ scale: 1.05 }}
+                              transition={{ duration: 0.2 }}
+                            >
+                              <svg
+                                className="w-3 h-3"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                              <span>Voice</span>
+                            </motion.span>
+                          )}
                         </div>
                         <p className="text-gray-600 text-sm">
                           Booking ID: {booking.bookingId}
@@ -531,9 +549,8 @@ const UserBookings = () => {
                         </p>
                       </div>
                     </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                      {/* Provider Info */}
+                      {}
                       <motion.div
                         className="col-span-2 flex items-center space-x-4 p-4 bg-gray-50 rounded-xl"
                         whileHover={{ scale: 1.02 }}
@@ -563,8 +580,7 @@ const UserBookings = () => {
                           </div>
                         </div>
                       </motion.div>
-
-                      {/* Date & Time */}
+                      {}
                       <motion.div
                         className="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl"
                         whileHover={{ scale: 1.02 }}
@@ -581,8 +597,7 @@ const UserBookings = () => {
                           </p>
                         </div>
                       </motion.div>
-
-                      {/* Contact */}
+                      {}
                       <motion.div
                         className="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl"
                         whileHover={{ scale: 1.02 }}
@@ -597,8 +612,7 @@ const UserBookings = () => {
                         </div>
                       </motion.div>
                     </div>
-
-                    {/* Address */}
+                    {}
                     <motion.div
                       className="flex items-start space-x-4 mb-6 p-4 bg-gray-50 rounded-xl"
                       whileHover={{ scale: 1.01 }}
@@ -614,8 +628,7 @@ const UserBookings = () => {
                         </p>
                       </div>
                     </motion.div>
-
-                    {/* Special Instructions */}
+                    {}
                     {booking.specialInstructions && (
                       <motion.div
                         className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6"
@@ -631,8 +644,7 @@ const UserBookings = () => {
                         </p>
                       </motion.div>
                     )}
-
-                    {/* Real-time Tracking for In-Progress Bookings */}
+                    {}
                     {booking.status === "in-progress" && (
                       <motion.div
                         className="mb-6"
@@ -664,7 +676,6 @@ const UserBookings = () => {
                               : null
                           }
                           onTrackingError={(error) => {
-                            // Silently handle tracking errors for better UX
                             console.warn(
                               "Tracking not available:",
                               error.message
@@ -673,8 +684,7 @@ const UserBookings = () => {
                         />
                       </motion.div>
                     )}
-
-                    {/* Actions */}
+                    {}
                     <div className="flex items-center justify-between">
                       <p className="text-gray-500 text-sm">
                         Booked on {formatDate(booking.createdAt)}
@@ -689,7 +699,7 @@ const UserBookings = () => {
                           <Eye className="h-4 w-4 mr-2" />
                           View Details
                         </motion.button>
-                        {/* Allow reviews only for completed bookings */}
+                        {}
                         {booking.status === "completed" &&
                           !booking.hasReview && (
                             <motion.button
@@ -702,7 +712,7 @@ const UserBookings = () => {
                               Give Review
                             </motion.button>
                           )}
-                        {/* Show if review already exists */}
+                        {}
                         {booking.hasReview && (
                           <div className="bg-green-100 text-green-800 px-4 py-2 rounded-lg text-sm flex items-center">
                             <CheckCircle className="h-4 w-4 mr-2" />
@@ -716,8 +726,7 @@ const UserBookings = () => {
               ))
           )}
         </motion.div>
-
-        {/* Pagination */}
+        {}
         {bookings.length > 0 && pagination.pages > 1 && (
           <motion.div
             className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200 p-6 mt-8"
@@ -756,8 +765,7 @@ const UserBookings = () => {
           </motion.div>
         )}
       </div>
-
-      {/* Review Modal */}
+      {}
       <AnimatePresence>
         {showReviewModal && (
           <motion.div
@@ -785,7 +793,6 @@ const UserBookings = () => {
                     <X className="h-6 w-6" />
                   </button>
                 </div>
-
                 <div className="mb-6">
                   <div className="flex items-center space-x-4 mb-4">
                     <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center">
@@ -801,7 +808,6 @@ const UserBookings = () => {
                     </div>
                   </div>
                 </div>
-
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-3">
                     Rating *
@@ -813,7 +819,6 @@ const UserBookings = () => {
                     }
                   />
                 </div>
-
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-3">
                     Your Review
@@ -828,7 +833,6 @@ const UserBookings = () => {
                     rows={4}
                   />
                 </div>
-
                 <div className="flex space-x-3">
                   <button
                     onClick={() => setShowReviewModal(false)}
@@ -858,12 +862,11 @@ const UserBookings = () => {
           </motion.div>
         )}
       </AnimatePresence>
-      {/* Voice Booking Floating Button */}
+      {}
       <div className="fixed bottom-8 right-8 z-50">
         <VoiceBookingButtonPresets.FloatingButton />
       </div>
-
-      {/* Provider Details Modal */}
+      {}
       <AnimatePresence>
         {showDetailsModal && (
           <motion.div
@@ -891,10 +894,9 @@ const UserBookings = () => {
                     <X className="h-6 w-6" />
                   </button>
                 </div>
-
                 {providerDetails ? (
                   <div className="space-y-6">
-                    {/* Provider Header */}
+                    {}
                     <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl">
                       <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center">
                         <User className="h-8 w-8 text-white" />
@@ -921,8 +923,7 @@ const UserBookings = () => {
                         </div>
                       </div>
                     </div>
-
-                    {/* Contact Information */}
+                    {}
                     <div className="bg-gray-50 rounded-xl p-4">
                       <h5 className="font-semibold text-gray-900 mb-3 flex items-center">
                         <Phone className="h-5 w-5 mr-2 text-emerald-600" />
@@ -945,8 +946,7 @@ const UserBookings = () => {
                         </div>
                       </div>
                     </div>
-
-                    {/* Location */}
+                    {}
                     <div className="bg-gray-50 rounded-xl p-4">
                       <h5 className="font-semibold text-gray-900 mb-3 flex items-center">
                         <MapPin className="h-5 w-5 mr-2 text-emerald-600" />
@@ -985,8 +985,7 @@ const UserBookings = () => {
                         )}
                       </div>
                     </div>
-
-                    {/* Services */}
+                    {}
                     <div className="bg-gray-50 rounded-xl p-4">
                       <h5 className="font-semibold text-gray-900 mb-3 flex items-center">
                         <Award className="h-5 w-5 mr-2 text-emerald-600" />
@@ -1017,8 +1016,7 @@ const UserBookings = () => {
                         )}
                       </div>
                     </div>
-
-                    {/* Skills */}
+                    {}
                     {providerDetails.skills &&
                       providerDetails.skills.length > 0 && (
                         <div className="bg-gray-50 rounded-xl p-4">
@@ -1037,8 +1035,7 @@ const UserBookings = () => {
                           </div>
                         </div>
                       )}
-
-                    {/* Bio/Description */}
+                    {}
                     {providerDetails.bio && (
                       <div className="bg-gray-50 rounded-xl p-4">
                         <h5 className="font-semibold text-gray-900 mb-3">
@@ -1049,8 +1046,7 @@ const UserBookings = () => {
                         </p>
                       </div>
                     )}
-
-                    {/* Booking Details */}
+                    {}
                     <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
                       <h5 className="font-semibold text-gray-900 mb-3 flex items-center">
                         <Calendar className="h-5 w-5 mr-2 text-emerald-600" />
@@ -1097,8 +1093,7 @@ const UserBookings = () => {
                         </p>
                       </div>
                     </div>
-
-                    {/* Action Buttons */}
+                    {}
                     <div className="flex space-x-3 pt-4 border-t border-gray-200">
                       <motion.button
                         onClick={() => setShowDetailsModal(false)}
@@ -1143,5 +1138,4 @@ const UserBookings = () => {
     </div>
   );
 };
-
 export default UserBookings;

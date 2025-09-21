@@ -1,6 +1,5 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-// eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
 import { register, verifyOTP, resendOTP } from "../../api/auth";
 import { useAuth } from "../../hooks/useAuth";
@@ -13,7 +12,6 @@ import {
   Shield,
   CheckCircle,
 } from "lucide-react";
-
 const RegisterForm = () => {
   const [step, setStep] = useState(1); // 1: Registration Form, 2: OTP Verification
   const [formData, setFormData] = useState({
@@ -35,14 +33,12 @@ const RegisterForm = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
   const { loginUser } = useAuth();
-
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
   };
-
   const handleOTPChange = (e) => {
     const value = e.target.value.replace(/\D/g, "").slice(0, 6); // Only digits, max 6
     setOtpData({
@@ -50,21 +46,17 @@ const RegisterForm = () => {
       otp: value,
     });
   };
-
   const validateForm = () => {
     if (formData.password !== formData.confirmPassword) {
       setFormError("Passwords do not match");
       return false;
     }
-
     if (formData.password.length < 6) {
       setFormError("Password must be at least 6 characters long");
       return false;
     }
-
     return true;
   };
-
   const startCountdown = () => {
     setCountdown(60);
     const timer = setInterval(() => {
@@ -77,31 +69,24 @@ const RegisterForm = () => {
       });
     }, 1000);
   };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!validateForm()) {
       return;
     }
-
     setIsLoading(true);
     setFormError("");
     setSuccessMessage("");
-
     const userData = {
       name: formData.name,
       email: formData.email,
       password: formData.password,
       role: formData.role,
     };
-
     console.log("Sending registration data:", userData);
-
     try {
       const response = await register(userData);
       console.log("Registration response:", response);
-
       if (response.success && response.tempUserId) {
         setOtpData({
           ...otpData,
@@ -120,26 +105,20 @@ const RegisterForm = () => {
       setIsLoading(false);
     }
   };
-
   const handleOTPSubmit = async (e) => {
     e.preventDefault();
-
     if (otpData.otp.length !== 6) {
       setFormError("Please enter a valid 6-digit OTP");
       return;
     }
-
     setIsLoading(true);
     setFormError("");
-
     try {
       const response = await verifyOTP({
         tempUserId: otpData.tempUserId,
         otp: otpData.otp,
       });
-
       console.log("OTP verification response:", response);
-
       if (response.success && response.user && response.token) {
         loginUser(response.user, response.token);
         navigate("/dashboard");
@@ -153,17 +132,13 @@ const RegisterForm = () => {
       setIsLoading(false);
     }
   };
-
   const handleResendOTP = async () => {
     if (countdown > 0) return;
-
     setIsLoading(true);
     setFormError("");
     setSuccessMessage("");
-
     try {
       const response = await resendOTP(otpData.tempUserId);
-
       if (response.success) {
         setSuccessMessage("New OTP sent to your email!");
         startCountdown();
@@ -175,7 +150,6 @@ const RegisterForm = () => {
       setIsLoading(false);
     }
   };
-
   if (step === 2) {
     return (
       <div className="w-full">
@@ -195,7 +169,6 @@ const RegisterForm = () => {
         >
           We've sent a 6-digit OTP to <strong>{formData.email}</strong>
         </motion.p>
-
         {formError && (
           <motion.div
             className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-6"
@@ -206,7 +179,6 @@ const RegisterForm = () => {
             {formError}
           </motion.div>
         )}
-
         {successMessage && (
           <motion.div
             className="bg-green-50 border border-green-200 text-green-700 p-4 rounded-lg mb-6"
@@ -217,7 +189,6 @@ const RegisterForm = () => {
             {successMessage}
           </motion.div>
         )}
-
         <form onSubmit={handleOTPSubmit} className="space-y-6">
           <motion.div
             className="form-group"
@@ -243,7 +214,6 @@ const RegisterForm = () => {
               placeholder="000000"
             />
           </motion.div>
-
           <motion.button
             type="submit"
             className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white py-3 rounded-lg transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
@@ -283,7 +253,6 @@ const RegisterForm = () => {
             )}
           </motion.button>
         </form>
-
         <motion.div
           className="mt-6 text-center"
           initial={{ opacity: 0 }}
@@ -301,7 +270,6 @@ const RegisterForm = () => {
             {countdown > 0 ? `Resend in ${countdown}s` : "Resend OTP"}
           </button>
         </motion.div>
-
         <motion.div
           className="mt-6 text-center"
           initial={{ opacity: 0 }}
@@ -312,13 +280,12 @@ const RegisterForm = () => {
             onClick={() => setStep(1)}
             className="text-gray-600 hover:text-gray-700 transition-colors duration-200"
           >
-            ← Back to registration
+            â† Back to registration
           </button>
         </motion.div>
       </div>
     );
   }
-
   return (
     <div className="w-full">
       <motion.h2
@@ -329,7 +296,6 @@ const RegisterForm = () => {
       >
         Create an Account
       </motion.h2>
-
       {formError && (
         <motion.div
           className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-6"
@@ -340,7 +306,6 @@ const RegisterForm = () => {
           {formError}
         </motion.div>
       )}
-
       <form onSubmit={handleSubmit} className="space-y-6">
         <motion.div
           className="form-group"
@@ -368,7 +333,6 @@ const RegisterForm = () => {
             />
           </div>
         </motion.div>
-
         <motion.div
           className="form-group"
           initial={{ opacity: 0, x: -20 }}
@@ -395,7 +359,6 @@ const RegisterForm = () => {
             />
           </div>
         </motion.div>
-
         <motion.div
           className="form-group"
           initial={{ opacity: 0, x: -20 }}
@@ -419,7 +382,7 @@ const RegisterForm = () => {
               required
               minLength="6"
               className="w-full bg-gray-50 border border-gray-300 rounded-lg px-12 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200"
-              placeholder="••••••••"
+              placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
             />
             <button
               type="button"
@@ -434,7 +397,6 @@ const RegisterForm = () => {
             </button>
           </div>
         </motion.div>
-
         <motion.div
           className="form-group"
           initial={{ opacity: 0, x: -20 }}
@@ -457,7 +419,7 @@ const RegisterForm = () => {
               onChange={handleChange}
               required
               className="w-full bg-gray-50 border border-gray-300 rounded-lg px-12 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200"
-              placeholder="••••••••"
+              placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
             />
             <button
               type="button"
@@ -472,7 +434,6 @@ const RegisterForm = () => {
             </button>
           </div>
         </motion.div>
-
         <motion.div
           className="form-group"
           initial={{ opacity: 0, x: -20 }}
@@ -500,7 +461,6 @@ const RegisterForm = () => {
             </select>
           </div>
         </motion.div>
-
         <motion.button
           type="submit"
           className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white py-3 rounded-lg transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
@@ -540,7 +500,6 @@ const RegisterForm = () => {
           )}
         </motion.button>
       </form>
-
       <motion.div
         className="mt-6 text-center text-gray-600"
         initial={{ opacity: 0 }}
@@ -558,5 +517,4 @@ const RegisterForm = () => {
     </div>
   );
 };
-
 export default RegisterForm;

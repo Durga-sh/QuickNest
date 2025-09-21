@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from "react";
+﻿import { useState, useEffect, Fragment } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -9,20 +9,17 @@ import PlacesAutocomplete, {
 import { Home, Menu, X, Navigation, Loader2, MapPin } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { debounce } from "lodash";
-
 const loadGoogleMapsScript = (callback) => {
   if (window.google && window.google.maps && window.google.maps.places) {
     callback(null);
     return;
   }
-
   const existingScript = document.querySelector(
     `script[src*="maps.googleapis.com/maps/api/js"]`
   );
   if (existingScript) {
     existingScript.remove();
   }
-
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   if (!apiKey) {
     callback(
@@ -32,7 +29,6 @@ const loadGoogleMapsScript = (callback) => {
     );
     return;
   }
-
   const script = document.createElement("script");
   script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
   script.async = true;
@@ -52,7 +48,6 @@ const loadGoogleMapsScript = (callback) => {
   };
   document.head.appendChild(script);
 };
-
 const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -65,13 +60,10 @@ const Header = () => {
   const [isScriptLoading, setIsScriptLoading] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
-
-  // Debounced input handler with enhanced debugging and retry
   const debouncedSetLocationInput = debounce(async (value) => {
     setLocationInput(value);
     setLocationError("");
     setIsFetchingSuggestions(true);
-
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
     if (
       !apiKey ||
@@ -86,20 +78,16 @@ const Header = () => {
       );
       return;
     }
-
     let attempt = 0;
     const maxAttempts = 2;
-
     while (attempt < maxAttempts) {
       try {
-        // Use AutocompleteService for native integration
         const service = new window.google.maps.places.AutocompleteService();
         const request = {
           input: value,
           types: ["geocode"],
           componentRestrictions: { country: "in" },
         };
-
         const response = await new Promise((resolve, reject) => {
           service.getPlacePredictions(request, (predictions, status) => {
             if (status === window.google.maps.places.PlacesServiceStatus.OK) {
@@ -111,8 +99,6 @@ const Header = () => {
             }
           });
         });
-
-        // Clear loading state after successful response
         setIsFetchingSuggestions(false);
         break; // Exit loop on success
       } catch (error) {
@@ -126,8 +112,6 @@ const Header = () => {
         }
       }
     }
-
-    // Timeout to clear loading if no response within 10 seconds
     const timeoutId = setTimeout(() => {
       if (isFetchingSuggestions) {
         console.warn("Autocomplete request timed out");
@@ -139,15 +123,10 @@ const Header = () => {
     }, 10000); // 10 seconds
     return () => clearTimeout(timeoutId);
   }, 300);
-
-  // Check if we're on the provider dashboard page
   const isProviderDashboard = location.pathname === "/provider-dashboard";
-
-  // Load saved location from localStorage
   useEffect(() => {
     const savedLocation = localStorage.getItem("selectedLocation");
     const savedLocationInput = localStorage.getItem("locationInput");
-
     if (savedLocation && savedLocationInput) {
       try {
         const parsedLocation = JSON.parse(savedLocation);
@@ -171,8 +150,6 @@ const Header = () => {
       }
     }
   }, []);
-
-  // Load Google Maps API script
   useEffect(() => {
     if (!isScriptLoading && !isGoogleMapsLoaded) {
       setIsScriptLoading(true);
@@ -189,8 +166,6 @@ const Header = () => {
       });
     }
   }, [isScriptLoading, isGoogleMapsLoaded]);
-
-  // Get current location
   const getCurrentLocation = () => {
     if (!isGoogleMapsLoaded) {
       setLocationError(
@@ -198,15 +173,12 @@ const Header = () => {
       );
       return;
     }
-
     if (!navigator.geolocation) {
       setLocationError("Geolocation is not supported by this browser.");
       return;
     }
-
     setIsLoadingLocation(true);
     setLocationError("");
-
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
@@ -215,15 +187,12 @@ const Header = () => {
           if (!apiKey) {
             throw new Error("Google Maps API key is missing.");
           }
-
           const response = await fetch(
             `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}&language=en`
           );
-
           if (!response.ok) {
             throw new Error(`Geocoding API error: ${response.statusText}`);
           }
-
           const data = await response.json();
           if (
             data.status !== "OK" ||
@@ -236,23 +205,19 @@ const Header = () => {
               }`
             );
           }
-
           const formattedAddress = data.results[0].formatted_address;
           const locationData = {
             lat: latitude,
             lng: longitude,
             address: formattedAddress,
           };
-
           setLocationInput(formattedAddress);
           setSelectedLocation(locationData);
-
           localStorage.setItem(
             "selectedLocation",
             JSON.stringify(locationData)
           );
           localStorage.setItem("locationInput", formattedAddress);
-
           navigate(
             `/service?lat=${latitude}&lng=${longitude}&address=${encodeURIComponent(
               formattedAddress
@@ -284,8 +249,6 @@ const Header = () => {
       }
     );
   };
-
-  // Handle location selection from autocomplete
   const handleSelect = async (address) => {
     setLocationInput(address);
     setLocationError("");
@@ -296,20 +259,15 @@ const Header = () => {
         throw new Error("No results found for the selected address.");
       }
       const { lat, lng } = await getLatLng(results[0]);
-
       const locationData = {
         lat,
         lng,
         address,
       };
-
       setSelectedLocation(locationData);
-
       localStorage.setItem("selectedLocation", JSON.stringify(locationData));
       localStorage.setItem("locationInput", address);
-
       console.log(`Selected location: ${address}, Coordinates:`, { lat, lng });
-
       navigate(
         `/service?lat=${lat}&lng=${lng}&address=${encodeURIComponent(address)}`
       );
@@ -320,8 +278,6 @@ const Header = () => {
       );
     }
   };
-
-  // Handle services navigation
   const handleServicesClick = () => {
     if (selectedLocation) {
       navigate(
@@ -334,8 +290,6 @@ const Header = () => {
     }
     setIsMenuOpen(false);
   };
-
-  // Scroll to section for mobile menu
   const scrollToSection = (sectionId) => {
     const element = document.getElementById(sectionId);
     if (element) {
@@ -343,8 +297,6 @@ const Header = () => {
     }
     setIsMenuOpen(false);
   };
-
-  // Handle logout
   const handleLogout = async () => {
     try {
       await logoutUser();
@@ -359,8 +311,6 @@ const Header = () => {
       setLocationError("Failed to log out. Please try again.");
     }
   };
-
-  // Clear location
   const clearLocation = () => {
     setLocationInput("");
     setSelectedLocation(null);
@@ -369,7 +319,6 @@ const Header = () => {
     setLocationError("");
     navigate("/service");
   };
-
   return (
     <nav className="bg-gradient-to-r from-emerald-700 to-teal-700 text-white shadow-lg fixed top-0 w-full z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -382,7 +331,6 @@ const Header = () => {
               </span>
             </Link>
           </div>
-
           <div className="hidden md:flex items-center space-x-6">
             {!isProviderDashboard && !isProvider && (
               <>
@@ -467,7 +415,6 @@ const Header = () => {
                                         suggestion.active ? "bg-gray-100" : ""
                                       }`,
                                     });
-                                  // Extract key and spread remaining props
                                   const { key, ...restProps } = suggestionProps;
                                   return (
                                     <div key={key} {...restProps}>
@@ -555,7 +502,6 @@ const Header = () => {
               </>
             )}
           </div>
-
           <div className="md:hidden">
             <Button
               variant="ghost"
@@ -572,7 +518,6 @@ const Header = () => {
           </div>
         </div>
       </div>
-
       {isMenuOpen && (
         <div className="md:hidden bg-emerald-800">
           <div className="px-4 pt-4 pb-6 space-y-4">
@@ -659,7 +604,6 @@ const Header = () => {
                                         suggestion.active ? "bg-gray-100" : ""
                                       }`,
                                     });
-                                  // Extract key and spread remaining props
                                   const { key, ...restProps } = suggestionProps;
                                   return (
                                     <div key={key} {...restProps}>
@@ -774,5 +718,4 @@ const Header = () => {
     </nav>
   );
 };
-
 export default Header;

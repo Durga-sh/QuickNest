@@ -1,10 +1,7 @@
-"use client";
-
+﻿"use client";
 import { VoiceBookingSafePresets } from "../components/VoiceBookingSafeWrapper";
 import VoiceBookingComponent from "../components/VoiceBookingComponent";
 import { Link, useNavigate } from "react-router-dom";
-
-// eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
@@ -32,11 +29,9 @@ import {
 import Chatbot from "../components/chatbot";
 import { useState } from "react";
 import { toast } from "react-hot-toast";
-
 const QuickNestLanding = () => {
   const [showVoiceBooking, setShowVoiceBooking] = useState(false);
   const navigate = useNavigate();
-
   const services = [
     {
       icon: Wrench,
@@ -87,8 +82,6 @@ const QuickNestLanding = () => {
       serviceType: "cleaner",
     },
   ];
-
-  // Handle service booking navigation
   const handleBookService = (serviceType, serviceName) => {
     navigate(
       `/services?skill=${encodeURIComponent(
@@ -96,12 +89,8 @@ const QuickNestLanding = () => {
       )}&category=${encodeURIComponent(serviceName)}`
     );
   };
-
-  // Handle voice booking result
   const handleVoiceBookingResult = (bookingData) => {
     console.log("Voice booking result:", bookingData);
-
-    // Navigate to services page with pre-filled data
     const queryParams = new URLSearchParams({
       service: bookingData.service || "",
       voiceBooking: "true",
@@ -111,42 +100,27 @@ const QuickNestLanding = () => {
       urgent: bookingData.urgent ? "true" : "false",
       autoFill: "true",
     });
-
-    // Close voice modal
     setShowVoiceBooking(false);
-
-    // Show success message
     toast.success(
       `Voice booking processed! Redirecting to ${bookingData.serviceDisplay} services...`
     );
-
-    // Navigate with a small delay for better UX
     setTimeout(() => {
       navigate(`/services?${queryParams.toString()}`);
     }, 1000);
   };
-
-  // Handle auto-booking success
   const handleAutoBookingSuccess = (booking, bookingData) => {
     console.log("Auto-booking successful:", booking);
-
-    // Close voice modal
     setShowVoiceBooking(false);
-
-    // Show success toast
     toast.success(
-      `🎉 Booking confirmed! ${bookingData.serviceDisplay} service booked for ${bookingData.dateDisplay}`,
+      `Booking confirmed! ${bookingData.serviceDisplay} service booked for ${bookingData.dateDisplay}`,
       {
         duration: 5000,
       }
     );
-
-    // Navigate to bookings page to show the new booking
     setTimeout(() => {
       navigate("/dashboard/bookings");
     }, 2000);
   };
-
   const features = [
     {
       icon: MapPin,
@@ -189,14 +163,12 @@ const QuickNestLanding = () => {
       glowColor: "shadow-purple-500/20",
     },
   ];
-
   const stats = [
     { number: "50K+", label: "Happy Customers", icon: Users },
     { number: "10K+", label: "Professionals", icon: Award },
     { number: "100K+", label: "Services Completed", icon: TrendingUp },
     { number: "4.9", label: "Average Rating", icon: Star },
   ];
-
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -207,7 +179,6 @@ const QuickNestLanding = () => {
       },
     },
   };
-
   const itemVariants = {
     hidden: { opacity: 0, y: 30, scale: 0.9 },
     visible: {
@@ -220,7 +191,6 @@ const QuickNestLanding = () => {
       },
     },
   };
-
   const cardVariants = {
     hidden: { opacity: 0, scale: 0.8, rotateY: -15 },
     visible: {
@@ -242,7 +212,6 @@ const QuickNestLanding = () => {
       },
     },
   };
-
   const floatingVariants = {
     animate: {
       y: [-10, 10, -10],
@@ -254,7 +223,6 @@ const QuickNestLanding = () => {
       },
     },
   };
-
   const particleVariants = {
     animate: {
       y: [-20, 20, -20],
@@ -267,13 +235,11 @@ const QuickNestLanding = () => {
       },
     },
   };
-
   return (
     <div className="min-h-screen bg-white w-full overflow-hidden">
-      {/* Hero Section */}
+      {}
       <section className="relative bg-gradient-to-br from-emerald-100 via-cyan-100 to-blue-100 pt-16 pb-20 sm:pt-24 sm:pb-32 w-full overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,0.2),transparent_50%),radial-gradient(circle_at_70%_80%,rgba(6,182,212,0.2),transparent_50%)]" />
-
         <motion.div
           className="absolute top-20 left-10 w-20 h-20 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full opacity-30 blur-sm shadow-lg shadow-emerald-200"
           variants={particleVariants}
@@ -303,7 +269,6 @@ const QuickNestLanding = () => {
           animate="animate"
           style={{ animationDelay: "3s" }}
         />
-
         <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 relative z-10">
           <motion.div
             className="lg:grid lg:grid-cols-12 lg:gap-8 items-center"
@@ -369,7 +334,6 @@ const QuickNestLanding = () => {
                     size="lg"
                     className="flex items-center bg-transparent border-2 hover:bg-gray-50 transition-all duration-300"
                     onClick={() => {
-                      // Simple voice booking trigger
                       if (
                         "webkitSpeechRecognition" in window ||
                         "SpeechRecognition" in window
@@ -382,7 +346,7 @@ const QuickNestLanding = () => {
                       }
                     }}
                   >
-                    🎤 Try Voice Booking
+                    Try Voice Booking
                   </Button>
                 </div>
                 <motion.div
@@ -495,8 +459,7 @@ const QuickNestLanding = () => {
           </motion.div>
         </div>
       </section>
-
-      {/* Services Section */}
+      {}
       <section
         id="services"
         className="py-16 bg-gradient-to-b from-gray-50 to-white w-full relative overflow-hidden"
@@ -513,7 +476,6 @@ const QuickNestLanding = () => {
             ease: "easeInOut",
           }}
         />
-
         <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 relative z-10">
           <motion.div
             className="text-center"
@@ -548,7 +510,6 @@ const QuickNestLanding = () => {
                     initial={false}
                   />
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-200/50 to-transparent -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
-
                   <motion.div
                     className="absolute top-4 right-4 w-3 h-3 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full opacity-0 group-hover:opacity-80 shadow-lg shadow-pink-300 transition-opacity duration-300"
                     whileHover={{
@@ -590,7 +551,6 @@ const QuickNestLanding = () => {
                       delay: 0.5,
                     }}
                   />
-
                   <CardContent className="p-6 text-center relative z-10">
                     <motion.div
                       className={`w-16 h-16 ${service.color} ${service.glowColor} rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-3xl shadow-emerald-400/30 relative overflow-hidden`}
@@ -627,14 +587,12 @@ const QuickNestLanding = () => {
                       />
                       <service.icon className="w-8 h-8 text-white relative z-10 drop-shadow-lg" />
                     </motion.div>
-
                     <motion.h3 className="text-xl font-semibold mb-3 text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 transition-all duration-300">
                       {service.name}
                     </motion.h3>
                     <p className="text-gray-700 mb-6 transition-colors duration-300">
                       {service.description}
                     </p>
-
                     <div className="flex flex-col gap-2">
                       <motion.div
                         whileHover={{ scale: 1.05 }}
@@ -655,7 +613,7 @@ const QuickNestLanding = () => {
                         </Button>
                       </motion.div>
                       <p className="text-xs text-emerald-700 bg-gradient-to-r from-emerald-100 to-cyan-100 rounded-lg px-3 py-1 transition-all duration-300">
-                        💡 Try: "Book {service.serviceType} tomorrow morning"
+                        Try: "Book {service.serviceType} tomorrow morning"
                       </p>
                     </div>
                   </CardContent>
@@ -665,13 +623,11 @@ const QuickNestLanding = () => {
           </motion.div>
         </div>
       </section>
-
       <section className="py-20 bg-gradient-to-br from-slate-50 via-white to-gray-50 w-full relative overflow-hidden">
-        {/* Advanced background effects */}
+        {}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,0.05),transparent_50%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(59,130,246,0.05),transparent_50%)]" />
-
-        {/* Floating geometric shapes */}
+        {}
         <motion.div
           className="absolute top-20 left-20 w-24 h-24 border border-emerald-200 rounded-2xl rotate-45 opacity-20"
           animate={{
@@ -696,7 +652,6 @@ const QuickNestLanding = () => {
             ease: "easeInOut",
           }}
         />
-
         <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 relative z-10">
           <motion.div
             className="text-center mb-16"
@@ -727,7 +682,6 @@ const QuickNestLanding = () => {
               AI technology, advanced security, and seamless user experience
             </p>
           </motion.div>
-
           <motion.div
             className="grid grid-cols-1 gap-8 lg:grid-cols-2 xl:gap-12"
             variants={containerVariants}
@@ -748,15 +702,13 @@ const QuickNestLanding = () => {
                 <Card
                   className={`h-full border-0 shadow-xl hover:shadow-2xl ${feature.glowColor} transition-all duration-500 bg-gradient-to-br ${feature.bgGradient} backdrop-blur-sm relative overflow-hidden`}
                 >
-                  {/* Animated background gradient */}
+                  {}
                   <motion.div
                     className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}
                     initial={false}
                   />
-
-                  {/* Shimmer effect */}
+                  {}
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
-
                   <CardContent className="p-8 relative z-10">
                     <div className="flex items-start space-x-6">
                       <motion.div
@@ -767,13 +719,12 @@ const QuickNestLanding = () => {
                           transition: { duration: 0.3 },
                         }}
                       >
-                        {/* Icon glow effect */}
+                        {}
                         <div
                           className={`absolute inset-0 ${feature.iconBg} blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-500`}
                         />
                         <feature.icon className="w-8 h-8 text-white relative z-10" />
                       </motion.div>
-
                       <div className="flex-1">
                         <motion.h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-emerald-600 group-hover:to-teal-600 transition-all duration-300">
                           {feature.title}
@@ -781,8 +732,7 @@ const QuickNestLanding = () => {
                         <p className="text-gray-600 text-lg leading-relaxed">
                           {feature.description}
                         </p>
-
-                        {/* Progress bar animation */}
+                        {}
                         <motion.div
                           className="mt-6 h-1 bg-gray-200 rounded-full overflow-hidden"
                           initial={{ opacity: 0 }}
@@ -807,7 +757,6 @@ const QuickNestLanding = () => {
               </motion.div>
             ))}
           </motion.div>
-
           <motion.div
             className="mt-20 text-center"
             initial={{ opacity: 0, y: 30 }}
@@ -815,19 +764,17 @@ const QuickNestLanding = () => {
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
           >
-            {/* ...existing code... */}
+            {}
           </motion.div>
         </div>
       </section>
-
-      {/* Stats Section */}
+      {}
       <section className="py-20 bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900 w-full relative overflow-hidden">
-        {/* Advanced background effects */}
+        {}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,rgba(16,185,129,0.3),transparent_70%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(59,130,246,0.2),transparent_70%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_40%_80%,rgba(168,85,247,0.2),transparent_70%)]" />
-
-        {/* Animated mesh gradient overlay */}
+        {}
         <motion.div
           className="absolute inset-0 opacity-30"
           animate={{
@@ -843,8 +790,7 @@ const QuickNestLanding = () => {
             ease: "easeInOut",
           }}
         />
-
-        {/* Floating geometric elements */}
+        {}
         <motion.div
           className="absolute top-20 left-20 w-32 h-32 border border-emerald-400/20 rounded-3xl rotate-45"
           animate={{
@@ -871,7 +817,6 @@ const QuickNestLanding = () => {
             ease: "easeInOut",
           }}
         />
-
         <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 relative z-10">
           <motion.div
             className="text-center mb-16"
@@ -902,7 +847,6 @@ const QuickNestLanding = () => {
               with cutting-edge technology
             </p>
           </motion.div>
-
           <motion.div
             className="grid grid-cols-2 gap-6 md:grid-cols-4 md:gap-8"
             variants={containerVariants}
@@ -922,15 +866,13 @@ const QuickNestLanding = () => {
                 className="group"
               >
                 <Card className="h-full border-0 bg-white/10 backdrop-blur-md border border-white/20 shadow-2xl hover:shadow-3xl transition-all duration-500 relative overflow-hidden">
-                  {/* Animated background gradient */}
+                  {}
                   <motion.div
                     className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-teal-500/10 to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                     initial={false}
                   />
-
-                  {/* Shimmer effect */}
+                  {}
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
-
                   <CardContent className="p-6 text-center relative z-10">
                     <motion.div
                       className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl group-hover:shadow-emerald-500/25 transition-all duration-300"
@@ -941,7 +883,6 @@ const QuickNestLanding = () => {
                     >
                       <stat.icon className="w-8 h-8 text-white" />
                     </motion.div>
-
                     <motion.div
                       className="text-4xl font-bold text-white mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-emerald-400 group-hover:to-teal-400 transition-all duration-300"
                       initial={{ opacity: 0, y: 20 }}
@@ -950,12 +891,10 @@ const QuickNestLanding = () => {
                     >
                       {stat.number}
                     </motion.div>
-
                     <div className="text-gray-300 group-hover:text-white transition-colors duration-300 flex items-center justify-center text-sm font-medium">
                       {stat.label}
                     </div>
-
-                    {/* Progress indicator */}
+                    {}
                     <motion.div
                       className="mt-4 h-1 bg-white/20 rounded-full overflow-hidden"
                       initial={{ opacity: 0 }}
@@ -978,8 +917,7 @@ const QuickNestLanding = () => {
               </motion.div>
             ))}
           </motion.div>
-
-          {/* Additional metrics showcase */}
+          {}
           <motion.div
             className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8"
             initial={{ opacity: 0, y: 30 }}
@@ -1038,14 +976,12 @@ const QuickNestLanding = () => {
           </motion.div>
         </div>
       </section>
-
-      {/* CTA Section */}
+      {}
       <section className="py-20 bg-gradient-to-br from-white via-emerald-50 to-teal-50 w-full relative overflow-hidden">
-        {/* Advanced background effects */}
+        {}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,0.1),transparent_50%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(20,184,166,0.1),transparent_50%)]" />
-
-        {/* Animated background elements */}
+        {}
         <motion.div
           className="absolute top-20 right-20 w-40 h-40 bg-gradient-to-br from-emerald-200/30 to-teal-200/30 rounded-full blur-3xl"
           animate={{
@@ -1070,7 +1006,6 @@ const QuickNestLanding = () => {
             ease: "easeInOut",
           }}
         />
-
         <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 relative z-10">
           <motion.div
             className="max-w-4xl mx-auto"
@@ -1080,7 +1015,7 @@ const QuickNestLanding = () => {
             viewport={{ once: true }}
           >
             <Card className="border-0 shadow-2xl bg-white/80 backdrop-blur-md relative overflow-hidden">
-              {/* Animated gradient overlay */}
+              {}
               <motion.div
                 className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-teal-500/5 to-cyan-500/5"
                 animate={{
@@ -1096,7 +1031,6 @@ const QuickNestLanding = () => {
                   ease: "easeInOut",
                 }}
               />
-
               <CardContent className="p-12 text-center relative z-10">
                 <motion.div
                   className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-emerald-100 to-teal-100 rounded-full mb-8 border border-emerald-200"
@@ -1109,7 +1043,6 @@ const QuickNestLanding = () => {
                     Ready to Transform Your Experience?
                   </span>
                 </motion.div>
-
                 <motion.h2
                   className="text-4xl font-bold text-gray-900 sm:text-5xl mb-6"
                   initial={{ opacity: 0, y: 20 }}
@@ -1121,7 +1054,6 @@ const QuickNestLanding = () => {
                     QuickNest
                   </span>
                 </motion.h2>
-
                 <motion.p
                   className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed"
                   initial={{ opacity: 0, y: 20 }}
@@ -1132,7 +1064,6 @@ const QuickNestLanding = () => {
                   booking. It's as simple as speaking your needs - no forms, no
                   hassle, just results.
                 </motion.p>
-
                 <motion.div
                   className="flex flex-col sm:flex-row gap-6 justify-center items-center"
                   initial={{ opacity: 0, y: 20 }}
@@ -1151,12 +1082,11 @@ const QuickNestLanding = () => {
                     >
                       <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
                       <span className="relative z-10 flex items-center">
-                        🎤 Try Voice Booking Now
+                        Try Voice Booking Now
                         <Sparkles className="ml-2 w-5 h-5" />
                       </span>
                     </Button>
                   </motion.div>
-
                   <motion.div
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -1173,8 +1103,7 @@ const QuickNestLanding = () => {
                     </Link>
                   </motion.div>
                 </motion.div>
-
-                {/* Feature highlights */}
+                {}
                 <motion.div
                   className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6"
                   initial={{ opacity: 0, y: 20 }}
@@ -1221,11 +1150,9 @@ const QuickNestLanding = () => {
           </motion.div>
         </div>
       </section>
-
-      {/* Add the Chatbot Component */}
+      {}
       <Chatbot />
-
-      {/* Voice Booking Modal */}
+      {}
       {showVoiceBooking && (
         <VoiceBookingComponent
           onClose={() => setShowVoiceBooking(false)}
@@ -1233,8 +1160,7 @@ const QuickNestLanding = () => {
           onAutoBookingSuccess={handleAutoBookingSuccess}
         />
       )}
-
-      {/* Voice Booking Floating Button - moved to right side for side-by-side visibility with chatbot */}
+      {}
       <div className="fixed bottom-12 right-20 z-30">
         <VoiceBookingSafePresets.FloatingButton
           onBookingParsed={handleVoiceBookingResult}
@@ -1243,5 +1169,4 @@ const QuickNestLanding = () => {
     </div>
   );
 };
-
 export default QuickNestLanding;

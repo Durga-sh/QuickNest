@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useContext } from "react";
+﻿import React, { useState, useEffect, useCallback, useContext } from "react";
 import {
   GoogleMap,
   LoadScript,
@@ -19,17 +19,14 @@ import {
 import socketService from "../services/socketService";
 import trackingApiService from "../api/tracking";
 import { AuthContext } from "../context/AuthContext";
-
 const mapContainerStyle = {
   width: "100%",
   height: "400px",
 };
-
 const defaultCenter = {
   lat: 28.6139, // Default to Delhi
   lng: 77.209,
 };
-
 const mapOptions = {
   disableDefaultUI: false,
   zoomControl: true,
@@ -38,12 +35,9 @@ const mapOptions = {
   fullscreenControl: true,
   gestureHandling: "cooperative",
 };
-
-// Fallback Google Maps API Key - you should replace this with your actual key
 const GOOGLE_MAPS_API_KEY =
   import.meta.env.VITE_GOOGLE_MAPS_API_KEY ||
   "AIzaSyBHg5SkO4eR8VkK9F3kHl2wCJfv6_ZQ_z8"; // Demo key
-
 const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
   const { user } = useContext(AuthContext);
   const [map, setMap] = useState(null);
@@ -57,23 +51,15 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
   const [showProviderInfo, setShowProviderInfo] = useState(false);
   const [providerStatus, setProviderStatus] = useState("Unknown");
   const [retryCount, setRetryCount] = useState(0);
-
-  // Auto-retry mechanism
   const MAX_RETRIES = 3;
   const RETRY_DELAY = 5000; // 5 seconds
-
-  // Initialize tracking with retry mechanism
   const initializeTracking = useCallback(
     async (attempt = 1) => {
       try {
         setLoading(true);
         setError(null);
-
-        // Get initial tracking status
         const response = await trackingApiService.getTrackingStatus(bookingId);
         setTrackingData(response.booking);
-
-        // Check if tracking is active and has location data
         if (
           response.booking.tracking?.isActive &&
           response.booking.tracking?.currentLocation
@@ -91,11 +77,7 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
         } else {
           setProviderStatus("Service not started");
         }
-
-        // Connect to socket for real-time updates
         socketService.connect();
-
-        // Wait a moment for socket to connect
         setTimeout(() => {
           socketService.joinTracking(
             bookingId,
@@ -104,15 +86,12 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
           );
           setIsConnected(true);
         }, 1000);
-
         setRetryCount(0); // Reset retry count on success
       } catch (err) {
         console.error(
           `Failed to initialize tracking (attempt ${attempt}):`,
           err
         );
-
-        // Handle specific error types
         if (
           err.message.includes("Access denied") ||
           err.message.includes("not authorized")
@@ -124,8 +103,6 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
           setError("Booking not found");
         } else {
           setError("Unable to load tracking data");
-
-          // Retry logic
           if (attempt < MAX_RETRIES) {
             setRetryCount(attempt);
             setTimeout(() => {
@@ -134,7 +111,6 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
             return;
           }
         }
-
         if (onTrackingError) onTrackingError(err);
       } finally {
         setLoading(false);
@@ -142,25 +118,20 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
     },
     [bookingId, user?.id, onTrackingError, MAX_RETRIES, RETRY_DELAY]
   );
-
-  // Initialize tracking
   useEffect(() => {
     if (bookingId) {
       initializeTracking();
     }
-
     return () => {
       if (bookingId) {
         socketService.leaveTracking(bookingId);
       }
     };
   }, [bookingId, initializeTracking]);
-
-  // Socket event listeners
   useEffect(() => {
     const handleLocationReceived = (data) => {
       if (data.bookingId === bookingId) {
-        console.log("📍 Received location update:", data);
+        console.log("ðŸ“ Received location update:", data);
         setProviderLocation({
           lat: data.latitude,
           lng: data.longitude,
@@ -169,10 +140,9 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
         setError(null); // Clear any previous errors
       }
     };
-
     const handleTrackingStarted = (data) => {
       if (data.bookingId === bookingId) {
-        console.log("🟢 Tracking started:", data);
+        console.log("ðŸŸ¢ Tracking started:", data);
         setProviderLocation({
           lat: data.initialLocation.latitude,
           lng: data.initialLocation.longitude,
@@ -181,37 +151,30 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
         setProviderStatus("On the way");
       }
     };
-
     const handleTrackingStopped = (data) => {
       if (data.bookingId === bookingId) {
-        console.log("🔴 Tracking stopped:", data);
+        console.log("ðŸ”´ Tracking stopped:", data);
         setProviderStatus("Service completed");
       }
     };
-
     const handleServiceStatusReceived = (data) => {
       if (data.bookingId === bookingId) {
-        console.log("🔄 Service status update:", data);
+        console.log("ðŸ”„ Service status update:", data);
         setProviderStatus(data.status);
       }
     };
-
     const handleProviderOffline = (data) => {
       if (data.bookingId === bookingId) {
-        console.log("📴 Provider offline:", data);
+        console.log("ðŸ“´ Provider offline:", data);
         setError("Provider is currently offline");
         setProviderStatus("Offline");
       }
     };
-
-    // Add event listeners
     socketService.onLocationReceived(handleLocationReceived);
     socketService.onTrackingStarted(handleTrackingStarted);
     socketService.onTrackingStopped(handleTrackingStopped);
     socketService.onServiceStatusReceived(handleServiceStatusReceived);
     socketService.onProviderOffline(handleProviderOffline);
-
-    // Cleanup
     return () => {
       socketService.offLocationReceived(handleLocationReceived);
       socketService.offTrackingStarted(handleTrackingStarted);
@@ -220,12 +183,9 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
       socketService.offProviderOffline(handleProviderOffline);
     };
   }, [bookingId]);
-
-  // Calculate directions when both locations are available
   useEffect(() => {
     if (map && providerLocation && userLocation && window.google) {
       const directionsService = new window.google.maps.DirectionsService();
-
       directionsService.route(
         {
           origin: providerLocation,
@@ -242,13 +202,11 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
       );
     }
   }, [map, providerLocation, userLocation]);
-
   const refreshTracking = async () => {
     try {
       setError(null);
       const response = await trackingApiService.getTrackingStatus(bookingId);
       setTrackingData(response.booking);
-
       if (response.booking.tracking?.currentLocation) {
         setProviderLocation({
           lat: response.booking.tracking.currentLocation.latitude,
@@ -263,19 +221,16 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
       setError(err.message || "Failed to refresh tracking data");
     }
   };
-
   const handleMapLoad = useCallback((map) => {
     setMap(map);
-    console.log("📍 Google Map loaded successfully");
+    console.log("ðŸ“ Google Map loaded successfully");
   }, []);
-
   const handleMapError = useCallback(() => {
-    console.error("📍 Google Map failed to load");
+    console.error("ðŸ“ Google Map failed to load");
     setError(
       "Failed to load Google Maps. Please check your internet connection."
     );
   }, []);
-
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case "on the way":
@@ -289,7 +244,6 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
         return "text-gray-600 bg-gray-100";
     }
   };
-
   if (loading) {
     return (
       <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -311,10 +265,9 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
       </div>
     );
   }
-
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-      {/* Header */}
+      {}
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
@@ -340,8 +293,7 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
             </button>
           </div>
         </div>
-
-        {/* Connection Status */}
+        {}
         <div className="flex items-center space-x-2 mt-2">
           <div
             className={`w-2 h-2 rounded-full ${
@@ -353,18 +305,17 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
           </span>
           {retryCount > 0 && (
             <span className="text-sm text-orange-600">
-              • Retry attempt {retryCount}/{MAX_RETRIES}
+              â€¢ Retry attempt {retryCount}/{MAX_RETRIES}
             </span>
           )}
           {lastUpdate && (
             <span className="text-sm text-gray-500">
-              • Last update: {lastUpdate.toLocaleTimeString()}
+              â€¢ Last update: {lastUpdate.toLocaleTimeString()}
             </span>
           )}
         </div>
       </div>
-
-      {/* Error Display */}
+      {}
       {error &&
         !error.includes("not authorized") &&
         !error.includes("permission") && (
@@ -376,8 +327,7 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
             <p className="text-red-700 text-sm mt-1">{error}</p>
           </div>
         )}
-
-      {/* No tracking available message */}
+      {}
       {!loading && !trackingData?.tracking?.isActive && (
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
           <div className="flex items-center space-x-2">
@@ -392,13 +342,11 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
           </p>
         </div>
       )}
-
-      {/* Map */}
+      {}
       {!loading && (trackingData?.tracking?.isActive || providerLocation) ? (
         <div className="relative">
           {!GOOGLE_MAPS_API_KEY ||
           GOOGLE_MAPS_API_KEY === "AIzaSyBHg5SkO4eR8VkK9F3kHl2wCJfv6_ZQ_z8" ? (
-            // Fallback map when Google Maps API key is not available
             <div className="h-96 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200 flex items-center justify-center">
               <div className="text-center p-8">
                 <MapPin className="h-16 w-16 text-blue-500 mx-auto mb-4" />
@@ -423,7 +371,7 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
                   </div>
                 )}
                 <div className="mt-4 text-sm text-gray-500">
-                  <p>🗺️ Google Maps integration available with API key</p>
+                  <p>ðŸ—ºï¸ Google Maps integration available with API key</p>
                 </div>
               </div>
             </div>
@@ -448,7 +396,7 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
                 onLoad={handleMapLoad}
                 options={mapOptions}
               >
-                {/* User Location Marker */}
+                {}
                 {userLocation && (
                   <Marker
                     position={userLocation}
@@ -466,8 +414,7 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
                     title="Your location"
                   />
                 )}
-
-                {/* Provider Location Marker */}
+                {}
                 {providerLocation && (
                   <Marker
                     position={providerLocation}
@@ -506,8 +453,7 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
                     )}
                   </Marker>
                 )}
-
-                {/* Directions */}
+                {}
                 {directions && (
                   <DirectionsRenderer
                     directions={directions}
@@ -539,8 +485,7 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
           </div>
         </div>
       )}
-
-      {/* Footer Info */}
+      {}
       {trackingData && (
         <div className="p-4 bg-gray-50">
           <div className="flex items-center justify-between text-sm">
@@ -564,5 +509,4 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
     </div>
   );
 };
-
 export default RealTimeTrackingMap;

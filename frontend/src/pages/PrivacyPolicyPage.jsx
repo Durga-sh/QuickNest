@@ -1,8 +1,6 @@
-import React from "react";
-// eslint-disable-next-line no-unused-vars
+﻿import React from "react";
 import { motion } from "framer-motion";
 import { Shield, Lock, Eye, UserCheck, Database, Globe } from "lucide-react";
-
 const PrivacyPolicyPage = () => {
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -14,7 +12,6 @@ const PrivacyPolicyPage = () => {
       },
     },
   };
-
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
@@ -26,7 +23,6 @@ const PrivacyPolicyPage = () => {
       },
     },
   };
-
   const sections = [
     {
       icon: Database,
@@ -161,7 +157,6 @@ const PrivacyPolicyPage = () => {
       ],
     },
   ];
-
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <motion.div
@@ -170,7 +165,7 @@ const PrivacyPolicyPage = () => {
         animate="visible"
         variants={containerVariants}
       >
-        {/* Header */}
+        {}
         <motion.div className="text-center mb-12" variants={itemVariants}>
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
             Privacy Policy
@@ -183,8 +178,7 @@ const PrivacyPolicyPage = () => {
             Last updated: January 1, 2025
           </p>
         </motion.div>
-
-        {/* Introduction */}
+        {}
         <motion.div
           className="bg-white rounded-lg shadow-lg p-8 mb-8"
           variants={itemVariants}
@@ -205,8 +199,7 @@ const PrivacyPolicyPage = () => {
             your personal information.
           </p>
         </motion.div>
-
-        {/* Main Sections */}
+        {}
         {sections.map((section, index) => (
           <motion.div
             key={index}
@@ -219,7 +212,6 @@ const PrivacyPolicyPage = () => {
                 {section.title}
               </h2>
             </div>
-
             <div className="space-y-6">
               {section.content.map((item, itemIndex) => (
                 <div key={itemIndex}>
@@ -232,8 +224,7 @@ const PrivacyPolicyPage = () => {
             </div>
           </motion.div>
         ))}
-
-        {/* Cookies and Tracking */}
+        {}
         <motion.div
           className="bg-white rounded-lg shadow-lg p-8 mb-8"
           variants={itemVariants}
@@ -274,8 +265,7 @@ const PrivacyPolicyPage = () => {
             </div>
           </div>
         </motion.div>
-
-        {/* Third-Party Services */}
+        {}
         <motion.div
           className="bg-white rounded-lg shadow-lg p-8 mb-8"
           variants={itemVariants}
@@ -289,19 +279,19 @@ const PrivacyPolicyPage = () => {
           </p>
           <ul className="space-y-2 text-gray-700">
             <li className="flex items-start">
-              <span className="text-emerald-600 mr-2">•</span>
+              <span className="text-emerald-600 mr-2">â€¢</span>
               Payment processors for secure transaction handling
             </li>
             <li className="flex items-start">
-              <span className="text-emerald-600 mr-2">•</span>
+              <span className="text-emerald-600 mr-2">â€¢</span>
               Mapping services for location-based features
             </li>
             <li className="flex items-start">
-              <span className="text-emerald-600 mr-2">•</span>
+              <span className="text-emerald-600 mr-2">â€¢</span>
               Communication services for notifications and messaging
             </li>
             <li className="flex items-start">
-              <span className="text-emerald-600 mr-2">•</span>
+              <span className="text-emerald-600 mr-2">â€¢</span>
               Analytics tools for platform improvement
             </li>
           </ul>
@@ -310,8 +300,7 @@ const PrivacyPolicyPage = () => {
             encourage you to review them.
           </p>
         </motion.div>
-
-        {/* Children's Privacy */}
+        {}
         <motion.div
           className="bg-white rounded-lg shadow-lg p-8 mb-8"
           variants={itemVariants}
@@ -327,8 +316,7 @@ const PrivacyPolicyPage = () => {
             such information.
           </p>
         </motion.div>
-
-        {/* International Users */}
+        {}
         <motion.div
           className="bg-white rounded-lg shadow-lg p-8 mb-8"
           variants={itemVariants}
@@ -344,8 +332,7 @@ const PrivacyPolicyPage = () => {
             Privacy Policy.
           </p>
         </motion.div>
-
-        {/* Updates */}
+        {}
         <motion.div
           className="bg-white rounded-lg shadow-lg p-8 mb-8"
           variants={itemVariants}
@@ -362,8 +349,7 @@ const PrivacyPolicyPage = () => {
             updated policy.
           </p>
         </motion.div>
-
-        {/* Contact Information */}
+        {}
         <motion.div
           className="bg-emerald-50 rounded-lg p-8"
           variants={itemVariants}
@@ -395,5 +381,4 @@ const PrivacyPolicyPage = () => {
     </div>
   );
 };
-
 export default PrivacyPolicyPage;

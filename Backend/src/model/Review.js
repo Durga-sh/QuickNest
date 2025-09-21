@@ -1,6 +1,4 @@
-// Backend/src/model/Review.js
-const mongoose = require("mongoose");
-
+﻿const mongoose = require("mongoose");
 const reviewSchema = new mongoose.Schema(
   {
     userId: {
@@ -47,14 +45,10 @@ const reviewSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-
-// Index for better query performance
 reviewSchema.index({ providerId: 1, createdAt: -1 });
 reviewSchema.index({ userId: 1, createdAt: -1 });
 reviewSchema.index({ bookingId: 1 });
 reviewSchema.index({ rating: 1 });
-
-// Virtual for formatted date
 reviewSchema.virtual("formattedDate").get(function () {
   return this.createdAt.toLocaleDateString("en-US", {
     year: "numeric",
@@ -62,13 +56,9 @@ reviewSchema.virtual("formattedDate").get(function () {
     day: "numeric",
   });
 });
-
-// Instance method to check if review belongs to user
 reviewSchema.methods.belongsToUser = function (userId) {
   return this.userId.toString() === userId.toString();
 };
-
-// Static method to get provider rating stats
 reviewSchema.statics.getProviderStats = async function (providerId) {
   const stats = await this.aggregate([
     { $match: { providerId: new mongoose.Types.ObjectId(providerId) } },
@@ -83,7 +73,6 @@ reviewSchema.statics.getProviderStats = async function (providerId) {
       },
     },
   ]);
-
   if (stats.length === 0) {
     return {
       averageRating: 0,
@@ -91,38 +80,30 @@ reviewSchema.statics.getProviderStats = async function (providerId) {
       ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
     };
   }
-
   const ratingDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
   stats[0].ratingDistribution.forEach((rating) => {
     ratingDistribution[rating] = (ratingDistribution[rating] || 0) + 1;
   });
-
   return {
     averageRating: Math.round(stats[0].averageRating * 10) / 10,
     totalReviews: stats[0].totalReviews,
     ratingDistribution,
   };
 };
-
-// Pre-save middleware to validate that booking exists and is completed
 reviewSchema.pre("save", async function (next) {
   if (this.isNew) {
     try {
       const Booking = mongoose.model("Booking");
       const booking = await Booking.findById(this.bookingId);
-
       if (!booking) {
         throw new Error("Booking not found");
       }
-
       if (booking.status !== "completed") {
         throw new Error("Can only review completed bookings");
       }
-
       if (booking.user.toString() !== this.userId.toString()) {
         throw new Error("You can only review your own bookings");
       }
-
       next();
     } catch (error) {
       next(error);
@@ -131,5 +112,4 @@ reviewSchema.pre("save", async function (next) {
     next();
   }
 });
-
 module.exports = mongoose.model("Review", reviewSchema);

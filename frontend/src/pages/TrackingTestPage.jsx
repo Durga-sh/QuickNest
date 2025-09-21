@@ -1,16 +1,12 @@
-import React from "react";
+﻿import React from "react";
 import RealTimeTrackingMap from "../components/RealTimeTrackingMap";
 import ProviderLocationTracker from "../components/ProviderLocationTracker";
-
-// Test page for tracking components
 const TrackingTestPage = () => {
-  // Mock data for testing
   const mockBookingId = "test-booking-123";
   const mockUserLocation = {
     lat: 28.6139, 
     lng: 77.209,
   };
-
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 space-y-8">
@@ -22,7 +18,6 @@ const TrackingTestPage = () => {
             This page demonstrates the real-time tracking functionality similar
             to Ola/Uber.
           </p>
-
           <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-4">
               <h2 className="text-lg font-semibold text-gray-800">
@@ -39,7 +34,6 @@ const TrackingTestPage = () => {
                 }}
               />
             </div>
-
             <div className="space-y-4">
               <h2 className="text-lg font-semibold text-gray-800">
                 Customer Side - Live Map
@@ -51,7 +45,6 @@ const TrackingTestPage = () => {
             </div>
           </div>
         </div>
-
         <div className="bg-white rounded-lg p-6 shadow-lg">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
          Live Tracking Map
@@ -64,7 +57,6 @@ const TrackingTestPage = () => {
             }}
           />
         </div>
-
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-blue-900 mb-3">
             Testing Instructions
@@ -88,7 +80,6 @@ const TrackingTestPage = () => {
             </li>
           </ol>
         </div>
-
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-yellow-900 mb-3">
             Requirements
@@ -101,7 +92,6 @@ const TrackingTestPage = () => {
             <li>Google Maps API key configured (optional)</li>
           </ul>
         </div>
-
         <div className="bg-green-50 border border-green-200 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-green-900 mb-3">
             Features Implemented
@@ -121,5 +111,4 @@ const TrackingTestPage = () => {
     </div>
   );
 };
-
 export default TrackingTestPage;

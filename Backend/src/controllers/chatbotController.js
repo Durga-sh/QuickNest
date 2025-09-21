@@ -1,4 +1,4 @@
-
+﻿
 const generateResponse = (message, context = {}) => {
   const lowerMessage = message.toLowerCase().trim();
 
@@ -18,7 +18,7 @@ const generateResponse = (message, context = {}) => {
     };
   }
 
-  // Booking process
+
   if (
     lowerMessage.includes("book") ||
     lowerMessage.includes("appointment") ||

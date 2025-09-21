@@ -1,5 +1,4 @@
-import React from "react";
-// eslint-disable-next-line no-unused-vars
+﻿import React from "react";
 import { motion } from "framer-motion";
 import {
   FileText,
@@ -9,7 +8,6 @@ import {
   AlertTriangle,
   Scale,
 } from "lucide-react";
-
 const TermsOfServicePage = () => {
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -21,7 +19,6 @@ const TermsOfServicePage = () => {
       },
     },
   };
-
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
@@ -33,7 +30,6 @@ const TermsOfServicePage = () => {
       },
     },
   };
-
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <motion.div
@@ -42,7 +38,7 @@ const TermsOfServicePage = () => {
         animate="visible"
         variants={containerVariants}
       >
-        {/* Header */}
+        {}
         <motion.div className="text-center mb-12" variants={itemVariants}>
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
             Terms of Service
@@ -55,8 +51,7 @@ const TermsOfServicePage = () => {
             Last updated: January 1, 2025
           </p>
         </motion.div>
-
-        {/* Introduction */}
+        {}
         <motion.div
           className="bg-white rounded-lg shadow-lg p-8 mb-8"
           variants={itemVariants}
@@ -74,8 +69,7 @@ const TermsOfServicePage = () => {
             or use our services.
           </p>
         </motion.div>
-
-        {/* Platform Description */}
+        {}
         <motion.div
           className="bg-white rounded-lg shadow-lg p-8 mb-8"
           variants={itemVariants}
@@ -100,8 +94,7 @@ const TermsOfServicePage = () => {
             </p>
           </div>
         </motion.div>
-
-        {/* User Accounts */}
+        {}
         <motion.div
           className="bg-white rounded-lg shadow-lg p-8 mb-8"
           variants={itemVariants}
@@ -145,8 +138,7 @@ const TermsOfServicePage = () => {
             </div>
           </div>
         </motion.div>
-
-        {/* Service Bookings */}
+        {}
         <motion.div
           className="bg-white rounded-lg shadow-lg p-8 mb-8"
           variants={itemVariants}
@@ -200,8 +192,7 @@ const TermsOfServicePage = () => {
             </div>
           </div>
         </motion.div>
-
-        {/* User Responsibilities */}
+        {}
         <motion.div
           className="bg-white rounded-lg shadow-lg p-8 mb-8"
           variants={itemVariants}
@@ -218,25 +209,25 @@ const TermsOfServicePage = () => {
             </h3>
             <ul className="space-y-2 text-gray-700">
               <li className="flex items-start">
-                <span className="text-emerald-600 mr-2">•</span>
+                <span className="text-emerald-600 mr-2">â€¢</span>
                 Use the platform only for lawful purposes and in accordance with
                 these Terms
               </li>
               <li className="flex items-start">
-                <span className="text-emerald-600 mr-2">•</span>
+                <span className="text-emerald-600 mr-2">â€¢</span>
                 Provide accurate and truthful information in all interactions
               </li>
               <li className="flex items-start">
-                <span className="text-emerald-600 mr-2">•</span>
+                <span className="text-emerald-600 mr-2">â€¢</span>
                 Treat service providers with respect and professionalism
               </li>
               <li className="flex items-start">
-                <span className="text-emerald-600 mr-2">•</span>
+                <span className="text-emerald-600 mr-2">â€¢</span>
                 Be present at the scheduled service time or notify in advance of
                 any changes
               </li>
               <li className="flex items-start">
-                <span className="text-emerald-600 mr-2">•</span>
+                <span className="text-emerald-600 mr-2">â€¢</span>
                 Report any issues or concerns promptly through appropriate
                 channels
               </li>
@@ -246,28 +237,27 @@ const TermsOfServicePage = () => {
             </h3>
             <ul className="space-y-2 text-gray-700">
               <li className="flex items-start">
-                <span className="text-red-600 mr-2">•</span>
+                <span className="text-red-600 mr-2">â€¢</span>
                 Use the platform for any illegal or unauthorized purpose
               </li>
               <li className="flex items-start">
-                <span className="text-red-600 mr-2">•</span>
+                <span className="text-red-600 mr-2">â€¢</span>
                 Attempt to circumvent our payment system or engage in fraudulent
                 activities
               </li>
               <li className="flex items-start">
-                <span className="text-red-600 mr-2">•</span>
+                <span className="text-red-600 mr-2">â€¢</span>
                 Harass, abuse, or discriminate against service providers or
                 other users
               </li>
               <li className="flex items-start">
-                <span className="text-red-600 mr-2">•</span>
+                <span className="text-red-600 mr-2">â€¢</span>
                 Interfere with or disrupt the operation of our platform
               </li>
             </ul>
           </div>
         </motion.div>
-
-        {/* Service Provider Terms */}
+        {}
         <motion.div
           className="bg-white rounded-lg shadow-lg p-8 mb-8"
           variants={itemVariants}
@@ -308,8 +298,7 @@ const TermsOfServicePage = () => {
             </div>
           </div>
         </motion.div>
-
-        {/* Platform Disclaimers */}
+        {}
         <motion.div
           className="bg-white rounded-lg shadow-lg p-8 mb-8"
           variants={itemVariants}
@@ -341,8 +330,7 @@ const TermsOfServicePage = () => {
             </p>
           </div>
         </motion.div>
-
-        {/* Limitation of Liability */}
+        {}
         <motion.div
           className="bg-white rounded-lg shadow-lg p-8 mb-8"
           variants={itemVariants}
@@ -367,8 +355,7 @@ const TermsOfServicePage = () => {
             </p>
           </div>
         </motion.div>
-
-        {/* Intellectual Property */}
+        {}
         <motion.div
           className="bg-white rounded-lg shadow-lg p-8 mb-8"
           variants={itemVariants}
@@ -386,8 +373,7 @@ const TermsOfServicePage = () => {
             based on our platform without explicit written permission.
           </p>
         </motion.div>
-
-        {/* Termination */}
+        {}
         <motion.div
           className="bg-white rounded-lg shadow-lg p-8 mb-8"
           variants={itemVariants}
@@ -406,8 +392,7 @@ const TermsOfServicePage = () => {
             use of our services.
           </p>
         </motion.div>
-
-        {/* Governing Law */}
+        {}
         <motion.div
           className="bg-white rounded-lg shadow-lg p-8 mb-8"
           variants={itemVariants}
@@ -422,8 +407,7 @@ const TermsOfServicePage = () => {
             courts in Hyderabad, India.
           </p>
         </motion.div>
-
-        {/* Changes to Terms */}
+        {}
         <motion.div
           className="bg-white rounded-lg shadow-lg p-8 mb-8"
           variants={itemVariants}
@@ -438,8 +422,7 @@ const TermsOfServicePage = () => {
             services after such changes constitutes acceptance of the new Terms.
           </p>
         </motion.div>
-
-        {/* Contact Information */}
+        {}
         <motion.div
           className="bg-emerald-50 rounded-lg p-8"
           variants={itemVariants}
@@ -467,5 +450,4 @@ const TermsOfServicePage = () => {
     </div>
   );
 };
-
 export default TermsOfServicePage;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import {
   X,
   Star,
@@ -14,21 +14,17 @@ import {
   CheckCircle,
 } from "lucide-react";
 import apiService from "../api/provider";
-
-
 const ProviderDetailsModal = ({ providerId, isOpen, onClose }) => {
   const [provider, setProvider] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(null);
-
   useEffect(() => {
     if (isOpen && providerId) {
       fetchProviderDetails();
     }
   }, [isOpen, providerId]);
-
   const fetchProviderDetails = async () => {
     try {
       setLoading(true);
@@ -41,30 +37,25 @@ const ProviderDetailsModal = ({ providerId, isOpen, onClose }) => {
       setLoading(false);
     }
   };
-
   const handleBookingSuccess = (booking) => {
     setBookingSuccess(booking);
     setBookingModalOpen(false);
-    // Show success message
     setTimeout(() => {
       setBookingSuccess(null);
     }, 5000);
   };
-
   const formatPrice = (price) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
     }).format(price);
   };
-
   if (!isOpen) return null;
-
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
         <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-          {/* Header */}
+          {}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <h2 className="text-2xl font-bold text-gray-900">
               Provider Details
@@ -76,8 +67,7 @@ const ProviderDetailsModal = ({ providerId, isOpen, onClose }) => {
               <X className="h-6 w-6 text-gray-500" />
             </button>
           </div>
-
-          {/* Success Message */}
+          {}
           {bookingSuccess && (
             <div className="mx-6 mt-4 bg-green-50 border border-green-200 rounded-lg p-4">
               <div className="flex items-center">
@@ -93,8 +83,7 @@ const ProviderDetailsModal = ({ providerId, isOpen, onClose }) => {
               </div>
             </div>
           )}
-
-          {/* Content */}
+          {}
           <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
             {loading ? (
               <div className="flex items-center justify-center py-12">
@@ -108,7 +97,7 @@ const ProviderDetailsModal = ({ providerId, isOpen, onClose }) => {
               </div>
             ) : provider ? (
               <div className="p-4 space-y-6">
-                {/* Provider Info */}
+                {}
                 <div className="flex items-start space-x-6">
                   <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-2xl font-bold text-blue-600">
@@ -144,8 +133,7 @@ const ProviderDetailsModal = ({ providerId, isOpen, onClose }) => {
                     </div>
                   </div>
                 </div>
-
-                {/* Skills */}
+                {}
                 <div>
                   <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                     <Award className="h-5 w-5 mr-2 text-blue-600" />
@@ -162,8 +150,7 @@ const ProviderDetailsModal = ({ providerId, isOpen, onClose }) => {
                     ))}
                   </div>
                 </div>
-
-                {/* Services & Pricing */}
+                {}
                 <div>
                   <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                     <DollarSign className="h-5 w-5 mr-2 text-green-600" />
@@ -187,8 +174,7 @@ const ProviderDetailsModal = ({ providerId, isOpen, onClose }) => {
                     ))}
                   </div>
                 </div>
-
-                {/* Availability */}
+                {}
                 <div>
                   <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                     <Clock className="h-5 w-5 mr-2 text-purple-600" />
@@ -217,8 +203,7 @@ const ProviderDetailsModal = ({ providerId, isOpen, onClose }) => {
                     ))}
                   </div>
                 </div>
-
-                {/* Map Preview */}
+                {}
                 <div>
                   <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                     <MapPin className="h-5 w-5 mr-2 text-red-600" />
@@ -235,7 +220,7 @@ const ProviderDetailsModal = ({ providerId, isOpen, onClose }) => {
                         {provider.location.coordinates[0].toFixed(6)}
                       </span>
                     </div>
-                    {/* You can integrate Google Maps here */}
+                    {}
                     <div className="mt-3 h-40 bg-gray-200 rounded flex items-center justify-center">
                       <span className="text-gray-500">
                         Map integration goes here
@@ -246,8 +231,7 @@ const ProviderDetailsModal = ({ providerId, isOpen, onClose }) => {
               </div>
             ) : null}
           </div>
-
-          {/* Footer */}
+          {}
           {provider && (
             <div className="border-t border-gray-200 p-2 mt-[-10px]">
               <div className="flex flex-col sm:flex-row gap-1 justify-center sm:justify-between">
@@ -273,8 +257,7 @@ const ProviderDetailsModal = ({ providerId, isOpen, onClose }) => {
           )}
         </div>
       </div>
-
-      {/* Booking Modal */}
+      {}
       <BookingModal
         provider={provider}
         isOpen={bookingModalOpen}
@@ -284,5 +267,4 @@ const ProviderDetailsModal = ({ providerId, isOpen, onClose }) => {
     </>
   );
 };
-
 export default ProviderDetailsModal;

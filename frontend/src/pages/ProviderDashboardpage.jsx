@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -12,7 +12,6 @@ import {
   Navigation,
 } from "lucide-react";
 import ProviderTrackingDashboard from "../components/ProviderTrackingDashboard";
-
 const ProviderDashboard = () => {
   const navigate = useNavigate();
   const [providerData] = useState({
@@ -46,17 +45,12 @@ const ProviderDashboard = () => {
     totalJobs: 142,
     earnings: 15420,
   });
-
-  // Function to redirect to create service page
   const redirectToCreateService = () => {
     navigate("/create-service");
   };
-
-  // Function to redirect to view bookings page
   const redirectToViewBookings = () => {
     navigate("/provider-bookings");
   };
-
   const StatCard = ({ title, value, icon: Icon, color }) => (
     <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl shadow-blue-500/5 p-6 border border-white/20 hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-300 transform hover:scale-105">
       <div className="flex items-center justify-between">
@@ -75,10 +69,9 @@ const ProviderDashboard = () => {
       </div>
     </div>
   );
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Header */}
+      {}
       <header className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -100,11 +93,10 @@ const ProviderDashboard = () => {
           </div>
         </div>
       </header>
-
-      {/* Main Content */}
+      {}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-6">
-          {/* Welcome Section */}
+          {}
           <div className="bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl shadow-blue-500/20">
             <div className="absolute inset-0 bg-black/10"></div>
             <div className="relative z-10">
@@ -136,8 +128,7 @@ const ProviderDashboard = () => {
               </div>
             </div>
           </div>
-
-          {/* Stats Cards */}
+          {}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <StatCard
               title="Total Earnings"
@@ -158,8 +149,7 @@ const ProviderDashboard = () => {
               color="#8B5CF6"
             />
           </div>
-
-          {/* Quick Actions */}
+          {}
           <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl shadow-blue-500/5 p-8 border border-white/20">
             <h3 className="text-xl font-bold text-gray-900 mb-6">
               Quick Actions
@@ -189,8 +179,7 @@ const ProviderDashboard = () => {
               </button>
             </div>
           </div>
-
-          {/* Current Services */}
+          {}
           <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl shadow-blue-500/5 p-8 border border-white/20">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-gray-900">Your Services</h3>
@@ -225,10 +214,9 @@ const ProviderDashboard = () => {
               ))}
             </div>
           </div>
-
-          {/* Provider Profile Summary */}
+          {}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Skills */}
+            {}
             <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl shadow-blue-500/5 p-8 border border-white/20">
               <h3 className="text-xl font-bold text-gray-900 mb-6">
                 Your Skills
@@ -244,8 +232,7 @@ const ProviderDashboard = () => {
                 ))}
               </div>
             </div>
-
-            {/* Recent Activity */}
+            {}
             <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl shadow-blue-500/5 p-8 border border-white/20">
               <h3 className="text-xl font-bold text-gray-900 mb-6">
                 Recent Activity
@@ -272,8 +259,7 @@ const ProviderDashboard = () => {
               </div>
             </div>
           </div>
-
-          {/* Tracking Dashboard */}
+          {}
           <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl shadow-blue-500/5 p-8 border border-white/20">
             <div className="flex items-center space-x-2 mb-6">
               <Navigation className="h-6 w-6 text-blue-600" />
@@ -281,8 +267,7 @@ const ProviderDashboard = () => {
             </div>
             <ProviderTrackingDashboard />
           </div>
-
-          {/* Call to Action for New Providers */}
+          {}
           {providerData.status === "pending" && (
             <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200/50 rounded-3xl p-8 shadow-xl">
               <div className="flex items-center">
@@ -318,5 +303,4 @@ const ProviderDashboard = () => {
     </div>
   );
 };
-
 export default ProviderDashboard;

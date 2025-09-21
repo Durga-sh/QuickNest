@@ -1,5 +1,4 @@
-
-class VoiceBookingParser {
+﻿class VoiceBookingParser {
   constructor() {
     this.serviceKeywords = {
       electrician: [
@@ -16,16 +15,12 @@ class VoiceBookingParser {
       gardener: ["gardener", "garden", "lawn", "plant", "landscaping"],
       painter: ["painter", "paint", "wall", "ceiling", "color"],
     };
-
-    // Time keywords
     this.timeKeywords = {
       morning: ["morning", "am", "early"],
       afternoon: ["afternoon", "noon", "pm"],
       evening: ["evening", "night"],
       urgent: ["urgent", "emergency", "asap", "immediately", "now"],
     };
-
-    // Date keywords
     this.dateKeywords = {
       today: ["today", "now"],
       tomorrow: ["tomorrow"],
@@ -33,7 +28,6 @@ class VoiceBookingParser {
       nextWeek: ["next week"],
     };
   }
-
   parseVoiceCommand(transcript) {
     if (!transcript || typeof transcript !== "string") {
       console.warn("Invalid transcript provided to parseVoiceCommand");
@@ -46,10 +40,8 @@ class VoiceBookingParser {
         rawText: transcript || "",
       };
     }
-
     const normalizedText = transcript.toLowerCase().trim();
     console.log("Parsing voice command:", normalizedText);
-
     const result = {
       service: this.extractService(normalizedText),
       date: this.extractDate(normalizedText),
@@ -58,13 +50,9 @@ class VoiceBookingParser {
       confidence: 0,
       rawText: transcript,
     };
-
-    // Calculate confidence based on extracted information
     result.confidence = this.calculateConfidence(result, normalizedText);
-
     return result;
   }
-
   extractService(text) {
     try {
       for (const [service, keywords] of Object.entries(this.serviceKeywords)) {
@@ -83,10 +71,8 @@ class VoiceBookingParser {
     }
     return null;
   }
-
   extractDate(text) {
     try {
-      // Handle specific dates
       if (this.containsAny(text, this.dateKeywords.today)) {
         return {
           type: "today",
@@ -94,7 +80,6 @@ class VoiceBookingParser {
           display: "Today",
         };
       }
-
       if (this.containsAny(text, this.dateKeywords.tomorrow)) {
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
@@ -104,8 +89,6 @@ class VoiceBookingParser {
           display: "Tomorrow",
         };
       }
-
-      // Handle day names (Monday, Tuesday, etc.)
       const dayMatch = text.match(
         /(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i
       );
@@ -119,8 +102,6 @@ class VoiceBookingParser {
           dayName: dayName,
         };
       }
-
-      // Handle "next week"
       if (this.containsAny(text, this.dateKeywords.nextWeek)) {
         const nextWeek = new Date();
         nextWeek.setDate(nextWeek.getDate() + 7);
@@ -133,20 +114,16 @@ class VoiceBookingParser {
     } catch (error) {
       console.error("Error extracting date:", error);
     }
-
     return null;
   }
-
   extractTime(text) {
     try {
-      // Extract time patterns like "10 AM", "3 PM", "at 5"
       const timePatterns = [
         /(\d{1,2})\s*(am|pm)/i,
         /(\d{1,2}):(\d{2})\s*(am|pm)/i,
         /at\s*(\d{1,2})/i,
         /(\d{1,2})\s*o'?clock/i,
       ];
-
       for (const pattern of timePatterns) {
         const match = text.match(pattern);
         if (match) {
@@ -154,14 +131,11 @@ class VoiceBookingParser {
           const minutes =
             match[2] && !isNaN(parseInt(match[2])) ? parseInt(match[2]) : 0;
           const period = match[3] ? match[3].toLowerCase() : null;
-
-          // Convert to 24-hour format
           if (period === "pm" && hour !== 12) {
             hour += 12;
           } else if (period === "am" && hour === 12) {
             hour = 0;
           }
-
           return {
             hour: hour,
             minutes: minutes,
@@ -171,8 +145,6 @@ class VoiceBookingParser {
           };
         }
       }
-
-      // Handle general time periods
       if (this.containsAny(text, this.timeKeywords.morning)) {
         return {
           period: "morning",
@@ -181,7 +153,6 @@ class VoiceBookingParser {
           display: "Morning (9:00 AM)",
         };
       }
-
       if (this.containsAny(text, this.timeKeywords.afternoon)) {
         return {
           period: "afternoon",
@@ -190,7 +161,6 @@ class VoiceBookingParser {
           display: "Afternoon (2:00 PM)",
         };
       }
-
       if (this.containsAny(text, this.timeKeywords.evening)) {
         return {
           period: "evening",
@@ -202,10 +172,8 @@ class VoiceBookingParser {
     } catch (error) {
       console.error("Error extracting time:", error);
     }
-
     return null;
   }
-
   isUrgent(text) {
     try {
       return this.containsAny(text, this.timeKeywords.urgent);
@@ -214,16 +182,12 @@ class VoiceBookingParser {
       return false;
     }
   }
-
   calculateConfidence(result, text) {
     try {
       let confidence = 0;
-
       if (result.service) confidence += 0.4;
       if (result.date) confidence += 0.3;
       if (result.time) confidence += 0.3;
-
-      // Bonus for booking-related keywords
       const bookingKeywords = [
         "book",
         "schedule",
@@ -235,14 +199,12 @@ class VoiceBookingParser {
       if (this.containsAny(text, bookingKeywords)) {
         confidence += 0.1;
       }
-
       return Math.min(confidence, 1.0);
     } catch (error) {
       console.error("Error calculating confidence:", error);
       return 0;
     }
   }
-
   containsAny(text, keywords) {
     try {
       if (!Array.isArray(keywords)) return false;
@@ -252,7 +214,6 @@ class VoiceBookingParser {
       return false;
     }
   }
-
   capitalizeFirst(str) {
     try {
       if (!str || typeof str !== "string") return str;
@@ -262,7 +223,6 @@ class VoiceBookingParser {
       return str;
     }
   }
-
   formatTime(hour, minutes) {
     try {
       const period = hour >= 12 ? "PM" : "AM";
@@ -273,7 +233,6 @@ class VoiceBookingParser {
       return "Time not available";
     }
   }
-
   getNextDateForDay(dayName) {
     try {
       const days = [
@@ -287,15 +246,12 @@ class VoiceBookingParser {
       ];
       const targetDayIndex = days.indexOf(dayName.toLowerCase());
       if (targetDayIndex === -1) return new Date(); // fallback to today
-
       const today = new Date();
       const currentDayIndex = today.getDay();
-
       let daysUntilTarget = targetDayIndex - currentDayIndex;
       if (daysUntilTarget <= 0) {
         daysUntilTarget += 7; // Next occurrence of this day
       }
-
       const targetDate = new Date(today);
       targetDate.setDate(today.getDate() + daysUntilTarget);
       return targetDate;
@@ -304,7 +260,6 @@ class VoiceBookingParser {
       return new Date();
     }
   }
-
   generateBookingData(parsedCommand) {
     try {
       const bookingData = {
@@ -316,18 +271,13 @@ class VoiceBookingParser {
         confidence: parsedCommand?.confidence || 0,
         originalCommand: parsedCommand?.rawText || "",
       };
-
-      // Set booking date
       if (parsedCommand?.date) {
         bookingData.bookingDate = parsedCommand.date.date;
         bookingData.dateDisplay = parsedCommand.date.display;
       }
-
-      // Set time slot
       if (parsedCommand?.time) {
         const startHour = parsedCommand.time.hour;
         const endHour = startHour + 1; // Default 1-hour slot
-
         bookingData.timeSlot = {
           start: `${startHour
             .toString()
@@ -342,7 +292,6 @@ class VoiceBookingParser {
         };
         bookingData.timeDisplay = parsedCommand.time.display;
       }
-
       return bookingData;
     } catch (error) {
       console.error("Error generating booking data:", error);
@@ -357,30 +306,24 @@ class VoiceBookingParser {
       };
     }
   }
-
-  // Helper method to suggest improvements for low confidence commands
   getSuggestions(parsedCommand) {
     try {
       const suggestions = [];
-
       if (!parsedCommand?.service) {
         suggestions.push(
           "Try mentioning a specific service like 'electrician', 'plumber', or 'cleaner'"
         );
       }
-
       if (!parsedCommand?.date) {
         suggestions.push(
           "Specify when you need the service, like 'today', 'tomorrow', or 'Monday'"
         );
       }
-
       if (!parsedCommand?.time) {
         suggestions.push(
           "Include a time, like '10 AM', 'morning', or 'afternoon'"
         );
       }
-
       return suggestions;
     } catch (error) {
       console.error("Error generating suggestions:", error);
@@ -388,13 +331,8 @@ class VoiceBookingParser {
     }
   }
 }
-
-// Create and export singleton instance
 const voiceBookingParser = new VoiceBookingParser();
-
-// For debugging
 if (typeof window !== "undefined") {
   window.voiceBookingParser = voiceBookingParser;
 }
-
 export default voiceBookingParser;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import {
   MapPin,
   Play,
@@ -10,25 +10,20 @@ import {
 } from "lucide-react";
 import trackingApiService from "../api/tracking";
 import ProviderLocationTracker from "./ProviderLocationTracker";
-
 const ProviderTrackingDashboard = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeBookingId, setActiveBookingId] = useState(null);
-
   useEffect(() => {
     fetchTrackingBookings();
   }, []);
-
   const fetchTrackingBookings = async () => {
     try {
       setLoading(true);
       setError(null);
       const response = await trackingApiService.getProviderTrackingBookings();
       setBookings(response.bookings || []);
-
-      // Find if there's an active tracking session
       const activeBooking = response.bookings?.find(
         (b) => b.tracking?.isActive
       );
@@ -40,7 +35,6 @@ const ProviderTrackingDashboard = () => {
       setLoading(false);
     }
   };
-
   const startTracking = async (bookingId, location) => {
     try {
       await trackingApiService.startTracking(bookingId, location);
@@ -50,7 +44,6 @@ const ProviderTrackingDashboard = () => {
       alert(err.message || "Failed to start tracking");
     }
   };
-
   const stopTracking = async (bookingId) => {
     try {
       await trackingApiService.stopTracking(bookingId);
@@ -60,7 +53,6 @@ const ProviderTrackingDashboard = () => {
       alert(err.message || "Failed to stop tracking");
     }
   };
-
   const updateLocation = async (bookingId, location) => {
     try {
       await trackingApiService.updateLocation(bookingId, location);
@@ -68,14 +60,12 @@ const ProviderTrackingDashboard = () => {
       console.error("Error updating location:", err);
     }
   };
-
   const getCurrentLocation = () => {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
         reject(new Error("Geolocation is not supported by this browser"));
         return;
       }
-
       navigator.geolocation.getCurrentPosition(
         (position) => {
           resolve({
@@ -89,7 +79,6 @@ const ProviderTrackingDashboard = () => {
       );
     });
   };
-
   const handleStartTracking = async (booking) => {
     try {
       const location = await getCurrentLocation();
@@ -98,7 +87,6 @@ const ProviderTrackingDashboard = () => {
       alert("Please enable location services to start tracking");
     }
   };
-
   const getStatusColor = (status) => {
     switch (status) {
       case "pending":
@@ -115,21 +103,18 @@ const ProviderTrackingDashboard = () => {
         return "text-gray-600 bg-gray-100";
     }
   };
-
   const getTrackingStatus = (tracking) => {
     if (!tracking) return "Not Started";
     if (tracking.isActive) return "Active";
     if (tracking.endedAt) return "Stopped";
     return "Ready";
   };
-
   const getTrackingStatusColor = (tracking) => {
     if (!tracking) return "text-gray-600 bg-gray-100";
     if (tracking.isActive) return "text-green-600 bg-green-100";
     if (tracking.endedAt) return "text-red-600 bg-red-100";
     return "text-blue-600 bg-blue-100";
   };
-
   if (loading) {
     return (
       <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -140,7 +125,6 @@ const ProviderTrackingDashboard = () => {
       </div>
     );
   }
-
   if (error) {
     return (
       <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -157,10 +141,9 @@ const ProviderTrackingDashboard = () => {
       </div>
     );
   }
-
   return (
     <div className="bg-white rounded-lg border border-gray-200">
-      {/* Header */}
+      {}
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
@@ -175,25 +158,22 @@ const ProviderTrackingDashboard = () => {
           </button>
         </div>
       </div>
-
-      {/* Bookings List */}
+      {}
       <div className="p-4">
-        {/* Quick Location Tracker for Active Booking */}
+        {}
         {activeBookingId && (
           <div className="mb-6">
             <h4 className="text-md font-medium text-gray-800 mb-3">
-              🚀 Quick Location Tracker
+              ðŸš€ Quick Location Tracker
             </h4>
             <ProviderLocationTracker
               bookingId={activeBookingId}
               onLocationUpdate={() => {
-                // Refresh bookings when location updates
                 fetchTrackingBookings();
               }}
             />
           </div>
         )}
-
         {bookings.length === 0 ? (
           <div className="text-center py-8">
             <Navigation className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -222,14 +202,12 @@ const ProviderTrackingDashboard = () => {
                         #{booking.bookingId}
                       </span>
                     </div>
-
                     <div className="flex items-center space-x-2 mb-2">
                       <MapPin className="h-4 w-4 text-gray-500" />
                       <span className="text-sm text-gray-600">
                         {booking.address}
                       </span>
                     </div>
-
                     <div className="flex items-center space-x-4 mb-3">
                       <div className="flex items-center space-x-1">
                         <Clock className="h-4 w-4 text-gray-500" />
@@ -252,7 +230,6 @@ const ProviderTrackingDashboard = () => {
                         {getTrackingStatus(booking.tracking)}
                       </span>
                     </div>
-
                     {booking.tracking?.currentLocation?.latitude &&
                       booking.tracking?.currentLocation?.longitude && (
                         <div className="text-sm text-gray-600 mb-2">
@@ -265,7 +242,6 @@ const ProviderTrackingDashboard = () => {
                         </div>
                       )}
                   </div>
-
                   <div className="flex flex-col space-y-2 ml-4">
                     {booking.status === "in-progress" &&
                       !booking.tracking?.isActive && (
@@ -277,7 +253,6 @@ const ProviderTrackingDashboard = () => {
                           <span>Start</span>
                         </button>
                       )}
-
                     {booking.tracking?.isActive && (
                       <button
                         onClick={() => stopTracking(booking.id)}
@@ -287,7 +262,6 @@ const ProviderTrackingDashboard = () => {
                         <span>Stop</span>
                       </button>
                     )}
-
                     {booking.tracking?.isActive && (
                       <button
                         onClick={() => {
@@ -315,5 +289,4 @@ const ProviderTrackingDashboard = () => {
     </div>
   );
 };
-
 export default ProviderTrackingDashboard;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Calendar,
@@ -20,7 +20,6 @@ import {
 import bookingApiService from "../api/booking";
 import reviewApiService from "../api/review";
 import LocationTracking from "../components/LocationTracking";
-
 const ProviderBookings = () => {
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
@@ -32,11 +31,9 @@ const ProviderBookings = () => {
   const [updatingBooking, setUpdatingBooking] = useState(null);
   const [bookingReviews, setBookingReviews] = useState({});
   const [loadingReviews, setLoadingReviews] = useState({});
-
   useEffect(() => {
     fetchBookings();
   }, [currentPage]);
-
   const fetchBookings = async () => {
     try {
       setLoading(true);
@@ -46,13 +43,10 @@ const ProviderBookings = () => {
       );
       setBookings(response.bookings || []);
       setTotalPages(response.pagination?.pages || 1);
-
-      // Fetch reviews for completed bookings
       const completedBookings =
         response.bookings?.filter(
           (booking) => booking.status === "completed"
         ) || [];
-
       if (completedBookings.length > 0) {
         fetchReviewsForBookings(completedBookings);
       }
@@ -63,18 +57,15 @@ const ProviderBookings = () => {
       setLoading(false);
     }
   };
-
   const fetchReviewsForBookings = async (completedBookings) => {
     const reviewPromises = completedBookings.map(async (booking) => {
       try {
         setLoadingReviews((prev) => ({ ...prev, [booking._id]: true }));
         const response = await reviewApiService.getReviewByBooking(booking._id);
-        // Handle both direct review object and nested response structure
         const review = response.review || response;
         console.log(`Review for booking ${booking._id}:`, review); // Debug log
         return { bookingId: booking._id, review };
       } catch (error) {
-        // Review not found is expected for some bookings
         if (
           error.message !== "REVIEW_NOT_FOUND" &&
           !error.message.includes("Review not found") &&
@@ -90,23 +81,17 @@ const ProviderBookings = () => {
         setLoadingReviews((prev) => ({ ...prev, [booking._id]: false }));
       }
     });
-
     const reviewResults = await Promise.all(reviewPromises);
     const reviewsMap = {};
-
     reviewResults.forEach(({ bookingId, review }) => {
       reviewsMap[bookingId] = review;
     });
-
     setBookingReviews(reviewsMap);
   };
-
   const updateBookingStatus = async (bookingId, newStatus) => {
     try {
       setUpdatingBooking(bookingId);
       await bookingApiService.updateBookingStatus(bookingId, newStatus);
-
-      // Update local state
       setBookings((prev) =>
         prev.map((booking) =>
           booking._id === bookingId
@@ -114,18 +99,13 @@ const ProviderBookings = () => {
             : booking
         )
       );
-
-      // Show success message
       alert(`Booking ${newStatus} successfully!`);
-
-      // If marking as completed, try to fetch review after a delay
       if (newStatus === "completed") {
         setTimeout(async () => {
           try {
             const review = await reviewApiService.getReviewByBooking(bookingId);
             setBookingReviews((prev) => ({ ...prev, [bookingId]: review }));
           } catch {
-            // Review might not exist yet - this is expected
           }
         }, 1000);
       }
@@ -136,25 +116,19 @@ const ProviderBookings = () => {
       setUpdatingBooking(null);
     }
   };
-
   const canCompleteBooking = (booking) => {
     const today = new Date();
     const bookingDate = new Date(booking.bookingDate);
-
-    // Set both dates to midnight for date-only comparison
     today.setHours(0, 0, 0, 0);
     bookingDate.setHours(0, 0, 0, 0);
-
     return (
       booking.status === "confirmed" && today.getTime() >= bookingDate.getTime()
     );
   };
-
   const filteredBookings = bookings.filter((booking) => {
     if (filter === "all") return true;
     return booking.status === filter;
   });
-
   const getStatusColor = (status) => {
     switch (status) {
       case "pending":
@@ -171,7 +145,6 @@ const ProviderBookings = () => {
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
-
   const renderStarRating = (rating) => {
     const numericRating = Number(rating) || 0;
     return (
@@ -193,22 +166,18 @@ const ProviderBookings = () => {
       </div>
     );
   };
-
   const renderReviewSection = (booking) => {
     const review = bookingReviews[booking._id];
     const isLoadingReview = loadingReviews[booking._id];
-
     if (booking.status !== "completed") {
       return null;
     }
-
     return (
       <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl p-4 mb-6 border border-yellow-200">
         <div className="flex items-center space-x-2 mb-3">
           <Star className="h-5 w-5 text-yellow-500" />
           <span className="font-semibold text-gray-900">Customer Review</span>
         </div>
-
         {isLoadingReview ? (
           <div className="flex items-center space-x-2 text-gray-500">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-500"></div>
@@ -216,7 +185,7 @@ const ProviderBookings = () => {
           </div>
         ) : review ? (
           <div className="space-y-3">
-            {/* Rating */}
+            {}
             <div className="flex items-center justify-between">
               <div>{renderStarRating(review.rating)}</div>
               <span className="text-sm text-gray-500">
@@ -225,8 +194,7 @@ const ProviderBookings = () => {
                   : "Unknown date"}
               </span>
             </div>
-
-            {/* Review Text */}
+            {}
             {review.comment && review.comment.trim() !== "" ? (
               <div className="bg-white/70 rounded-lg p-3">
                 <div className="flex items-start space-x-2">
@@ -246,8 +214,7 @@ const ProviderBookings = () => {
                 </div>
               </div>
             )}
-
-            {/* Review by */}
+            {}
             <div className="text-xs text-gray-500">
               Review by {booking.user?.name || review.user?.name || "Customer"}
             </div>
@@ -261,7 +228,6 @@ const ProviderBookings = () => {
       </div>
     );
   };
-
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       weekday: "long",
@@ -270,7 +236,6 @@ const ProviderBookings = () => {
       day: "numeric",
     });
   };
-
   const formatTime = (timeString) => {
     return new Date(`1970-01-01T${timeString}`).toLocaleTimeString("en-US", {
       hour: "numeric",
@@ -278,7 +243,6 @@ const ProviderBookings = () => {
       hour12: true,
     });
   };
-
   const openLocationInMaps = (address, coordinates) => {
     if (coordinates && coordinates.latitude && coordinates.longitude) {
       const url = `https://www.google.com/maps?q=${coordinates.latitude},${coordinates.longitude}`;
@@ -290,7 +254,6 @@ const ProviderBookings = () => {
       window.open(url, "_blank");
     }
   };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
@@ -301,10 +264,9 @@ const ProviderBookings = () => {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Header */}
+      {}
       <header className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -323,8 +285,7 @@ const ProviderBookings = () => {
           </div>
         </div>
       </header>
-
-      {/* Main Content */}
+      {}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
@@ -336,8 +297,7 @@ const ProviderBookings = () => {
             </div>
           </div>
         )}
-
-        {/* Filter Tabs */}
+        {}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 mb-6 border border-white/20">
           <div className="flex flex-wrap gap-3">
             {[
@@ -369,8 +329,7 @@ const ProviderBookings = () => {
             ))}
           </div>
         </div>
-
-        {/* Bookings List */}
+        {}
         {filteredBookings.length === 0 ? (
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-12 text-center border border-white/20">
             <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
@@ -391,7 +350,7 @@ const ProviderBookings = () => {
                 className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-white/30 overflow-hidden hover:shadow-2xl transition-all duration-300"
               >
                 <div className="p-6">
-                  {/* Header */}
+                  {}
                   <div className="flex justify-between items-start mb-6">
                     <div>
                       <h3 className="text-xl font-bold text-gray-900 mb-1">
@@ -417,8 +376,7 @@ const ProviderBookings = () => {
                       </div>
                     </div>
                   </div>
-
-                  {/* Customer Info */}
+                  {}
                   <div className="bg-gray-50/50 rounded-xl p-4 mb-6">
                     <div className="flex items-center space-x-3 mb-3">
                       <User className="h-5 w-5 text-gray-600" />
@@ -436,13 +394,11 @@ const ProviderBookings = () => {
                       <p className="text-gray-700">{booking.contactPhone}</p>
                     </div>
                   </div>
-
-                  {/* Review Section - Show for completed bookings */}
+                  {}
                   {renderReviewSection(booking)}
-
-                  {/* Details Grid */}
+                  {}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                    {/* Date & Time */}
+                    {}
                     <div className="space-y-2">
                       <div className="flex items-center space-x-2">
                         <Calendar className="h-5 w-5 text-blue-500" />
@@ -464,8 +420,7 @@ const ProviderBookings = () => {
                         {formatTime(booking.timeSlot.end)}
                       </p>
                     </div>
-
-                    {/* Location */}
+                    {}
                     <div className="space-y-2">
                       <div className="flex items-center space-x-2">
                         <MapPin className="h-5 w-5 text-red-500" />
@@ -489,8 +444,7 @@ const ProviderBookings = () => {
                         <span>View on Map</span>
                       </button>
                     </div>
-
-                    {/* Payment Info */}
+                    {}
                     <div className="space-y-2">
                       <div className="flex items-center space-x-2">
                         <DollarSign className="h-5 w-5 text-green-500" />
@@ -506,8 +460,7 @@ const ProviderBookings = () => {
                       </p>
                     </div>
                   </div>
-
-                  {/* Special Instructions */}
+                  {}
                   {booking.specialInstructions && (
                     <div className="bg-blue-50/50 rounded-xl p-4 mb-6">
                       <div className="flex items-center space-x-2 mb-2">
@@ -521,8 +474,7 @@ const ProviderBookings = () => {
                       </p>
                     </div>
                   )}
-
-                  {/* Action Buttons */}
+                  {}
                   <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-200">
                     {booking.status === "pending" && (
                       <>
@@ -556,7 +508,6 @@ const ProviderBookings = () => {
                         </button>
                       </>
                     )}
-
                     {booking.status === "confirmed" && (
                       <>
                         <button
@@ -573,7 +524,6 @@ const ProviderBookings = () => {
                               : "Start Job"}
                           </span>
                         </button>
-
                         {canCompleteBooking(booking) && (
                           <button
                             onClick={() =>
@@ -590,7 +540,6 @@ const ProviderBookings = () => {
                             </span>
                           </button>
                         )}
-
                         <button
                           onClick={() =>
                             updateBookingStatus(booking._id, "cancelled")
@@ -607,7 +556,6 @@ const ProviderBookings = () => {
                         </button>
                       </>
                     )}
-
                     {booking.status === "in-progress" &&
                       canCompleteBooking(booking) && (
                         <button
@@ -625,7 +573,6 @@ const ProviderBookings = () => {
                           </span>
                         </button>
                       )}
-
                     {!canCompleteBooking(booking) &&
                       booking.status === "confirmed" && (
                         <div className="text-sm text-amber-600 bg-amber-50 px-4 py-2 rounded-lg">
@@ -634,8 +581,7 @@ const ProviderBookings = () => {
                         </div>
                       )}
                   </div>
-
-                  {/* Location Tracking for In-Progress Bookings */}
+                  {}
                   {booking.status === "in-progress" && (
                     <div className="mt-6 pt-6 border-t border-gray-200">
                       <LocationTracking
@@ -645,13 +591,11 @@ const ProviderBookings = () => {
                             isTracking,
                             location,
                           });
-                          // You can add additional logic here if needed
                         }}
                       />
                     </div>
                   )}
-
-                  {/* Booking Created Date */}
+                  {}
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <p className="text-sm text-gray-500">
                       Booking created:{" "}
@@ -663,8 +607,7 @@ const ProviderBookings = () => {
             ))}
           </div>
         )}
-
-        {/* Pagination */}
+        {}
         {totalPages > 1 && (
           <div className="mt-8 flex justify-center space-x-4">
             <button
@@ -692,5 +635,4 @@ const ProviderBookings = () => {
     </div>
   );
 };
-
 export default ProviderBookings;

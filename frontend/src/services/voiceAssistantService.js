@@ -1,5 +1,4 @@
-// frontend/src/services/voiceAssistantService.js
-class VoiceAssistantService {
+﻿class VoiceAssistantService {
   constructor() {
     this.recognition = null;
     this.isListening = false;
@@ -8,21 +7,16 @@ class VoiceAssistantService {
     this.onErrorCallback = null;
     this.onStartCallback = null;
     this.onEndCallback = null;
-
-    // Initialize speech synthesis
     if (typeof window !== "undefined" && window.speechSynthesis) {
       this.synthesis = window.speechSynthesis;
     }
-
     this.initializeSpeechRecognition();
   }
-
   initializeSpeechRecognition() {
     if (typeof window === "undefined") {
       console.warn("Window object not available - running on server?");
       return;
     }
-
     if (
       !("webkitSpeechRecognition" in window) &&
       !("SpeechRecognition" in window)
@@ -30,35 +24,26 @@ class VoiceAssistantService {
       console.warn("Speech Recognition not supported in this browser");
       return;
     }
-
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
-
     if (!SpeechRecognition) {
       console.warn("SpeechRecognition constructor not available");
       return;
     }
-
     try {
       this.recognition = new SpeechRecognition();
-
-      // Configure recognition
       this.recognition.continuous = false;
       this.recognition.interimResults = true;
       this.recognition.lang = "en-US";
       this.recognition.maxAlternatives = 1;
-
-      // Set up event handlers
       this.recognition.onstart = () => {
         this.isListening = true;
         console.log("Voice recognition started");
         if (this.onStartCallback) this.onStartCallback();
       };
-
       this.recognition.onresult = (event) => {
         let finalTranscript = "";
         let interimTranscript = "";
-
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
@@ -67,55 +52,44 @@ class VoiceAssistantService {
             interimTranscript += transcript;
           }
         }
-
         if (this.onResultCallback) {
           this.onResultCallback(finalTranscript, interimTranscript);
         }
       };
-
       this.recognition.onerror = (event) => {
         console.error("Speech recognition error:", event.error);
         this.isListening = false;
         if (this.onErrorCallback) this.onErrorCallback(event.error);
       };
-
       this.recognition.onend = () => {
         this.isListening = false;
         console.log("Voice recognition ended");
         if (this.onEndCallback) this.onEndCallback();
       };
-
-      console.log("✅ Speech recognition initialized successfully");
+      console.log("âœ… Speech recognition initialized successfully");
     } catch (error) {
-      console.error("❌ Failed to initialize speech recognition:", error);
+      console.error("âŒ Failed to initialize speech recognition:", error);
     }
   }
-
   isSupported() {
     if (typeof window === "undefined") {
       return false;
     }
-
     const hasSpeechRecognition = !!(
       window.SpeechRecognition || window.webkitSpeechRecognition
     );
-
     const hasSpeechSynthesis = !!window.speechSynthesis;
-
     return hasSpeechRecognition && hasSpeechSynthesis;
   }
-
   startListening() {
     if (!this.recognition) {
       console.error("Speech recognition not available");
       return false;
     }
-
     if (this.isListening) {
       console.warn("Already listening");
       return false;
     }
-
     try {
       this.recognition.start();
       return true;
@@ -124,7 +98,6 @@ class VoiceAssistantService {
       return false;
     }
   }
-
   stopListening() {
     if (this.recognition && this.isListening) {
       try {
@@ -135,54 +108,48 @@ class VoiceAssistantService {
     }
     this.isListening = false;
   }
-
   speak(text, options = {}) {
     if (!this.synthesis) {
       console.error("Speech synthesis not available");
       return;
     }
-
     if (!text || typeof text !== "string") {
       console.error("Invalid text for speech synthesis");
       return;
     }
-
     try {
-      // Cancel any ongoing speech
       this.synthesis.cancel();
-
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = options.lang || "en-US";
       utterance.rate = options.rate || 1;
       utterance.pitch = options.pitch || 1;
       utterance.volume = options.volume || 1;
-
       if (options.onEnd) {
         utterance.onend = options.onEnd;
       }
-
       utterance.onerror = (event) => {
         console.error("Speech synthesis error:", event.error);
+        if (event.error === "interrupted") {
+          console.warn("Speech was interrupted, this is normal");
+        }
       };
-
+      if (this.synthesis.speaking) {
+        this.synthesis.cancel();
+      }
       this.synthesis.speak(utterance);
     } catch (error) {
       console.error("Error in speech synthesis:", error);
     }
   }
-
   setCallbacks({ onResult, onError, onStart, onEnd }) {
     this.onResultCallback = onResult;
     this.onErrorCallback = onError;
     this.onStartCallback = onStart;
     this.onEndCallback = onEnd;
   }
-
   getListeningState() {
     return this.isListening;
   }
-
-  // Cleanup method
   cleanup() {
     this.stopListening();
     if (this.synthesis) {
@@ -190,13 +157,8 @@ class VoiceAssistantService {
     }
   }
 }
-
-// Create and export a singleton instance
 const voiceAssistantService = new VoiceAssistantService();
-
-// For debugging
 if (typeof window !== "undefined") {
   window.voiceAssistantService = voiceAssistantService;
 }
-
 export default voiceAssistantService;

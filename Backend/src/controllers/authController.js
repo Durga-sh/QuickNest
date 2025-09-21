@@ -1,9 +1,7 @@
-const User = require("../model/User");
+﻿const User = require("../model/User");
 const { generateToken } = require("../middleware/auth");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
-
-// Email transporter configuration
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -14,7 +12,6 @@ const transporter = nodemailer.createTransport({
     rejectUnauthorized: false,
   },
 });
-
 transporter.verify(function (error, success) {
   if (error) {
     console.error("Email transporter verification failed:", error);
@@ -22,17 +19,11 @@ transporter.verify(function (error, success) {
     console.log("Email server is ready to take our messages");
   }
 });
-
 const tempUsers = new Map();
-
 const passwordResetOTPs = new Map();
-
-// Generate 6-digit OTP
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
-
-// Send OTP email
 const sendOTPEmail = async (email, otp) => {
   const mailOptions = {
     from: process.env.EMAIL_USER,
@@ -48,24 +39,16 @@ const sendOTPEmail = async (email, otp) => {
       </div>
     `,
   };
-
   await transporter.sendMail(mailOptions);
 };
-
 exports.register = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
-
-    // Check if user already exists
     let existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
-
-    // Generate OTP
     const otp = generateOTP();
-
-    // Store temporary user data with OTP
     const tempUserId = crypto.randomUUID();
     tempUsers.set(tempUserId, {
       name,
@@ -76,10 +59,7 @@ exports.register = async (req, res) => {
       createdAt: new Date(),
       expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
     });
-
-    // Send OTP email
     await sendOTPEmail(email, otp);
-
     res.status(200).json({
       success: true,
       message:
@@ -91,33 +71,24 @@ exports.register = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
 exports.verifyOTP = async (req, res) => {
   try {
     const { tempUserId, otp } = req.body;
-
-    // Get temporary user data
     const tempUserData = tempUsers.get(tempUserId);
     if (!tempUserData) {
       return res
         .status(400)
         .json({ message: "Invalid or expired verification session" });
     }
-
-    // Check if OTP is expired
     if (new Date() > tempUserData.expiresAt) {
       tempUsers.delete(tempUserId);
       return res
         .status(400)
         .json({ message: "OTP has expired. Please register again." });
     }
-
-    // Verify OTP
     if (tempUserData.otp !== otp) {
       return res.status(400).json({ message: "Invalid OTP" });
     }
-
-    // Create new user
     const user = new User({
       name: tempUserData.name,
       email: tempUserData.email,
@@ -125,15 +96,9 @@ exports.verifyOTP = async (req, res) => {
       role: tempUserData.role,
       isEmailVerified: true,
     });
-
     await user.save();
-
-    // Clean up temporary data
     tempUsers.delete(tempUserId);
-
-    // Generate JWT token
     const token = generateToken(user);
-
     res.status(201).json({
       success: true,
       message: "Registration completed successfully",
@@ -150,31 +115,20 @@ exports.verifyOTP = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-// Resend OTP
 exports.resendOTP = async (req, res) => {
   try {
     const { tempUserId } = req.body;
-
-    // Get temporary user data
     const tempUserData = tempUsers.get(tempUserId);
     if (!tempUserData) {
       return res.status(400).json({ message: "Invalid verification session" });
     }
-
-    // Generate new OTP
     const newOTP = generateOTP();
-
-    // Update temporary user data
     tempUsers.set(tempUserId, {
       ...tempUserData,
       otp: newOTP,
       expiresAt: new Date(Date.now() + 10 * 60 * 1000), // Reset expiry to 10 minutes
     });
-
-    // Send new OTP email
     await sendOTPEmail(tempUserData.email, newOTP);
-
     res.status(200).json({
       success: true,
       message: "New OTP sent to your email",
@@ -184,33 +138,22 @@ exports.resendOTP = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-// Forgot Password - Send OTP
-// Forgot Password - Send OTP
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-
-    // Check if user exists
     const user = await User.findOne({ email });
     if (!user) {
       return res
         .status(404)
         .json({ message: "User not found with this email" });
     }
-
-    // Check if user signed up with Google and doesn't have a password
     if (!user.password) {
       return res.status(400).json({
         message:
           "This account was created with Google. Please login with Google.",
       });
     }
-
-    // Generate OTP
     const otp = generateOTP();
-
-    // Store OTP with expiry (10 minutes)
     const tempResetId = crypto.randomUUID();
     passwordResetOTPs.set(tempResetId, {
       userId: user._id,
@@ -219,11 +162,8 @@ exports.forgotPassword = async (req, res) => {
       createdAt: new Date(),
       expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
     });
-
-    // Send OTP email
     console.log("Sending OTP email for password reset to:", email, "OTP:", otp);
     await sendOTPEmail(email, otp);
-
     res.status(200).json({
       success: true,
       message: "Password reset OTP sent successfully",
@@ -234,33 +174,24 @@ exports.forgotPassword = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-// Verify Password Reset OTP
 exports.verifyPasswordResetOTP = async (req, res) => {
   try {
     const { tempResetId, otp } = req.body;
-
-    // Get OTP data
     const otpData = passwordResetOTPs.get(tempResetId);
     if (!otpData) {
       return res
         .status(400)
         .json({ message: "Invalid or expired OTP session" });
     }
-
-    // Check if OTP is expired
     if (new Date() > otpData.expiresAt) {
       passwordResetOTPs.delete(tempResetId);
       return res
         .status(400)
         .json({ message: "OTP has expired. Please request a new one." });
     }
-
-    // Verify OTP
     if (otpData.otp !== otp) {
       return res.status(400).json({ message: "Invalid OTP" });
     }
-
     res.status(200).json({
       success: true,
       message: "OTP verified successfully",
@@ -272,41 +203,28 @@ exports.verifyPasswordResetOTP = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-// Reset Password
 exports.resetPassword = async (req, res) => {
   try {
     const { tempResetId, newPassword } = req.body;
-
-    // Get OTP data
     const otpData = passwordResetOTPs.get(tempResetId);
     if (!otpData) {
       return res
         .status(400)
         .json({ message: "Invalid or expired OTP session" });
     }
-
-    // Check if OTP is expired
     if (new Date() > otpData.expiresAt) {
       passwordResetOTPs.delete(tempResetId);
       return res.status(400).json({
         message: "OTP has expired. Please request a new one.",
       });
     }
-
-    // Find user and update password
     const user = await User.findById(otpData.userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
-    // Update password
     user.password = newPassword;
     await user.save();
-
-    // Clean up OTP data
     passwordResetOTPs.delete(tempResetId);
-
     res.status(200).json({
       success: true,
       message: "Password reset successfully",
@@ -316,32 +234,21 @@ exports.resetPassword = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-// Login user
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // Check if user exists
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
-
-    // If user signed up with Google and doesn't have a password
     if (!user.password) {
       return res.status(400).json({ message: "Please login with Google" });
     }
-
-    // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
-
-    // Generate JWT token
     const token = generateToken(user);
-
     res.json({
       success: true,
       token,
@@ -357,14 +264,9 @@ exports.login = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-// Google OAuth callback
 exports.googleCallback = (req, res) => {
   try {
-    // Generate token for the authenticated user
     const token = generateToken(req.user);
-
-    // Redirect to frontend with token
     res.redirect(
       `${process.env.FRONTEND_URL}/auth/google/callback?token=${token}`
     );
@@ -375,8 +277,6 @@ exports.googleCallback = (req, res) => {
     );
   }
 };
-
-// Get current user
 exports.getCurrentUser = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");

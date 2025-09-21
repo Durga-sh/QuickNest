@@ -1,13 +1,10 @@
-"use client";
+﻿"use client";
 import { Link } from "react-router-dom";
-// eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
 import RegisterForm from "../components/auth/RegisterForm";
 import GoogleAuthButton from "../components/auth/GoogleAuthButton";
 import { Sparkles, Shield, Users, ArrowLeft, UserPlus } from "lucide-react";
-
 const RegisterPage = () => {
-  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -17,7 +14,6 @@ const RegisterPage = () => {
       },
     },
   };
-
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
@@ -29,7 +25,6 @@ const RegisterPage = () => {
       },
     },
   };
-
   const floatingVariants = {
     animate: {
       y: [-10, 10, -10],
@@ -40,10 +35,9 @@ const RegisterPage = () => {
       },
     },
   };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 flex items-center justify-center px-4 py-12 relative overflow-hidden">
-      {/* Animated background elements */}
+      {}
       <motion.div
         className="absolute top-20 left-10 w-20 h-20 bg-emerald-200 rounded-full opacity-20"
         animate={{
@@ -68,7 +62,6 @@ const RegisterPage = () => {
           ease: "easeInOut",
         }}
       />
-
       <motion.div
         className="w-full max-w-md relative z-10"
         variants={containerVariants}
@@ -97,11 +90,9 @@ const RegisterPage = () => {
               Create your account
             </motion.p>
           </motion.div>
-
           <motion.div variants={itemVariants}>
             <RegisterForm />
           </motion.div>
-
           <motion.div
             className="mt-6 relative flex items-center justify-center"
             variants={itemVariants}
@@ -111,13 +102,11 @@ const RegisterPage = () => {
               OR
             </div>
           </motion.div>
-
           <motion.div className="mt-6" variants={itemVariants}>
             <GoogleAuthButton />
           </motion.div>
         </motion.div>
-
-        {/* Floating elements */}
+        {}
         <motion.div
           className="absolute -top-4 -right-4 bg-emerald-100 rounded-full p-3 shadow-lg"
           variants={floatingVariants}
@@ -125,7 +114,6 @@ const RegisterPage = () => {
         >
           <Sparkles className="w-6 h-6 text-emerald-600" />
         </motion.div>
-
         <motion.div
           className="absolute -bottom-4 -left-4 bg-teal-100 rounded-full p-3 shadow-lg"
           variants={floatingVariants}
@@ -135,8 +123,7 @@ const RegisterPage = () => {
           <Users className="w-6 h-6 text-teal-600" />
         </motion.div>
       </motion.div>
-
-      {/* Back to home button */}
+      {}
       <motion.div
         className="absolute top-8 left-8"
         initial={{ opacity: 0, x: -20 }}
@@ -154,5 +141,4 @@ const RegisterPage = () => {
     </div>
   );
 };
-
 export default RegisterPage;

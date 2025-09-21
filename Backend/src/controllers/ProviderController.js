@@ -1,32 +1,21 @@
-const Provider = require("../model/Provider");
+﻿const Provider = require("../model/Provider");
 const User = require("../model/User");
-
-// Register a new provider profile OR add services to existing provider
 exports.registerProvider = async (req, res) => {
   try {
     const { userId, skills, location, pricing } = req.body;
-
-    // Check if user exists and has Provider role
     const user = await User.findById(userId);
     if (!user || user.role !== "provider") {
       return res
         .status(403)
         .json({ message: "User is not authorized as a provider" });
     }
-
-    // Check if provider profile already exists
     const existingProvider = await Provider.findOne({ userId });
-
     if (existingProvider) {
-      // If provider exists, add new services instead of creating new profile
       return this.addServicesToProvider(req, res, existingProvider);
     }
-
-    // Validate location for new provider
     if (!location || !location.coordinates || !location.address) {
       return res.status(400).json({ message: "Location details are required" });
     }
-
     const provider = new Provider({
       userId,
       skills,
@@ -38,9 +27,7 @@ exports.registerProvider = async (req, res) => {
       pricing,
       status: "pending",
     });
-
     await provider.save();
-
     res.status(201).json({
       success: true,
       message:
@@ -52,23 +39,17 @@ exports.registerProvider = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-// Add services to existing provider
 exports.addServicesToProvider = async (req, res, existingProvider = null) => {
   try {
     const { userId, skills, pricing } = req.body;
-
     let provider = existingProvider;
-
     if (!provider) {
-      // If not called from registerProvider, find the provider
       const user = await User.findById(userId);
       if (!user || user.role !== "provider") {
         return res
           .status(403)
           .json({ message: "User is not authorized as a provider" });
       }
-
       provider = await Provider.findOne({ userId });
       if (!provider) {
         return res.status(404).json({
@@ -77,16 +58,12 @@ exports.addServicesToProvider = async (req, res, existingProvider = null) => {
         });
       }
     }
-
-    // Add new skills (avoid duplicates)
     if (skills && Array.isArray(skills)) {
       const newSkills = skills.filter(
         (skill) => !provider.skills.includes(skill)
       );
       provider.skills = [...provider.skills, ...newSkills];
     }
-
-    // Add new pricing services
     if (pricing && Array.isArray(pricing)) {
       const newPricingServices = pricing.filter(
         (newService) =>
@@ -98,11 +75,7 @@ exports.addServicesToProvider = async (req, res, existingProvider = null) => {
       );
       provider.pricing = [...provider.pricing, ...newPricingServices];
     }
-
-    // Availability is no longer handled here
-
     await provider.save();
-
     res.status(200).json({
       success: true,
       message: "Services added to provider profile successfully.",
@@ -112,7 +85,6 @@ exports.addServicesToProvider = async (req, res, existingProvider = null) => {
         skills: provider.skills,
         location: provider.location,
         pricing: provider.pricing,
-        // availability: provider.availability,
         status: provider.status,
       },
     });
@@ -121,22 +93,16 @@ exports.addServicesToProvider = async (req, res, existingProvider = null) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-// New endpoint specifically for adding services to existing provider
 exports.addServices = async (req, res) => {
   try {
     const userId = req.user.id; // Get from authenticated user
     const { skills, pricing, availability } = req.body;
-
-    // Check if user is a provider
     const user = await User.findById(userId);
     if (!user || user.role !== "provider") {
       return res
         .status(403)
         .json({ message: "User is not authorized as a provider" });
     }
-
-    // Find provider profile
     const provider = await Provider.findOne({ userId });
     if (!provider) {
       return res.status(404).json({
@@ -144,54 +110,37 @@ exports.addServices = async (req, res) => {
           "Provider profile not found. Please create a provider profile first.",
       });
     }
-
-    // Prepare request body for addServicesToProvider
     req.body.userId = userId;
-
-    // Call addServicesToProvider
     return this.addServicesToProvider(req, res, provider);
   } catch (error) {
     console.error("Add services endpoint error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-// Remove a specific service from provider
 exports.removeService = async (req, res) => {
   try {
     const userId = req.user.id;
     const { serviceName } = req.params;
-
-    // Check if user is a provider
     const user = await User.findById(userId);
     if (!user || user.role !== "provider") {
       return res
         .status(403)
         .json({ message: "User is not authorized as a provider" });
     }
-
-    // Find provider profile
     const provider = await Provider.findOne({ userId });
     if (!provider) {
       return res.status(404).json({ message: "Provider profile not found" });
     }
-
-    // Remove the service from pricing
     const serviceIndex = provider.pricing.findIndex(
       (service) => service.service.toLowerCase() === serviceName.toLowerCase()
     );
-
     if (serviceIndex === -1) {
       return res.status(404).json({ message: "Service not found" });
     }
-
     provider.pricing.splice(serviceIndex, 1);
-
-    // Remove skill if no other services use it
     const serviceSkill = provider.pricing.find(
       (service) => service.service.toLowerCase() === serviceName.toLowerCase()
     );
-
     if (!serviceSkill) {
       const skillIndex = provider.skills.findIndex(
         (skill) => skill.toLowerCase() === serviceName.toLowerCase()
@@ -200,9 +149,7 @@ exports.removeService = async (req, res) => {
         provider.skills.splice(skillIndex, 1);
       }
     }
-
     await provider.save();
-
     res.status(200).json({
       success: true,
       message: "Service removed successfully",
@@ -219,28 +166,20 @@ exports.removeService = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-// Update provider profile (keep existing functionality)
 exports.updateProviderProfile = async (req, res) => {
   try {
     const { skills, location, pricing, availability } = req.body;
     const userId = req.user.id;
-
-    // Check if user is a provider
     const user = await User.findById(userId);
     if (!user || user.role !== "provider") {
       return res
         .status(403)
         .json({ message: "User is not authorized as a provider" });
     }
-
-    // Find provider profile
     let provider = await Provider.findOne({ userId });
     if (!provider) {
       return res.status(404).json({ message: "Provider profile not found" });
     }
-
-    // Update fields
     if (skills) provider.skills = skills;
     if (location) {
       provider.location = {
@@ -251,7 +190,6 @@ exports.updateProviderProfile = async (req, res) => {
     }
     if (pricing) provider.pricing = pricing;
     if (availability) {
-      // Transform availability structure to match schema
       provider.availability = availability.map((slot) => ({
         day: slot.day,
         timeSlots: [
@@ -262,9 +200,7 @@ exports.updateProviderProfile = async (req, res) => {
         ],
       }));
     }
-
     await provider.save();
-
     res.status(200).json({
       success: true,
       message: "Provider profile updated successfully",
@@ -283,21 +219,15 @@ exports.updateProviderProfile = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-// Get provider profile
 exports.getProviderProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-
-    // Check if user is a provider
     const user = await User.findById(userId);
     if (!user || user.role !== "provider") {
       return res
         .status(403)
         .json({ message: "User is not authorized as a provider" });
     }
-
-    // Find provider profile
     const provider = await Provider.findOne({ userId }).populate(
       "userId",
       "name email"
@@ -305,7 +235,6 @@ exports.getProviderProfile = async (req, res) => {
     if (!provider) {
       return res.status(404).json({ message: "Provider profile not found" });
     }
-
     res.status(200).json({
       success: true,
       provider: {
@@ -326,34 +255,25 @@ exports.getProviderProfile = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-// Get provider profile by ID (for users or admin)
 exports.getProviderById = async (req, res) => {
   try {
     const { providerId } = req.params;
-
     const provider = await Provider.findById(providerId).populate(
       "userId",
       "name email phone"
     );
-
     if (!provider) {
       return res.status(404).json({
         success: false,
         message: "Provider not found",
       });
     }
-
-    // Get review statistics
     const Review = require("../model/Review");
     const reviewStats = await Review.getProviderStats(providerId);
-
-    // Get recent reviews (last 5)
     const recentReviews = await Review.find({ providerId })
       .populate("userId", "name")
       .sort({ createdAt: -1 })
       .limit(5);
-
     res.status(200).json({
       success: true,
       provider: {
@@ -398,8 +318,6 @@ exports.getProviderById = async (req, res) => {
     });
   }
 };
-
-// Updated getAllProviders method with review information
 exports.getAllProviders = async (req, res) => {
   try {
     const {
@@ -414,52 +332,28 @@ exports.getAllProviders = async (req, res) => {
       sortBy = "createdAt",
       sortOrder = "desc",
     } = req.query;
-
-    console.log("Filter parameters received:", {
-      skill,
-      location,
-      radius,
-      minPrice,
-      maxPrice,
-      minRating,
-      sortBy,
-      sortOrder,
-    });
-
-    // Build filter object
     const filter = {
       status: "approved",
       isActive: true,
     };
-
-    // Add rating filter
     if (minRating > 0) {
       filter.rating = { $gte: parseFloat(minRating) };
     }
-
-    // Filter by service
     if (skill) {
       const skillRegex = new RegExp(`^${skill}$`, "i");
       filter["pricing.service"] = skillRegex;
     }
-
-    // Add price filter if provided
     if (minPrice || maxPrice) {
       const priceFilter = {};
       if (minPrice) priceFilter.$gte = parseFloat(minPrice);
       if (maxPrice) priceFilter.$lte = parseFloat(maxPrice);
       filter["pricing.price"] = priceFilter;
     }
-
-    // Build aggregation pipeline
     let aggregationPipeline = [];
-
-    // Add location-based filtering if coordinates provided
     if (location) {
       const coordinates = location
         .split(",")
         .map((coord) => parseFloat(coord.trim()));
-
       if (
         coordinates.length === 2 &&
         !isNaN(coordinates[0]) &&
@@ -488,8 +382,6 @@ exports.getAllProviders = async (req, res) => {
     } else {
       aggregationPipeline.push({ $match: filter });
     }
-
-    // Add population and projection
     aggregationPipeline.push(
       {
         $lookup: {
@@ -544,8 +436,6 @@ exports.getAllProviders = async (req, res) => {
         },
       }
     );
-
-    // Add sorting
     const sortOptions = {};
     if (location && sortBy === "distance") {
       sortOptions.distance = 1;
@@ -555,26 +445,12 @@ exports.getAllProviders = async (req, res) => {
       sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
     }
     aggregationPipeline.push({ $sort: sortOptions });
-
-    console.log(
-      "Aggregation pipeline:",
-      JSON.stringify(aggregationPipeline, null, 2)
-    );
-
-    // Execute aggregation
     const providers = await Provider.aggregate(aggregationPipeline);
-
-    console.log(`Found ${providers.length} providers before pagination`);
-
-    // Apply pagination
     const startIndex = (page - 1) * limit;
     const endIndex = page * limit;
     const paginatedProviders = providers.slice(startIndex, endIndex);
-
-    // Get total count for pagination
     const totalProviders = providers.length;
     const totalPages = Math.ceil(totalProviders / limit);
-
     res.status(200).json({
       success: true,
       data: paginatedProviders,
@@ -606,12 +482,9 @@ exports.getAllProviders = async (req, res) => {
     });
   }
 };
-
-// Add provider statistics method
 exports.getProviderStats = async (req, res) => {
   try {
     const { providerId } = req.params;
-
     const provider = await Provider.findById(providerId);
     if (!provider) {
       return res.status(404).json({
@@ -619,12 +492,8 @@ exports.getProviderStats = async (req, res) => {
         message: "Provider not found",
       });
     }
-
-    // Get review statistics
     const Review = require("../model/Review");
     const reviewStats = await Review.getProviderStats(providerId);
-
-    // Get booking statistics
     const Booking = require("../model/Booking");
     const bookingStats = await Booking.aggregate([
       { $match: { provider: new mongoose.Types.ObjectId(providerId) } },
@@ -646,7 +515,6 @@ exports.getProviderStats = async (req, res) => {
         },
       },
     ]);
-
     const stats =
       bookingStats.length > 0
         ? bookingStats[0]
@@ -656,13 +524,10 @@ exports.getProviderStats = async (req, res) => {
             cancelledBookings: 0,
             totalRevenue: 0,
           };
-
-    // Calculate completion rate
     const completionRate =
       stats.totalBookings > 0
         ? (stats.completedBookings / stats.totalBookings) * 100
         : 0;
-
     res.status(200).json({
       success: true,
       stats: {
@@ -680,20 +545,14 @@ exports.getProviderStats = async (req, res) => {
     });
   }
 };
-
-// Get all unique skills from approved providers
 exports.getAvailableSkills = async (req, res) => {
   try {
     const { location, radius = 50 } = req.query;
-
     let aggregationPipeline = [];
-
-    // Add location filtering if provided
     if (location) {
       const coordinates = location
         .split(",")
         .map((coord) => parseFloat(coord.trim()));
-
       if (
         coordinates.length === 2 &&
         !isNaN(coordinates[0]) &&
@@ -719,8 +578,6 @@ exports.getAvailableSkills = async (req, res) => {
         }
       }
     }
-
-    // If no location filtering was applied, add match stage
     if (aggregationPipeline.length === 0) {
       aggregationPipeline.push({
         $match: {
@@ -729,8 +586,6 @@ exports.getAvailableSkills = async (req, res) => {
         },
       });
     }
-
-    // Add skills aggregation stages
     aggregationPipeline.push(
       {
         $unwind: "$skills",
@@ -752,9 +607,7 @@ exports.getAvailableSkills = async (req, res) => {
         },
       }
     );
-
     const skills = await Provider.aggregate(aggregationPipeline);
-
     res.status(200).json({
       success: true,
       skills,
@@ -765,8 +618,6 @@ exports.getAvailableSkills = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-// Enhanced search providers by text with location support
 exports.searchProviders = async (req, res) => {
   try {
     const {
@@ -778,20 +629,13 @@ exports.searchProviders = async (req, res) => {
       minPrice,
       maxPrice,
     } = req.query;
-
     if (!query) {
       return res.status(400).json({ message: "Search query is required" });
     }
-
-    console.log("Search parameters:", { query, location, radius });
-
-    // Create case-insensitive regex for search
     const searchRegex = new RegExp(
       query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
       "i"
     );
-
-    // Build base filter
     const baseFilter = {
       status: "approved",
       isActive: true,
@@ -801,23 +645,17 @@ exports.searchProviders = async (req, res) => {
         { "pricing.service": searchRegex },
       ],
     };
-
-    // Add price filter if provided
     if (minPrice || maxPrice) {
       const priceFilter = {};
       if (minPrice) priceFilter.$gte = parseFloat(minPrice);
       if (maxPrice) priceFilter.$lte = parseFloat(maxPrice);
       baseFilter["pricing.price"] = priceFilter;
     }
-
     let aggregationPipeline = [];
-
-    // Add location-based filtering if coordinates provided
     if (location) {
       const coordinates = location
         .split(",")
         .map((coord) => parseFloat(coord.trim()));
-
       if (
         coordinates.length === 2 &&
         !isNaN(coordinates[0]) &&
@@ -840,18 +678,14 @@ exports.searchProviders = async (req, res) => {
         }
       }
     }
-
-    // If no location filtering, use regular find with pagination
     if (aggregationPipeline.length === 0) {
       const providers = await Provider.find(baseFilter)
         .populate("userId", "name email")
         .sort({ rating: -1, totalReviews: -1 })
         .limit(limit * 1)
         .skip((page - 1) * limit);
-
       const totalProviders = await Provider.countDocuments(baseFilter);
       const totalPages = Math.ceil(totalProviders / limit);
-
       return res.status(200).json({
         success: true,
         data: providers.map((provider) => ({
@@ -882,8 +716,6 @@ exports.searchProviders = async (req, res) => {
         locationBased: false,
       });
     }
-
-    // Add population and projection for location-based search
     aggregationPipeline.push(
       {
         $lookup: {
@@ -919,18 +751,12 @@ exports.searchProviders = async (req, res) => {
         $sort: { distance: 1, rating: -1 },
       }
     );
-
-    // Execute aggregation
     const providers = await Provider.aggregate(aggregationPipeline);
-
-    // Apply pagination
     const startIndex = (page - 1) * limit;
     const endIndex = page * limit;
     const paginatedProviders = providers.slice(startIndex, endIndex);
-
     const totalProviders = providers.length;
     const totalPages = Math.ceil(totalProviders / limit);
-
     res.status(200).json({
       success: true,
       data: paginatedProviders,

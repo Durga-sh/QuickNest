@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+﻿import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageCircle,
@@ -15,7 +15,6 @@ import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { sendChatMessage, getChatSuggestions } from "../api/chatbot";
-
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -26,14 +25,12 @@ const Chatbot = () => {
   const [showSuggestions, setShowSuggestions] = useState(true);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
-
-  // Initial welcome message
   useEffect(() => {
     if (messages.length === 0) {
       setMessages([
         {
           id: Date.now(),
-          text: "Hello! 👋 Welcome to QuickNest! I'm here to help you find the perfect service professional. What can I assist you with today?",
+          text: "Hello! ðŸ‘‹ Welcome to QuickNest! I'm here to help you find the perfect service professional. What can I assist you with today?",
           sender: "bot",
           timestamp: new Date(),
           suggestions: [
@@ -46,30 +43,22 @@ const Chatbot = () => {
       ]);
     }
   }, []);
-
-  // Auto scroll to bottom
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  // Focus input when chat opens
   useEffect(() => {
     if (isOpen && !isMinimized && inputRef.current) {
       inputRef.current.focus();
     }
   }, [isOpen, isMinimized]);
-
-  // Load suggestions
   useEffect(() => {
     if (isOpen && suggestions.length === 0) {
       loadSuggestions();
     }
   }, [isOpen]);
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
-
   const loadSuggestions = async () => {
     try {
       const data = await getChatSuggestions();
@@ -78,25 +67,20 @@ const Chatbot = () => {
       console.error("Failed to load suggestions:", error);
     }
   };
-
   const handleSendMessage = async (messageText = inputMessage) => {
     if (!messageText.trim() || isLoading) return;
-
     const userMessage = {
       id: Date.now(),
       text: messageText,
       sender: "user",
       timestamp: new Date(),
     };
-
     setMessages((prev) => [...prev, userMessage]);
     setInputMessage("");
     setIsLoading(true);
     setShowSuggestions(false);
-
     try {
       const response = await sendChatMessage(messageText);
-
       const botMessage = {
         id: Date.now() + 1,
         text: response.response,
@@ -104,7 +88,6 @@ const Chatbot = () => {
         timestamp: new Date(),
         suggestions: response.suggestions || [],
       };
-
       setMessages((prev) => [...prev, botMessage]);
     } catch (error) {
       const errorMessage = {
@@ -119,16 +102,14 @@ const Chatbot = () => {
       setIsLoading(false);
     }
   };
-
   const handleSuggestionClick = (suggestion) => {
     handleSendMessage(suggestion);
   };
-
   const handleReset = () => {
     setMessages([
       {
         id: Date.now(),
-        text: "Hello! 👋 Welcome to QuickNest! I'm here to help you find the perfect service professional. What can I assist you with today?",
+        text: "Hello! ðŸ‘‹ Welcome to QuickNest! I'm here to help you find the perfect service professional. What can I assist you with today?",
         sender: "bot",
         timestamp: new Date(),
         suggestions: [
@@ -141,14 +122,12 @@ const Chatbot = () => {
     ]);
     setShowSuggestions(true);
   };
-
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
   };
-
   const formatMessage = (text) => {
     return text.split("\n").map((line, index) => (
       <span key={index}>
@@ -157,10 +136,9 @@ const Chatbot = () => {
       </span>
     ));
   };
-
   return (
     <>
-      {/* Chat Toggle Button */}
+      {}
       <motion.div
         className="fixed bottom-6 right-6 z-50"
         initial={{ scale: 0 }}
@@ -202,8 +180,7 @@ const Chatbot = () => {
           </AnimatePresence>
         </Button>
       </motion.div>
-
-      {/* Chat Window */}
+      {}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -218,7 +195,7 @@ const Chatbot = () => {
                 isMinimized ? "w-80" : "w-96"
               } ${isMinimized ? "h-16" : "h-96"} transition-all duration-300`}
             >
-              {/* Header */}
+              {}
               <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-t-lg">
                 <div className="flex items-center space-x-3">
                   <motion.div
@@ -262,10 +239,9 @@ const Chatbot = () => {
                   </Button>
                 </div>
               </div>
-
               {!isMinimized && (
                 <CardContent className="p-0 flex flex-col h-80">
-                  {/* Messages */}
+                  {}
                   <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     <AnimatePresence>
                       {messages.map((message) => (
@@ -343,7 +319,6 @@ const Chatbot = () => {
                         </motion.div>
                       ))}
                     </AnimatePresence>
-
                     {isLoading && (
                       <motion.div
                         initial={{ opacity: 0 }}
@@ -360,8 +335,7 @@ const Chatbot = () => {
                         </div>
                       </motion.div>
                     )}
-
-                    {/* Quick Suggestions */}
+                    {}
                     {showSuggestions &&
                       suggestions.length > 0 &&
                       messages.length === 1 && (
@@ -390,11 +364,9 @@ const Chatbot = () => {
                           </div>
                         </motion.div>
                       )}
-
                     <div ref={messagesEndRef} />
                   </div>
-
-                  {/* Input */}
+                  {}
                   <div className="border-t p-4">
                     <div className="flex space-x-2">
                       <input
@@ -426,5 +398,4 @@ const Chatbot = () => {
     </>
   );
 };
-
 export default Chatbot;

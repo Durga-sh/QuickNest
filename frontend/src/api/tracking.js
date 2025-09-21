@@ -1,10 +1,7 @@
-import axios from "axios";
+﻿import axios from "axios";
 import { getToken } from "../utils/tokenManager";
-
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-
 const trackingApiService = {
-  // Start tracking for a booking
   startTracking: async (bookingId, location) => {
     try {
       const token = getToken();
@@ -29,8 +26,6 @@ const trackingApiService = {
       );
     }
   },
-
-  // Update provider location
   updateLocation: async (bookingId, location) => {
     try {
       const token = getToken();
@@ -55,8 +50,6 @@ const trackingApiService = {
       );
     }
   },
-
-  // Stop tracking for a booking
   stopTracking: async (bookingId) => {
     try {
       const token = getToken();
@@ -78,8 +71,6 @@ const trackingApiService = {
       );
     }
   },
-
-  // Get tracking status for a booking
   getTrackingStatus: async (bookingId) => {
     try {
       const token = getToken();
@@ -99,8 +90,6 @@ const trackingApiService = {
       );
     }
   },
-
-  // Get all tracking bookings for provider
   getProviderTrackingBookings: async () => {
     try {
       const token = getToken();
@@ -122,5 +111,4 @@ const trackingApiService = {
     }
   },
 };
-
 export default trackingApiService;

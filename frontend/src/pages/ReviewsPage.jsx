@@ -1,15 +1,12 @@
-import React, { useState, useEffect } from "react";
-// eslint-disable-next-line no-unused-vars
+﻿import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Star, Quote, ThumbsUp, Filter, Search } from "lucide-react";
-
 const ReviewsPage = () => {
   const [reviews, setReviews] = useState([]);
   const [filteredReviews, setFilteredReviews] = useState([]);
   const [filterRating, setFilterRating] = useState("all");
   const [filterService, setFilterService] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-
   const serviceCategories = [
     "House Cleaning",
     "Plumbing",
@@ -22,9 +19,7 @@ const ReviewsPage = () => {
     "Painting",
     "Carpentry",
   ];
-
   useEffect(() => {
-    // Mock reviews data
     const mockReviews = [
       {
         id: 1,
@@ -137,27 +132,19 @@ const ReviewsPage = () => {
         verified: true,
       },
     ];
-
     setReviews(mockReviews);
     setFilteredReviews(mockReviews);
   }, []);
-
   useEffect(() => {
     let filtered = reviews;
-
-    // Filter by rating
     if (filterRating !== "all") {
       filtered = filtered.filter(
         (review) => review.rating === parseInt(filterRating)
       );
     }
-
-    // Filter by service
     if (filterService !== "all") {
       filtered = filtered.filter((review) => review.service === filterService);
     }
-
-    // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(
         (review) =>
@@ -168,10 +155,8 @@ const ReviewsPage = () => {
           review.service.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-
     setFilteredReviews(filtered);
   }, [filterRating, filterService, searchTerm, reviews]);
-
   const renderStars = (rating) => {
     return Array.from({ length: 5 }, (_, index) => (
       <Star
@@ -182,12 +167,10 @@ const ReviewsPage = () => {
       />
     ));
   };
-
   const getAverageRating = () => {
     const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
     return (totalRating / reviews.length).toFixed(1);
   };
-
   const getRatingDistribution = () => {
     const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
     reviews.forEach((review) => {
@@ -195,7 +178,6 @@ const ReviewsPage = () => {
     });
     return distribution;
   };
-
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -206,7 +188,6 @@ const ReviewsPage = () => {
       },
     },
   };
-
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
@@ -218,7 +199,6 @@ const ReviewsPage = () => {
       },
     },
   };
-
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <motion.div
@@ -227,7 +207,7 @@ const ReviewsPage = () => {
         animate="visible"
         variants={containerVariants}
       >
-        {/* Header */}
+        {}
         <motion.div className="text-center mb-12" variants={itemVariants}>
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
             Customer Reviews
@@ -237,8 +217,7 @@ const ReviewsPage = () => {
             services
           </p>
         </motion.div>
-
-        {/* Statistics */}
+        {}
         <motion.div
           className="bg-white rounded-lg shadow-lg p-6 mb-8"
           variants={itemVariants}
@@ -253,14 +232,12 @@ const ReviewsPage = () => {
               </div>
               <p className="text-gray-600">Average Rating</p>
             </div>
-
             <div className="text-center">
               <div className="text-4xl font-bold text-emerald-600 mb-2">
                 {reviews.length}
               </div>
               <p className="text-gray-600">Total Reviews</p>
             </div>
-
             <div className="text-center">
               <div className="text-4xl font-bold text-emerald-600 mb-2">
                 {Math.round(
@@ -273,8 +250,7 @@ const ReviewsPage = () => {
               <p className="text-gray-600">Satisfied Customers</p>
             </div>
           </div>
-
-          {/* Rating Distribution */}
+          {}
           <div className="mt-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Rating Distribution
@@ -298,14 +274,13 @@ const ReviewsPage = () => {
               ))}
           </div>
         </motion.div>
-
-        {/* Filters */}
+        {}
         <motion.div
           className="bg-white rounded-lg shadow-lg p-6 mb-8"
           variants={itemVariants}
         >
           <div className="flex flex-col md:flex-row gap-4">
-            {/* Search */}
+            {}
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -318,8 +293,7 @@ const ReviewsPage = () => {
                 />
               </div>
             </div>
-
-            {/* Rating Filter */}
+            {}
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-gray-400" />
               <select
@@ -335,8 +309,7 @@ const ReviewsPage = () => {
                 <option value="1">1 Star</option>
               </select>
             </div>
-
-            {/* Service Filter */}
+            {}
             <div>
               <select
                 value={filterService}
@@ -353,8 +326,7 @@ const ReviewsPage = () => {
             </div>
           </div>
         </motion.div>
-
-        {/* Reviews List */}
+        {}
         <motion.div className="space-y-6" variants={containerVariants}>
           {filteredReviews.map((review) => (
             <motion.div
@@ -383,7 +355,6 @@ const ReviewsPage = () => {
                     </div>
                   )}
                 </div>
-
                 <div className="flex flex-col items-end">
                   <div className="flex items-center mb-1">
                     {renderStars(review.rating)}
@@ -393,14 +364,12 @@ const ReviewsPage = () => {
                   </p>
                 </div>
               </div>
-
               <div className="relative">
                 <Quote className="absolute top-0 left-0 w-6 h-6 text-emerald-200 -mt-2 -ml-2" />
                 <p className="text-gray-700 leading-relaxed pl-4">
                   {review.review}
                 </p>
               </div>
-
               <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
                 <p className="text-sm text-gray-600">
                   Service provided by:{" "}
@@ -414,7 +383,6 @@ const ReviewsPage = () => {
             </motion.div>
           ))}
         </motion.div>
-
         {filteredReviews.length === 0 && (
           <motion.div className="text-center py-12" variants={itemVariants}>
             <p className="text-gray-500 text-lg">
@@ -426,5 +394,4 @@ const ReviewsPage = () => {
     </div>
   );
 };
-
 export default ReviewsPage;

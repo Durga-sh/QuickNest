@@ -1,5 +1,4 @@
-const mongoose = require("mongoose");
-
+﻿const mongoose = require("mongoose");
 const ProviderSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -66,7 +65,6 @@ const ProviderSchema = new mongoose.Schema({
       message: "At least one service with price is required",
     },
   },
-  // availability removed, only location is required
   status: {
     type: String,
     enum: ["pending", "approved", "rejected"],
@@ -101,18 +99,11 @@ const ProviderSchema = new mongoose.Schema({
     default: Date.now,
   },
 });
-
-// Update the updatedAt field before saving
 ProviderSchema.pre("save", function (next) {
   this.updatedAt = Date.now();
   next();
 });
-
-// Create 2dsphere index for geospatial queries
 ProviderSchema.index({ location: "2dsphere" });
-
-// Create compound index for common queries
 ProviderSchema.index({ status: 1, isActive: 1 });
 ProviderSchema.index({ skills: 1, status: 1 });
-
 module.exports = mongoose.model("Provider", ProviderSchema);

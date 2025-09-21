@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+﻿import React, { useState, useEffect, useContext } from "react";
 import {
   MapPin,
   Play,
@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import useLocationTracking from "../hooks/useLocationTracking";
 import { AuthContext } from "../context/AuthContext";
-
 const LocationTracking = ({ bookingId, onTrackingStateChange }) => {
   const { user } = useContext(AuthContext);
   const {
@@ -23,31 +22,25 @@ const LocationTracking = ({ bookingId, onTrackingStateChange }) => {
     getCurrentPosition,
     requestLocationPermission,
   } = useLocationTracking(bookingId, "provider", user?.id);
-
   const [isStarting, setIsStarting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
   const [locationAccuracy, setLocationAccuracy] = useState(null);
-
-  // Notify parent component of tracking state changes
   useEffect(() => {
     if (onTrackingStateChange) {
       onTrackingStateChange(isTracking, currentLocation);
     }
   }, [isTracking, currentLocation, onTrackingStateChange]);
-
-  // Update location accuracy when location changes
   useEffect(() => {
     if (currentLocation && currentLocation.accuracy) {
       setLocationAccuracy(currentLocation.accuracy);
     }
   }, [currentLocation]);
-
   const handleStartTracking = async () => {
     setIsStarting(true);
     try {
       const success = await startTracking();
       if (success) {
-        console.log("✅ Tracking started successfully");
+        console.log("âœ… Tracking started successfully");
       }
     } catch (err) {
       console.error("Failed to start tracking:", err);
@@ -55,19 +48,17 @@ const LocationTracking = ({ bookingId, onTrackingStateChange }) => {
       setIsStarting(false);
     }
   };
-
   const handleStopTracking = async () => {
     setIsStopping(true);
     try {
       await stopTracking();
-      console.log("✅ Tracking stopped successfully");
+      console.log("âœ… Tracking stopped successfully");
     } catch (err) {
       console.error("Failed to stop tracking:", err);
     } finally {
       setIsStopping(false);
     }
   };
-
   const handleTestLocation = async () => {
     try {
       const location = await getCurrentPosition();
@@ -80,22 +71,18 @@ const LocationTracking = ({ bookingId, onTrackingStateChange }) => {
       alert(`Failed to get location: ${err.message}`);
     }
   };
-
   const getAccuracyColor = (accuracy) => {
     if (!accuracy) return "text-gray-500";
     if (accuracy <= 10) return "text-green-600";
     if (accuracy <= 50) return "text-yellow-600";
     return "text-red-600";
   };
-
   const getAccuracyDescription = (accuracy) => {
     if (!accuracy) return "Unknown";
     if (accuracy <= 10) return "Excellent";
     if (accuracy <= 50) return "Good";
     return "Poor";
   };
-
-  // Check if geolocation is supported
   if (!isGeolocationSupported) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -109,8 +96,6 @@ const LocationTracking = ({ bookingId, onTrackingStateChange }) => {
       </div>
     );
   }
-
-  // Check permissions
   if (trackingPermission === "denied") {
     return (
       <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
@@ -131,7 +116,6 @@ const LocationTracking = ({ bookingId, onTrackingStateChange }) => {
       </div>
     );
   }
-
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4">
       <div className="flex items-center justify-between mb-4">
@@ -154,8 +138,7 @@ const LocationTracking = ({ bookingId, onTrackingStateChange }) => {
           </span>
         </div>
       </div>
-
-      {/* Current Location Display */}
+      {}
       {currentLocation && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
           <div className="flex items-center space-x-2 mb-2">
@@ -186,8 +169,7 @@ const LocationTracking = ({ bookingId, onTrackingStateChange }) => {
           </div>
         </div>
       )}
-
-      {/* Error Display */}
+      {}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
           <div className="flex items-center space-x-2">
@@ -197,8 +179,7 @@ const LocationTracking = ({ bookingId, onTrackingStateChange }) => {
           <p className="text-sm text-red-800 mt-1">{error}</p>
         </div>
       )}
-
-      {/* Control Buttons */}
+      {}
       <div className="flex flex-col space-y-2">
         {!isTracking ? (
           <button
@@ -231,8 +212,7 @@ const LocationTracking = ({ bookingId, onTrackingStateChange }) => {
             </span>
           </button>
         )}
-
-        {/* Test Location Button */}
+        {}
         <button
           onClick={handleTestLocation}
           className="flex items-center justify-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -241,23 +221,21 @@ const LocationTracking = ({ bookingId, onTrackingStateChange }) => {
           <span>Test Current Location</span>
         </button>
       </div>
-
-      {/* Instructions */}
+      {}
       <div className="mt-4 p-3 bg-gray-50 rounded-lg">
         <h4 className="text-sm font-medium text-gray-900 mb-2">
           Instructions:
         </h4>
         <ul className="text-xs text-gray-600 space-y-1">
-          <li>• Click "Start Location Tracking" when you begin the service</li>
-          <li>• Your location will be shared with the customer in real-time</li>
-          <li>• Keep this tab open while providing the service</li>
+          <li>â€¢ Click "Start Location Tracking" when you begin the service</li>
+          <li>â€¢ Your location will be shared with the customer in real-time</li>
+          <li>â€¢ Keep this tab open while providing the service</li>
           <li>
-            • Click "Stop Location Tracking" when the service is completed
+            â€¢ Click "Stop Location Tracking" when the service is completed
           </li>
         </ul>
       </div>
     </div>
   );
 };
-
 export default LocationTracking;

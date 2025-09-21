@@ -1,5 +1,4 @@
-import React from "react";
-
+﻿import React from "react";
 const Input = React.forwardRef(
   ({ className = "", type = "text", ...props }, ref) => {
     return (
@@ -13,5 +12,4 @@ const Input = React.forwardRef(
   }
 );
 Input.displayName = "Input";
-
 export { Input };
