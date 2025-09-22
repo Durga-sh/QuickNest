@@ -2,7 +2,6 @@
 const Provider = require("../model/Provider");
 exports.startTracking = async (req, res) => {
   try {
-    console.log(`Tracking stopped for booking ${bookingId}`);
     const { bookingId } = req.params;
     const { latitude, longitude } = req.body;
     const provider = await Provider.findOne({ userId: req.user.id });
@@ -23,6 +22,9 @@ exports.startTracking = async (req, res) => {
         message: "Tracking can only be started for bookings in progress",
       });
     }
+
+    console.log(`Starting tracking for booking ${bookingId}`);
+
     booking.tracking = {
       isActive: true,
       startedAt: new Date(),
@@ -52,7 +54,7 @@ exports.startTracking = async (req, res) => {
         },
       });
     }
-    console.log(`🟢 Tracking started for booking ${bookingId}`);
+    console.log(`Tracking started for booking ${bookingId}`);
     res.json({
       success: true,
       message: "Tracking started successfully",
@@ -164,21 +166,29 @@ exports.stopTracking = async (req, res) => {
 exports.getTrackingStatus = async (req, res) => {
   try {
     const { bookingId } = req.params;
+
+    // Optimized query with lean() for better performance
     const booking = await Booking.findById(bookingId)
       .populate("user", "name email")
-      .populate("provider", "businessName contactPhone");
+      .populate("provider", "businessName contactPhone")
+      .lean();
+
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
+
     const isUser = booking.user._id.toString() === req.user.id;
-    const provider = await Provider.findOne({ userId: req.user.id });
+    const provider = await Provider.findOne({ userId: req.user.id }).lean();
     const isProvider =
       provider && booking.provider._id.toString() === provider._id.toString();
+
     if (!isUser && !isProvider) {
       return res.status(403).json({
         message: "Access denied - not authorized to view this tracking",
       });
     }
+
+    // Ensure tracking data exists
     if (!booking.tracking) {
       booking.tracking = {
         isActive: false,
@@ -188,6 +198,7 @@ exports.getTrackingStatus = async (req, res) => {
         locationHistory: [],
       };
     }
+
     res.json({
       success: true,
       booking: {
@@ -208,25 +219,33 @@ exports.getTrackingStatus = async (req, res) => {
 };
 exports.getProviderTrackingBookings = async (req, res) => {
   try {
-    const provider = await Provider.findOne({ userId: req.user.id });
+    const provider = await Provider.findOne({ userId: req.user.id }).lean();
     if (!provider) {
       return res.status(404).json({ message: "Provider profile not found" });
     }
-    const bookings = await Booking.find({ provider: provider._id })
+
+    // Optimized query with limited fields and indexing
+    const bookings = await Booking.find({
+      provider: provider._id,
+      status: { $in: ["confirmed", "in-progress"] }, // Only fetch relevant bookings
+    })
       .populate("user", "name email")
       .select(
-        "bookingId status tracking address coordinates bookingDate timeSlot"
+        "bookingId status tracking address coordinates bookingDate timeSlot createdAt"
       )
-      .sort({ createdAt: -1 });
-    const trackingBookings = bookings.filter(
-      (booking) =>
-        booking.tracking ||
-        booking.status === "in-progress" ||
-        booking.status === "confirmed"
-    );
-    res.json({
-      success: true,
-      bookings: trackingBookings.map((booking) => ({
+      .sort({ createdAt: -1 })
+      .limit(20) // Limit results for performance
+      .lean(); // Use lean() for better performance
+
+    // Filter and format efficiently
+    const trackingBookings = bookings
+      .filter(
+        (booking) =>
+          booking.tracking ||
+          booking.status === "in-progress" ||
+          booking.status === "confirmed"
+      )
+      .map((booking) => ({
         id: booking._id,
         bookingId: booking.bookingId,
         status: booking.status,
@@ -242,7 +261,11 @@ exports.getProviderTrackingBookings = async (req, res) => {
         coordinates: booking.coordinates,
         bookingDate: booking.bookingDate,
         timeSlot: booking.timeSlot,
-      })),
+      }));
+
+    res.json({
+      success: true,
+      bookings: trackingBookings,
     });
   } catch (error) {
     console.error("Get provider tracking bookings error:", error);

@@ -1,7 +1,13 @@
-﻿import React, { useState, useEffect, useCallback, useContext } from "react";
+﻿import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useContext,
+  useRef,
+} from "react";
 import {
   GoogleMap,
-  LoadScript,
+  useJsApiLoader,
   Marker,
   DirectionsRenderer,
   InfoWindow,
@@ -38,8 +44,20 @@ const mapOptions = {
 const GOOGLE_MAPS_API_KEY =
   import.meta.env.VITE_GOOGLE_MAPS_API_KEY ||
   "AIzaSyBHg5SkO4eR8VkK9F3kHl2wCJfv6_ZQ_z8"; // Demo key
+
+// Google Maps libraries to load
+const libraries = ["geometry", "drawing"];
+
 const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
   const { user } = useContext(AuthContext);
+
+  // Use Google Maps loader hook for better performance
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: "google-map-script",
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    libraries,
+  });
+
   const [map, setMap] = useState(null);
   const [providerLocation, setProviderLocation] = useState(null);
   const [trackingData, setTrackingData] = useState(null);
@@ -53,6 +71,11 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
   const [retryCount, setRetryCount] = useState(0);
   const MAX_RETRIES = 3;
   const RETRY_DELAY = 5000; // 5 seconds
+
+  // Cache for directions to avoid repeated API calls
+  const directionsCache = useRef(new Map());
+  const lastDirectionsCall = useRef(0);
+  const DIRECTIONS_THROTTLE = 10000; // 10 seconds between directions calls
   const initializeTracking = useCallback(
     async (attempt = 1) => {
       try {
@@ -78,14 +101,24 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
           setProviderStatus("Service not started");
         }
         socketService.connect();
+        // Add a small delay to ensure connection is established
         setTimeout(() => {
-          socketService.joinTracking(
-            bookingId,
-            "user",
-            user?.id || "current-user"
-          );
-          setIsConnected(true);
-        }, 1000);
+          if (socketService.isConnected()) {
+            socketService.joinTracking(
+              bookingId,
+              "user",
+              user?.id || "current-user"
+            );
+            setIsConnected(true);
+          } else {
+            console.warn("Socket connection failed, retrying...");
+            setTimeout(() => {
+              if (!socketService.isConnected()) {
+                socketService.connect();
+              }
+            }, 2000);
+          }
+        }, 500);
         setRetryCount(0); // Reset retry count on success
       } catch (err) {
         console.error(
@@ -185,7 +218,23 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
   }, [bookingId]);
   useEffect(() => {
     if (map && providerLocation && userLocation && window.google) {
+      const now = Date.now();
+      const cacheKey = `${providerLocation.lat},${providerLocation.lng}-${userLocation.lat},${userLocation.lng}`;
+
+      // Check cache first
+      if (directionsCache.current.has(cacheKey)) {
+        setDirections(directionsCache.current.get(cacheKey));
+        return;
+      }
+
+      // Throttle directions API calls
+      if (now - lastDirectionsCall.current < DIRECTIONS_THROTTLE) {
+        return;
+      }
+
+      lastDirectionsCall.current = now;
       const directionsService = new window.google.maps.DirectionsService();
+
       directionsService.route(
         {
           origin: providerLocation,
@@ -195,6 +244,13 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
         (result, status) => {
           if (status === "OK") {
             setDirections(result);
+            // Cache the result
+            directionsCache.current.set(cacheKey, result);
+            // Limit cache size
+            if (directionsCache.current.size > 10) {
+              const firstKey = directionsCache.current.keys().next().value;
+              directionsCache.current.delete(firstKey);
+            }
           } else {
             console.error("Directions request failed:", status);
           }
@@ -375,100 +431,104 @@ const RealTimeTrackingMap = ({ bookingId, userLocation, onTrackingError }) => {
                 </div>
               </div>
             </div>
+          ) : loadError ? (
+            <div className="h-96 flex items-center justify-center bg-red-50 rounded-lg border border-red-200">
+              <div className="text-center p-8">
+                <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                  Failed to Load Map
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  There was an error loading Google Maps. Please refresh the
+                  page.
+                </p>
+              </div>
+            </div>
+          ) : !isLoaded ? (
+            <div className="h-96 flex items-center justify-center bg-gray-50 rounded-lg border border-gray-200">
+              <div className="text-center">
+                <Loader className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
+                <p className="text-gray-600">Loading map...</p>
+              </div>
+            </div>
           ) : (
-            <LoadScript
-              googleMapsApiKey={GOOGLE_MAPS_API_KEY}
-              loadingElement={
-                <div className="h-96 flex items-center justify-center bg-gray-50">
-                  <div className="text-center">
-                    <Loader className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
-                    <p className="text-gray-600">Loading map...</p>
-                  </div>
-                </div>
-              }
-              onLoad={() => console.log("LoadScript loaded")}
-              onError={handleMapError}
+            <GoogleMap
+              mapContainerStyle={mapContainerStyle}
+              center={providerLocation || userLocation || defaultCenter}
+              zoom={14}
+              onLoad={handleMapLoad}
+              options={mapOptions}
             >
-              <GoogleMap
-                mapContainerStyle={mapContainerStyle}
-                center={providerLocation || userLocation || defaultCenter}
-                zoom={14}
-                onLoad={handleMapLoad}
-                options={mapOptions}
-              >
-                {}
-                {userLocation && (
-                  <Marker
-                    position={userLocation}
-                    icon={{
-                      url:
-                        "data:image/svg+xml;charset=UTF-8," +
-                        encodeURIComponent(`
+              {}
+              {userLocation && (
+                <Marker
+                  position={userLocation}
+                  icon={{
+                    url:
+                      "data:image/svg+xml;charset=UTF-8," +
+                      encodeURIComponent(`
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="12" cy="12" r="8" fill="#10b981" stroke="white" stroke-width="2"/>
                       <circle cx="12" cy="12" r="3" fill="white"/>
                     </svg>
                   `),
-                      scaledSize: new window.google.maps.Size(24, 24),
-                    }}
-                    title="Your location"
-                  />
-                )}
-                {}
-                {providerLocation && (
-                  <Marker
-                    position={providerLocation}
-                    icon={{
-                      url:
-                        "data:image/svg+xml;charset=UTF-8," +
-                        encodeURIComponent(`
+                    scaledSize: new window.google.maps.Size(24, 24),
+                  }}
+                  title="Your location"
+                />
+              )}
+              {}
+              {providerLocation && (
+                <Marker
+                  position={providerLocation}
+                  icon={{
+                    url:
+                      "data:image/svg+xml;charset=UTF-8," +
+                      encodeURIComponent(`
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#3b82f6" stroke="white" stroke-width="1"/>
                       <circle cx="12" cy="9" r="2.5" fill="white"/>
                     </svg>
                   `),
-                      scaledSize: new window.google.maps.Size(32, 32),
-                    }}
-                    title="Provider location"
-                    onClick={() => setShowProviderInfo(true)}
-                  >
-                    {showProviderInfo && (
-                      <InfoWindow
-                        onCloseClick={() => setShowProviderInfo(false)}
-                      >
-                        <div className="p-2">
-                          <h4 className="font-semibold text-gray-900">
-                            Service Provider
-                          </h4>
-                          <p className="text-sm text-gray-600">
-                            Status: {providerStatus}
+                    scaledSize: new window.google.maps.Size(32, 32),
+                  }}
+                  title="Provider location"
+                  onClick={() => setShowProviderInfo(true)}
+                >
+                  {showProviderInfo && (
+                    <InfoWindow onCloseClick={() => setShowProviderInfo(false)}>
+                      <div className="p-2">
+                        <h4 className="font-semibold text-gray-900">
+                          Service Provider
+                        </h4>
+                        <p className="text-sm text-gray-600">
+                          Status: {providerStatus}
+                        </p>
+                        {lastUpdate && (
+                          <p className="text-xs text-gray-500">
+                            Last update: {lastUpdate.toLocaleString()}
                           </p>
-                          {lastUpdate && (
-                            <p className="text-xs text-gray-500">
-                              Last update: {lastUpdate.toLocaleString()}
-                            </p>
-                          )}
-                        </div>
-                      </InfoWindow>
-                    )}
-                  </Marker>
-                )}
-                {}
-                {directions && (
-                  <DirectionsRenderer
-                    directions={directions}
-                    options={{
-                      polylineOptions: {
-                        strokeColor: "#3b82f6",
-                        strokeWeight: 4,
-                        strokeOpacity: 0.8,
-                      },
-                      suppressMarkers: true,
-                    }}
-                  />
-                )}
-              </GoogleMap>
-            </LoadScript>
+                        )}
+                      </div>
+                    </InfoWindow>
+                  )}
+                </Marker>
+              )}
+              {}
+              {directions && (
+                <DirectionsRenderer
+                  directions={directions}
+                  options={{
+                    polylineOptions: {
+                      strokeColor: "#3b82f6",
+                      strokeWeight: 4,
+                      strokeOpacity: 0.8,
+                    },
+                    suppressMarkers: true,
+                  }}
+                />
+              )}
+            </GoogleMap>
           )}
         </div>
       ) : (

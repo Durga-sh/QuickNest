@@ -31,7 +31,7 @@ import voiceBookingAPI from "../api/voiceBooking";
 import VoiceBookingButton, {
   VoiceBookingButtonPresets,
 } from "../components/VoiceBookingButton";
-import RealTimeTrackingMap from "../components/RealTimeTrackingMap";
+import LazyTrackingMap from "../components/LazyTrackingMap";
 import { getToken } from "../utils/tokenManager";
 const UserBookings = () => {
   const [bookings, setBookings] = useState([]);
@@ -664,7 +664,7 @@ const UserBookings = () => {
                             as they make their way to you.
                           </p>
                         </div>
-                        <RealTimeTrackingMap
+                        <LazyTrackingMap
                           bookingId={booking._id}
                           userLocation={
                             booking.coordinates?.latitude &&
