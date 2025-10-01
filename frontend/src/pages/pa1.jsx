@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { VoiceBookingSafePresets } from "../components/VoiceBookingSafeWrapper";
 import VoiceBookingComponent from "../components/VoiceBookingComponent";
 import { Link, useNavigate } from "react-router-dom";

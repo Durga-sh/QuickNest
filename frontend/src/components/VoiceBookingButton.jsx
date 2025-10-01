@@ -29,7 +29,7 @@ const VoiceBookingButton = ({
     retry,
   } = useVoiceAssistant({
     enableFeedback,
-    confidenceThreshold: 0.6, // Auto-book at 60% confidence
+    confidenceThreshold: 0.6, 
     onResult: async (bookingData, parsed) => {
       if (hasValidBooking && parsed.confidence >= 0.6) {
         setIsAutoBooking(true);

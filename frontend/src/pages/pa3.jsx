@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { VoiceBookingSafePresets } from "../components/VoiceBookingSafeWrapper";
 import VoiceBookingComponent from "../components/VoiceBookingComponent";
 import { Link, useNavigate } from "react-router-dom";
@@ -83,6 +83,13 @@ const QuickNestLanding = () => {
       glowColor: "shadow-violet-500/25",
       serviceType: "cleaner",
     },
+  ];
+
+  const stats = [
+    { number: "50K+", label: "Happy Customers", icon: Users },
+    { number: "10K+", label: "Professionals", icon: Award },
+    { number: "100K+", label: "Services Done", icon: TrendingUp },
+    { number: "4.9★", label: "Avg Rating", icon: Star },
   ];
 
   const handleBookService = (serviceType, serviceName) => {
@@ -198,6 +205,7 @@ const QuickNestLanding = () => {
 
   return (
     <div className="min-h-screen bg-white w-full overflow-hidden">
+      {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-emerald-100 via-cyan-100 to-blue-100 pt-16 pb-20 sm:pt-24 sm:pb-32 w-full overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,0.2),transparent_50%),radial-gradient(circle_at_70%_80%,rgba(6,182,212,0.2),transparent_50%)]" />
 
@@ -346,11 +354,17 @@ const QuickNestLanding = () => {
           </motion.div>
         </div>
       </section>
+
+      {/* Services Section */}
       <section
         id="services"
-        className="py-20 bg-gradient-to-b from-white via-gray-50 to-white w-full relative overflow-hidden"
+        className="py-20 bg-gradient-to-b from-white via-emerald-50/30 to-white w-full relative overflow-hidden"
       >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(16,185,129,0.05),transparent_50%),radial-gradient(circle_at_80%_70%,rgba(6,182,212,0.05),transparent_50%)]" />
+        {/* Subtle Background Pattern */}
+        <div className="absolute inset-0 opacity-30">
+          <div className="absolute top-20 left-10 w-64 h-64 bg-gradient-to-br from-emerald-200/40 to-transparent rounded-full blur-3xl" />
+          <div className="absolute bottom-20 right-10 w-80 h-80 bg-gradient-to-br from-teal-200/40 to-transparent rounded-full blur-3xl" />
+        </div>
 
         <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 relative z-10">
           <motion.div
@@ -360,122 +374,99 @@ const QuickNestLanding = () => {
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
           >
-            <Badge className="mb-4 bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-800 border-emerald-200">
-              <Sparkles className="w-4 h-4 mr-2" />
-              Voice-Enabled Services
+            <Badge className="bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-800 border-emerald-200 mb-4">
+              <Sparkles className="w-3 h-3 mr-2" />6 Premium Categories
             </Badge>
             <h2 className="text-4xl font-bold text-gray-900 sm:text-5xl mb-4">
-              Professional Services at Your{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-600">
-                Fingertips
+              Professional Services
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-600">
+                at Your Fingertips
               </span>
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Choose from our wide range of verified local professionals. Book
-              instantly with voice or click.
+              Choose from our wide range of verified local professionals ready
+              to serve you
             </p>
           </motion.div>
 
-          <div className="max-w-7xl mx-auto space-y-6">
-            {services.map((service, index) => {
-              const isEven = index % 2 === 0;
-              return (
+          {/* Honeycomb Grid Layout */}
+          <div className="max-w-7xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {services.map((service, index) => (
                 <motion.div
                   key={index}
-                  initial={{ opacity: 0, x: isEven ? -40 : 40 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.6, delay: index * 0.08 }}
+                  initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
                   viewport={{ once: true }}
-                  className="group"
+                  className="group relative"
                 >
-                  <div
-                    className={`relative flex items-center gap-6 lg:gap-10 ${
-                      isEven ? "flex-row" : "flex-row-reverse"
-                    } bg-white hover:bg-gradient-to-br hover:from-emerald-50/30 hover:to-teal-50/30 rounded-3xl p-6 lg:p-8 transition-all duration-500 border border-gray-100 hover:border-emerald-200/50 hover:shadow-xl shadow-md`}
-                  >
-                    {/* Decorative line connector */}
-                    <div
-                      className={`absolute top-1/2 ${
-                        isEven ? "left-0" : "right-0"
-                      } w-1 h-16 bg-gradient-to-b from-transparent via-emerald-200 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
-                    />
+                  {/* Hexagonal Shape Card */}
+                  <div className="relative bg-white rounded-3xl p-8 border-2 border-gray-100 hover:border-emerald-300 transition-all duration-500 hover:shadow-xl hover:-translate-y-2 overflow-hidden">
+                    {/* Gradient Background on Hover */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 via-teal-50/50 to-cyan-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-                    {/* Icon Box - More compact and refined */}
-                    <div className="flex-shrink-0">
-                      <div
-                        className={`relative w-24 h-24 lg:w-28 lg:h-28 ${service.color} rounded-3xl flex items-center justify-center shadow-lg ${service.glowColor} group-hover:shadow-2xl group-hover:scale-110 transition-all duration-500`}
-                      >
-                        <service.icon className="w-10 h-10 lg:w-12 lg:h-12 text-white relative z-10" />
-
-                        {/* Floating Rating Badge */}
-                        <motion.div
-                          className="absolute -bottom-3 -right-3 bg-white rounded-xl px-2.5 py-1.5 shadow-lg border-2 border-gray-100 flex items-center gap-1"
-                          initial={{ scale: 0 }}
-                          whileInView={{ scale: 1 }}
-                          transition={{
-                            delay: 0.3 + index * 0.1,
-                            type: "spring",
-                          }}
-                          viewport={{ once: true }}
-                        >
-                          <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
-                          <span className="text-sm font-bold text-gray-900">
-                            4.9
-                          </span>
-                        </motion.div>
-
-                        {/* Subtle glow effect */}
+                    {/* Content */}
+                    <div className="relative z-10">
+                      {/* Icon with Floating Effect */}
+                      <div className="mb-6 relative">
+                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/20 to-teal-400/20 rounded-2xl blur-xl group-hover:scale-125 transition-transform duration-500" />
                         <div
-                          className={`absolute inset-0 ${service.color} rounded-3xl blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-500`}
-                        />
-                      </div>
-                    </div>
+                          className={`relative ${service.color} rounded-2xl w-20 h-20 flex items-center justify-center shadow-lg group-hover:shadow-2xl transition-all duration-500 group-hover:rotate-6 group-hover:scale-110`}
+                        >
+                          <service.icon className="w-10 h-10 text-white" />
+                        </div>
 
-                    {/* Content - Better spacing and hierarchy */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-4 mb-3">
-                        <div>
-                          <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-1.5 group-hover:text-emerald-600 transition-colors duration-300">
-                            {service.name}
-                          </h3>
-                          <p className="text-gray-600 text-base lg:text-lg leading-relaxed">
-                            {service.description}
-                          </p>
+                        {/* Floating Badge */}
+                        <div className="absolute -top-2 -right-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg flex items-center gap-1 group-hover:scale-110 transition-transform">
+                          <Star className="w-3 h-3 fill-white" />
+                          4.9
                         </div>
                       </div>
 
-                      {/* Stats with icon */}
-                      <div className="flex items-center gap-2 mb-3 text-sm text-gray-500">
+                      {/* Title & Description */}
+                      <h3 className="text-2xl font-bold text-gray-900 mb-3 group-hover:text-emerald-600 transition-colors">
+                        {service.name}
+                      </h3>
+                      <p className="text-gray-600 mb-4 leading-relaxed min-h-[3rem]">
+                        {service.description}
+                      </p>
+
+                      {/* Stats */}
+                      <div className="flex items-center gap-2 mb-4 text-sm text-gray-500">
                         <Users className="w-4 h-4 text-emerald-600" />
-                        <span className="font-medium">
-                          1,200+ bookings this month
-                        </span>
+                        <span>1,200+ bookings this month</span>
                       </div>
 
-                      {/* Voice Hint - More prominent */}
-                      <div className="inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl mb-4 group-hover:border-emerald-300 transition-colors duration-300">
-                        <Sparkles className="w-4 h-4 text-emerald-600" />
-                        <span className="text-sm text-emerald-700 font-semibold">
-                          Say: "Book {service.serviceType} tomorrow morning"
-                        </span>
+                      {/* Voice Command Hint */}
+                      <div className="mb-6 p-3 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border border-emerald-200/50">
+                        <div className="flex items-start gap-2">
+                          <Sparkles className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-xs text-emerald-700 font-semibold mb-1">
+                              Try Voice Booking:
+                            </p>
+                            <p className="text-xs text-emerald-600 italic">
+                              "Book {service.serviceType} tomorrow at 10 AM"
+                            </p>
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Action Buttons - Better styling */}
-                      <div className="flex flex-wrap items-center gap-3">
+                      {/* Action Buttons */}
+                      <div className="space-y-2">
                         <Button
-                          size="lg"
-                          className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md hover:shadow-xl transition-all duration-300 group/btn"
+                          className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md hover:shadow-xl transition-all duration-300 group-hover:scale-105"
                           onClick={() =>
                             handleBookService(service.serviceType, service.name)
                           }
                         >
                           Book Now
-                          <ArrowRight className="ml-2 w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                          <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
                         </Button>
                         <Button
                           variant="outline"
-                          size="lg"
-                          className="border-2 border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 bg-white transition-all duration-300"
+                          className="w-full border-2 border-gray-200 hover:border-emerald-400 hover:bg-emerald-50 bg-transparent text-gray-700 hover:text-emerald-700 transition-all duration-300"
                           onClick={() =>
                             navigate(
                               `/services?skill=${encodeURIComponent(
@@ -488,46 +479,51 @@ const QuickNestLanding = () => {
                         </Button>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
 
-          {/* Stats Bar - More refined */}
-          <motion.div
-            className="mt-16 max-w-7xl mx-auto bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 rounded-3xl p-8 shadow-2xl"
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.6 }}
-            viewport={{ once: true }}
-          >
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-              {[
-                { value: "50K+", label: "Happy Customers", icon: Users },
-                { value: "10K+", label: "Professionals", icon: Award },
-                { value: "100K+", label: "Services Done", icon: TrendingUp },
-                { value: "4.9★", label: "Avg Rating", icon: Star },
-              ].map((stat, idx) => (
-                <motion.div
-                  key={idx}
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  whileInView={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.5 + idx * 0.1 }}
-                  viewport={{ once: true }}
-                  className="group/stat"
-                >
-                  <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3 group-hover/stat:bg-white/30 transition-colors">
-                    <stat.icon className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="text-3xl lg:text-4xl font-bold text-white mb-1">
-                    {stat.value}
-                  </div>
-                  <div className="text-sm text-emerald-50 font-medium">
-                    {stat.label}
+                    {/* Corner Accent */}
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-emerald-100/50 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                   </div>
                 </motion.div>
               ))}
+            </div>
+          </div>
+
+          {/* Enhanced Stats Bar */}
+          <motion.div
+            className="mt-20 max-w-6xl mx-auto relative"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            viewport={{ once: true }}
+          >
+            <div className="relative bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 rounded-3xl p-8 overflow-hidden shadow-2xl">
+              {/* Animated Background Pattern */}
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.8),transparent_50%)]" />
+              </div>
+
+              <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+                {stats.map((stat, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.4 + index * 0.1, duration: 0.5 }}
+                    viewport={{ once: true }}
+                    className="group cursor-default"
+                  >
+                    <div className="flex flex-col items-center">
+                      <stat.icon className="w-8 h-8 text-white/80 mb-3 group-hover:scale-125 transition-transform duration-300" />
+                      <div className="text-4xl font-bold text-white mb-2 group-hover:scale-110 transition-transform">
+                        {stat.number}
+                      </div>
+                      <div className="text-sm text-white/90 font-medium">
+                        {stat.label}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
             </div>
           </motion.div>
         </div>
@@ -739,6 +735,7 @@ const QuickNestLanding = () => {
           onAutoBookingSuccess={handleAutoBookingSuccess}
         />
       )}
+
       <div className="fixed bottom-12 right-20 z-30">
         <VoiceBookingSafePresets.FloatingButton
           onBookingParsed={handleVoiceBookingResult}
